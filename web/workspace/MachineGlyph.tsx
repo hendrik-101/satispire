@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 /** Original industrial symbols. Ports and proportions are schematic. */
 export function MachineGlyph({
   machineId,
@@ -10,6 +12,7 @@ export function MachineGlyph({
   number?: number;
   feeds?: number;
 }) {
+  const surface = useId().replace(/:/g, '');
   const family = machineId.toLowerCase();
   const furnace = /smelter|foundry/.test(family);
   const assembly = /assembler|manufacturer/.test(family);
@@ -22,6 +25,13 @@ export function MachineGlyph({
       className={`machine-glyph${selected ? ' selected' : ''}`}
       aria-hidden="true"
     >
+      <defs>
+        <linearGradient id={surface} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#637e91" />
+          <stop offset="0.45" stopColor="#3f5361" />
+          <stop offset="1" stopColor="#273842" />
+        </linearGradient>
+      </defs>
       <rect
         className="machine-base"
         x="8"
@@ -36,7 +46,7 @@ export function MachineGlyph({
       <path
         className="machine-body"
         d="M20 10H80L87 20V61L79 70H21L13 61V20Z"
-        fill="#46545e"
+        fill={`url(#${surface})`}
         stroke="#82919b"
         strokeWidth="1"
       />
@@ -118,7 +128,7 @@ export function MachineGlyph({
             className="machine-rail"
             d="M20 28H80M20 49H80"
             stroke="#adbac3"
-            strokeWidth="5"
+            strokeWidth="3"
           />
           <rect
             className="machine-body"
@@ -127,7 +137,7 @@ export function MachineGlyph({
             width="22"
             height="26"
             rx="2"
-            fill="#798994"
+            fill="#7692a5"
             stroke="#d1d7dc"
           />
           <rect
@@ -142,7 +152,7 @@ export function MachineGlyph({
             className="machine-detail"
             d="M32 12V18M68 12V18"
             stroke="#adbcc5"
-            strokeWidth="6"
+            strokeWidth="4"
           />
         </>
       ) : constructor ? (
@@ -168,7 +178,7 @@ export function MachineGlyph({
             d="M22 20H78V32H60"
             fill="none"
             stroke="#abb8c1"
-            strokeWidth="7"
+            strokeWidth="4"
           />
           <rect
             className="machine-body"
@@ -177,7 +187,7 @@ export function MachineGlyph({
             width="20"
             height="22"
             rx="2"
-            fill="#83949e"
+            fill="#7699ae"
             stroke="#d0d8dd"
           />
           <circle
@@ -245,7 +255,7 @@ export function MachineGlyph({
             width={width}
             height="12"
             rx="1"
-            fill="#a5bbc4"
+            fill="#65b9e5"
             stroke="#26353e"
             strokeWidth="2"
           />
@@ -258,7 +268,7 @@ export function MachineGlyph({
         width="16"
         height="12"
         rx="1"
-        fill="#b7aa8b"
+        fill="#eea15d"
         stroke="#26353e"
         strokeWidth="2"
       />

@@ -27,6 +27,20 @@ try {
   await page.getByRole('button', { name: 'Inspector', exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: 'docs/qa/vanilla-mobile.png', fullPage: true });
+  for (let i = 0; i < 2; i++) {
+    await page.getByRole('button', { name: 'Vergrößern', exact: true }).click();
+  }
+  await page
+    .getByRole('button', { name: 'Constructor 6', exact: true })
+    .focus();
+  await page.keyboard.press('Enter');
+  await page.screenshot({
+    path: 'docs/qa/vanilla-mobile-zoom.png',
+    fullPage: true,
+  });
+  await page
+    .getByRole('button', { name: 'Schema einpassen', exact: true })
+    .click();
   await page.locator('.view-options summary').click();
   await page.screenshot({
     path: 'docs/qa/vanilla-mobile-sheet.png',

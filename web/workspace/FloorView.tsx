@@ -40,7 +40,6 @@ export function FloorView({
     x: 0,
     y: 0,
     scale: 1,
-    overview: false,
   });
   const drag = useRef<{
     x: number;
@@ -60,14 +59,9 @@ export function FloorView({
   const sceneWidth = transferX + 12;
   const sceneHeight = maxY + 13;
   const scale = zoom * camera.scale;
-  const framedWidth =
-    compact && !camera.overview ? Math.min(sceneWidth, 58) : sceneWidth;
-  const viewWidth = framedWidth / scale;
+  const viewWidth = sceneWidth / scale;
   const viewHeight = sceneHeight / scale;
-  const viewX =
-    (compact && !camera.overview
-      ? (framedWidth - viewWidth) / 2
-      : (sceneWidth - viewWidth) / 2) + camera.x;
+  const viewX = (sceneWidth - viewWidth) / 2 + camera.x;
   const viewY = (sceneHeight - viewHeight) / 2 + camera.y;
   const top = floor.machines[0]!.y - 3;
   const bottom = maxY + 3;
@@ -79,23 +73,17 @@ export function FloorView({
       <path
         d={d}
         fill="none"
-        stroke={output ? '#897c60' : '#607a83'}
-        strokeWidth="1.5"
+        stroke="#17232b"
+        strokeWidth="0.7"
         strokeLinejoin="round"
       />
       <path
         className="supply-belt-edge"
         d={d}
         fill="none"
-        stroke="#202a31"
-        strokeWidth="0.7"
+        stroke={output ? '#eea15d' : '#65b9e5'}
+        strokeWidth="0.3"
         strokeLinejoin="round"
-      />
-      <path
-        d={d}
-        fill="none"
-        stroke={output ? '#c1ae80' : '#a0bec7'}
-        strokeWidth="0.2"
         markerEnd={`url(#${marker}-${output ? 'out' : 'in'})`}
       />
     </g>
@@ -108,9 +96,7 @@ export function FloorView({
       <div className="floor-canvas-tools">
         <button
           type="button"
-          onClick={() =>
-            setCamera({ x: 0, y: 0, scale: 1 / zoom, overview: true })
-          }
+          onClick={() => setCamera({ x: 0, y: 0, scale: 1 / zoom })}
           aria-label="Schema einpassen"
         >
           Einpassen
@@ -119,7 +105,10 @@ export function FloorView({
           type="button"
           aria-label="Verkleinern"
           onClick={() =>
-            setCamera((c) => ({ ...c, scale: Math.max(0.4, c.scale / 1.2) }))
+            setCamera((c) => ({
+              ...c,
+              scale: Math.max(0.4, c.scale / (compact ? 1.5 : 1.2)),
+            }))
           }
         >
           −
@@ -128,7 +117,10 @@ export function FloorView({
           type="button"
           aria-label="Vergrößern"
           onClick={() =>
-            setCamera((c) => ({ ...c, scale: Math.min(4, c.scale * 1.2) }))
+            setCamera((c) => ({
+              ...c,
+              scale: Math.min(4, c.scale * (compact ? 1.5 : 1.2)),
+            }))
           }
         >
           +
@@ -196,7 +188,7 @@ export function FloorView({
               >
                 <path
                   d="M0 1L9 5L0 9Z"
-                  fill={kind === 'in' ? '#a0bec7' : '#c1ae80'}
+                  fill={kind === 'in' ? '#65b9e5' : '#eea15d'}
                 />
               </marker>
             ))}
@@ -264,7 +256,7 @@ export function FloorView({
                           width="1"
                           height="1"
                           rx="0.2"
-                          fill="#829ba3"
+                          fill="#4a819e"
                           stroke="#26343c"
                           strokeWidth="0.15"
                         />
@@ -278,7 +270,7 @@ export function FloorView({
                       width="1.2"
                       height="1.2"
                       rx="0.2"
-                      fill="#a29679"
+                      fill="#b47b49"
                       stroke="#26343c"
                       strokeWidth="0.15"
                     />

@@ -73,11 +73,22 @@ test('mobile camera reveals keyboard-selected machines and recovers after zoom a
     name: 'Constructor 6',
     exact: true,
   });
+  const sceneBox = (await scene.boundingBox())!;
+  const transferBox = (await page
+    .getByLabel('Symbolischer Etagenübergang')
+    .boundingBox())!;
+  expect(transferBox.x).toBeGreaterThanOrEqual(sceneBox.x);
+  expect(transferBox.x + transferBox.width).toBeLessThanOrEqual(
+    sceneBox.x + sceneBox.width,
+  );
+  const overview = await scene.getAttribute('viewBox');
+  for (let i = 0; i < 3; i++) {
+    await page.getByRole('button', { name: 'Vergrößern', exact: true }).click();
+  }
   await machine.focus();
   await page.keyboard.press('Enter');
   await expect(machine).toHaveAttribute('aria-pressed', 'true');
   const machineBox = (await machine.boundingBox())!;
-  const sceneBox = (await scene.boundingBox())!;
   expect(machineBox.x + machineBox.width / 2).toBeGreaterThan(sceneBox.x);
   expect(machineBox.x + machineBox.width / 2).toBeLessThan(
     sceneBox.x + sceneBox.width,
@@ -89,6 +100,7 @@ test('mobile camera reveals keyboard-selected machines and recovers after zoom a
     .getByRole('button', { name: 'Schema einpassen', exact: true })
     .click();
   const fittedView = await scene.getAttribute('viewBox');
+  expect(fittedView).toBe(overview);
   expect(Number(fittedView!.split(' ')[2])).toBeGreaterThan(58);
   await page.mouse.move(sceneBox.x + 10, sceneBox.y + 10);
   await page.mouse.down();
