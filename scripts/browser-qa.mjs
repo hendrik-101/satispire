@@ -4,7 +4,7 @@ const browser = await chromium.launch({
   headless: true,
   executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH ?? '/usr/bin/chromium',
 });
-const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
+const page = await browser.newPage({ viewport: { width: 1586, height: 992 } });
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
 try {
@@ -33,7 +33,7 @@ try {
     fullPage: true,
   });
   await page.keyboard.press('Escape');
-  await page.setViewportSize({ width: 1440, height: 960 });
+  await page.setViewportSize({ width: 1586, height: 992 });
   await page
     .getByLabel('Produktionsziel')
     .selectOption('Desc_IronPlateReinforced_C');

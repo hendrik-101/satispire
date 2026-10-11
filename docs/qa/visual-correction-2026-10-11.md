@@ -4,13 +4,13 @@ This is a reviewable visual correction of the existing workspace from confirmed 
 
 ## Actual inspected browser images
 
-- [Desktop, panels closed](vanilla-desktop.png): 1440 × 960.
-- [Desktop, graph and inspector open](vanilla-panels.png): 1440 × 960.
+- [Desktop, panels closed](vanilla-desktop.png): 1586 × 992.
+- [Desktop, graph and inspector open](vanilla-panels.png): 1586 × 992.
 - [Mobile initial working view](vanilla-mobile.png): 390 × 844.
 - [Mobile secondary settings sheet](vanilla-mobile-sheet.png): 390 × 844.
-- [Assembler with two connected symbolic feeds](vanilla-assembler.png): 1440 × 960.
+- [Assembler with two connected symbolic feeds](vanilla-assembler.png): 1586 × 992.
 
-All five images were opened and visually inspected in this executor after capture. The first mobile capture failed the visual criterion: a tiny whole factory remained centered in a tall grid. The revised mobile start uses a readable horizontal working window and a shorter content canvas; full overview remains reachable with Einpassen. No claim of pixel-identical reference comparison is made: the supported Library materialization returned references, but both authenticated byte transfers failed again. Neither original A nor B was readable here. The parent has already viewed them and supplied the explicit visual comparison. Original A's exact pixel size was requested but remains unconfirmed; 1440 × 960 is the documented capture size.
+All five images were opened and visually inspected in this executor after capture. The first mobile capture failed the visual criterion: a tiny whole factory remained centered in a tall grid. The revised mobile start uses a readable horizontal working window and a shorter content canvas; full overview remains reachable with Einpassen. No claim of pixel-identical reference comparison is made: the supported Library materialization returned references, but both authenticated byte transfers failed again. Neither original A nor B was readable here. The parent has already viewed them and supplied the explicit visual comparison. The parent subsequently confirmed original A is exactly 1586 × 992 pixels (PNG, 1,621,060 bytes). Desktop captures now use those exact pixel dimensions. Direct comparison with the actual original remains assigned to the parent; these same-size captures do not claim that comparison is already complete.
 
 ## Criteria checked against the actual images
 
