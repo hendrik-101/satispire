@@ -28,3 +28,7 @@ Anonymous membership and invite tokens are bearer capabilities. Production trans
 ## Coordinated data discovery
 
 The separate local audit identified Satisfactory 1.2.4.0, CL 502094, Steam build 24656030. Full catalog remains local with unresolved distribution rights. Geometry has no layout-ready buildables; foundation/ramp depth and build clearance are not a verified machine footprint or port map. The Library discovery package (own importer/code/reports/synthetic tests only) could not be materialized here through the supported helper after one bounded retry; no bytes or SHA verification exist in this checkout. The normalized local import contract remains the available path until transfer succeeds.
+
+## Runtime prerequisites
+
+The selected environment provides Node 24.19.0/npm 11.9.0. Package registry metadata for TanStack Start 1.168.61 requires Node >=22.12.0 and Vite >=7 (React >=18); the current runtime meets its Node floor. The frontend is not installed or bootstrapped yet because reference-image inspection is still blocked. Convex 1.46.0 is pinned, registered functions are tested, and no deployment URL or credentials are present. CLI and compiled MCP run without either hosted service.
