@@ -1,4 +1,4 @@
-import { Rational } from './rational';
+import { Rational } from './rational.js';
 
 export interface CatalogItem {
   id: string;

@@ -1,5 +1,9 @@
-import { validateCatalog, type Catalog, type CatalogRecipe } from './catalog';
-import { Rational } from './rational';
+import {
+  validateCatalog,
+  type Catalog,
+  type CatalogRecipe,
+} from './catalog.js';
+import { Rational } from './rational.js';
 
 export interface ItemRate {
   itemId: string;
