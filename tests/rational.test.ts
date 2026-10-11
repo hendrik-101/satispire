@@ -2,6 +2,33 @@ import { describe, expect, it } from 'vitest';
 import { Rational } from '../src/domain/rational';
 
 describe('exact rational arithmetic', () => {
+  it('parses bounded canonical results larger than external input digits', () => {
+    const value = `1/${10n ** 59n}`;
+    expect(() => Rational.parse(value)).toThrow(/input.*bound/);
+    expect(Rational.parseCanonical(value).toString()).toBe(value);
+    expect(Rational.fromBigInts(2n, 10n ** 59n).toString()).toBe(
+      `1/${5n * 10n ** 58n}`,
+    );
+  });
+  it('rejects noncanonical strings and excessive bigint components', () => {
+    for (const value of [
+      '01',
+      '2/4',
+      '1/1',
+      '0/2',
+      '-0',
+      '0.1',
+      '1/-2',
+      '1/0',
+    ]) {
+      expect(() => Rational.parseCanonical(value)).toThrow(/canonical|zero/i);
+    }
+    expect(() => Rational.parseCanonical((1n << 4096n).toString())).toThrow(
+      /4096.*bound/,
+    );
+    expect(() => Rational.fromBigInts(1n, 1n << 4096n)).toThrow(/4096.*bound/);
+    expect(() => Rational.fromBigInts(1n, 0n)).toThrow(/zero/);
+  });
   it('normalizes integers, decimals and fractions without floating point artifacts', () => {
     expect(Rational.parse('0.1').add(Rational.parse('0.2')).toString()).toBe(
       '3/10',

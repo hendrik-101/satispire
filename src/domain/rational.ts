@@ -10,6 +10,40 @@ function gcd(left: bigint, right: bigint): bigint {
 
 /** Immutable exact fraction. Bigints never cross a JSON boundary. */
 export class Rational {
+  /** Reads normalized exact values under the arithmetic bound, never the raw-input digit bound. */
+  static parseCanonical(value: string): Rational {
+    if (typeof value !== 'string')
+      throw new Error('Canonical rational input must be a string');
+    if (value.length > 2470)
+      throw new Error(
+        `Canonical rational exceeds the ${MAX_RESULT_BITS}-bit result bound`,
+      );
+    if (!/^(?:0|-?[1-9]\d*)(?:\/[1-9]\d*)?$/.test(value))
+      throw new Error('Invalid canonical rational number');
+    const [numerator, denominator = '1'] = value.split('/');
+    const result = Rational.fromBigInts(
+      BigInt(numerator!),
+      BigInt(denominator),
+    );
+    if (result.toString() !== value)
+      throw new Error('Invalid canonical rational: value must be normalized');
+    return result;
+  }
+
+  /** Constructs a bounded rational from computed bigint components. */
+  static fromBigInts(numerator: bigint, denominator = 1n): Rational {
+    if (typeof numerator !== 'bigint' || typeof denominator !== 'bigint')
+      throw new Error('Rational components must be bigints');
+    const magnitude = (value: bigint): bigint => (value < 0n ? -value : value);
+    if (
+      magnitude(numerator).toString(2).length > MAX_RESULT_BITS ||
+      magnitude(denominator).toString(2).length > MAX_RESULT_BITS
+    )
+      throw new Error(
+        `Rational components exceed the ${MAX_RESULT_BITS}-bit result bound`,
+      );
+    return new Rational(numerator, denominator);
+  }
   private readonly numerator: bigint;
   private readonly denominator: bigint;
 

@@ -19,6 +19,18 @@ const input = (
 const fixture = (): Catalog => structuredClone(syntheticCatalog);
 
 describe('selected recipe production DAG', () => {
+  it('solves a tiny catalog duration after canonical normalization', () => {
+    const catalog = fixture();
+    catalog.recipes[0]!.durationSeconds = `0.${'0'.repeat(58)}1`;
+    const plan = solveProduction(
+      catalog,
+      input([{ itemId: 'example:ingot', rate: '1' }]),
+    );
+    expect(plan.nodes[0]).toMatchObject({
+      machineCount: 1,
+      utilization: `1/${60n * 10n ** 59n}`,
+    });
+  });
   it('solves a known plate chain with independently calculated rates and machine counts', () => {
     const plan = solveProduction(syntheticCatalog, input());
     expect(plan).toEqual({
@@ -227,6 +239,66 @@ describe('selected recipe production DAG', () => {
 });
 
 describe('whole-chain scale and Perfect Ratio', () => {
+  it('preserves a computed scaled target larger than external input digit limits', () => {
+    const denominator = 9n * 10n ** 58n;
+    const plan = scaleProduction(
+      syntheticCatalog,
+      input([{ itemId: 'example:plate', rate: '1' }]),
+      { itemId: 'example:ingot', rate: `1/${denominator}` },
+    );
+    expect(plan.targets).toEqual([
+      { itemId: 'example:plate', rate: `1/${(3n * denominator) / 2n}` },
+    ]);
+    expect(plan.nodes.every((node) => node.machineCount === 1)).toBe(true);
+  });
+  it('scales a valid tiny demand despite an internal anchor exceeding input digit bounds', () => {
+    const request = input([
+      { itemId: 'example:plate', rate: `1/${2n ** 195n}` },
+    ]);
+    expect(solveProduction(syntheticCatalog, request).nodes).toHaveLength(2);
+    expect(
+      scaleProduction(syntheticCatalog, request, {
+        itemId: 'example:ingot',
+        rate: '30',
+      }),
+    ).toEqual(
+      solveProduction(
+        syntheticCatalog,
+        input([{ itemId: 'example:plate', rate: '20' }]),
+      ),
+    );
+  });
+  it('finds a valid Perfect Ratio despite computed utilization and factor exceeding input digit bounds', () => {
+    const request = input([
+      { itemId: 'example:plate', rate: `1/${2n ** 195n}` },
+    ]);
+    expect(perfectRatio(syntheticCatalog, request)).toEqual(
+      solveProduction(
+        syntheticCatalog,
+        input([{ itemId: 'example:plate', rate: '20' }]),
+      ),
+    );
+  });
+  it('scales duplicate targets whose normalized sum exceeds external input bounds', () => {
+    const base = 10n ** 58n;
+    const request = input([
+      { itemId: 'example:plate', rate: `1/${base + 7n}` },
+      { itemId: 'example:plate', rate: `1/${base + 9n}` },
+    ]);
+    const plan = solveProduction(syntheticCatalog, request);
+    expect(() => Rational.parse(plan.targets[0]!.rate)).toThrow(/input.*bound/);
+    const expected = solveProduction(
+      syntheticCatalog,
+      input([{ itemId: 'example:plate', rate: '20' }]),
+    );
+    expect(
+      scaleProduction(syntheticCatalog, request, {
+        itemId: 'example:plate',
+        rate: '20',
+      }),
+    ).toEqual(expected);
+    expect(perfectRatio(syntheticCatalog, request)).toEqual(expected);
+  });
   it('scales every target from a selected shared stage rate', () => {
     const request = input([
       { itemId: 'example:plate', rate: '1' },

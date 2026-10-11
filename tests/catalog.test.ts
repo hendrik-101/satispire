@@ -17,6 +17,13 @@ const manifest = {
 };
 
 describe('versioned catalog contract', () => {
+  it('is idempotent for a canonical duration larger than raw input digit limits', () => {
+    const catalog = fixture();
+    catalog.recipes[0]!.durationSeconds = `0.${'0'.repeat(58)}1`;
+    const validated = validateCatalog(catalog);
+    expect(validated.recipes[0]!.durationSeconds).toBe(`1/${10n ** 59n}`);
+    expect(validateCatalog(validated)).toEqual(validated);
+  });
   it('validates the explicitly synthetic catalog and normalizes exact values', () => {
     const catalog = fixture();
     catalog.recipes[0]!.durationSeconds = '12/2';

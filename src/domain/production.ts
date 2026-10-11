@@ -38,16 +38,9 @@ export const MACHINE_COUNT_LIMIT = 1_000_000;
 function applyFactor(
   catalog: Catalog,
   input: ProductionInput,
-  plan: ProductionPlan,
   factor: Rational,
 ): ProductionPlan {
-  return solveProduction(catalog, {
-    ...input,
-    targets: plan.targets.map((target) => ({
-      itemId: target.itemId,
-      rate: Rational.parse(target.rate).multiply(factor).toString(),
-    })),
-  });
+  return solveExactProduction(catalog, input, factor);
 }
 
 /** Applies an exact factor to all targets, anchored to total demand for one item. */
@@ -69,10 +62,10 @@ export function scaleProduction(
   const desired = Rational.parse(selection.rate as string);
   if (desired.compare(ZERO) <= 0)
     throw new Error('Scale anchor rate must be positive');
-  const current = Rational.parse(existing.rate);
+  const current = Rational.parseCanonical(existing.rate);
   if (current.compare(ZERO) <= 0)
     throw new Error('Scale anchor existing rate must be positive');
-  return applyFactor(catalog, input, plan, desired.divide(current));
+  return applyFactor(catalog, input, desired.divide(current));
 }
 
 function gcd(a: bigint, b: bigint): bigint {
@@ -116,22 +109,19 @@ export function perfectRatio(
   let denominatorLcm = 1n;
   for (const node of plan.nodes) {
     const multiple = (multiples[node.recipeId] ?? 1) as number;
-    const required = Rational.parse(node.utilization)
-      .multiply(Rational.parse(String(node.machineCount)))
-      .divide(Rational.parse(String(multiple)));
+    const required = Rational.parseCanonical(node.utilization)
+      .multiply(Rational.fromBigInts(BigInt(node.machineCount)))
+      .divide(Rational.fromBigInts(BigInt(multiple)));
     const [numerator, denominator = '1'] = required.toString().split('/');
     numeratorGcd = gcd(numeratorGcd, BigInt(numerator!));
     const d = BigInt(denominator);
     denominatorLcm = (denominatorLcm / gcd(denominatorLcm, d)) * d;
-    if (denominatorLcm.toString().length > 60)
-      throw new Error(
-        'Perfect Ratio scale exceeds the exact input digit bound',
-      );
+    Rational.fromBigInts(denominatorLcm);
   }
-  const primitive = Rational.parse(`${denominatorLcm}/${numeratorGcd}`);
+  const primitive = Rational.fromBigInts(denominatorLcm, numeratorGcd);
   const repeats = Rational.parse('1').divide(primitive).ceil();
-  const factor = primitive.multiply(Rational.parse(repeats.toString()));
-  return applyFactor(catalog, input, plan, factor);
+  const factor = primitive.multiply(Rational.fromBigInts(repeats));
+  return applyFactor(catalog, input, factor);
 }
 
 function object(value: unknown, path: string): Record<string, unknown> {
@@ -166,6 +156,14 @@ function sortedRates(rates: Map<string, Rational>): ItemRate[] {
 export function solveProduction(
   catalog: Catalog,
   input: ProductionInput,
+): ProductionPlan {
+  return solveExactProduction(catalog, input);
+}
+
+function solveExactProduction(
+  catalog: Catalog,
+  input: ProductionInput,
+  factor?: Rational,
 ): ProductionPlan {
   const data = validateCatalog(catalog);
   const request = object(input, 'production input');
@@ -225,7 +223,8 @@ export function solveProduction(
     const itemId = requireItem(target.itemId, 'targets');
     let rate: Rational;
     try {
-      rate = Rational.parse(target.rate as string);
+      const original = Rational.parse(target.rate as string);
+      rate = factor === undefined ? original : original.multiply(factor);
     } catch (error) {
       throw new Error(
         `Target ${itemId}: ${error instanceof Error ? error.message : String(error)}`,
@@ -283,9 +282,11 @@ export function solveProduction(
       continue;
     }
     const recipe = selected.get(itemId)!;
-    const crafts = demand.divide(Rational.parse(recipe.outputs[0]!.quantity));
+    const crafts = demand.divide(
+      Rational.parseCanonical(recipe.outputs[0]!.quantity),
+    );
     const machineDemand = crafts
-      .multiply(Rational.parse(recipe.durationSeconds))
+      .multiply(Rational.parseCanonical(recipe.durationSeconds))
       .divide(SIXTY);
     const count = machineDemand.ceil();
     if (count > BigInt(MACHINE_COUNT_LIMIT))
@@ -294,7 +295,9 @@ export function solveProduction(
       );
     const rates = new Map<string, Rational>();
     for (const dependency of recipe.inputs) {
-      const rate = crafts.multiply(Rational.parse(dependency.quantity));
+      const rate = crafts.multiply(
+        Rational.parseCanonical(dependency.quantity),
+      );
       rates.set(dependency.itemId, rate);
       demands.set(
         dependency.itemId,

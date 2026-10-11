@@ -98,7 +98,16 @@ function entries(
 
 function positive(value: unknown, path: string): string {
   try {
-    const parsed = Rational.parse(value as string);
+    let parsed: Rational;
+    try {
+      parsed = Rational.parse(value as string);
+    } catch (error) {
+      // A normalized catalog may contain a canonical fraction larger than the
+      // original decimal. Strict canonical syntax keeps validation idempotent.
+      if (typeof value !== 'string' || !/^-?\d+(?:\/\d+)?$/.test(value))
+        throw error;
+      parsed = Rational.parseCanonical(value);
+    }
     if (parsed.compare(Rational.parse('0')) <= 0)
       throw new Error('must be positive');
     return parsed.toString();
