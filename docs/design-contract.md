@@ -1,6 +1,6 @@
 # Workspace design contract
 
-Status: prepared by the coordinator; **UI direction is not yet approved**. Two ImageGen compositions have been shown to the user. Option A centers the floor workspace; option B pairs graph and floor. The coordinator recommends A with an optional split view. Neither image has been materialized or viewed in this executor, so this text is preparation, not screenshot compliance evidence.
+Status: the user approved **A as the floor-centered base**, with the graph from B and side panels available on demand. Neither reference image has been materialized or viewed in this executor, so image-dependent implementation remains blocked and this contract is not screenshot compliance evidence.
 
 ## Visual system
 
@@ -22,7 +22,7 @@ The coordinated research recommends HTML/CSS and SVG as the initial 2D approach.
 
 ## Implementation gates
 
-Before image-dependent implementation, obtain user approval of the chosen composition, materialize the original reference in this executor through the supported Library flow and inspect it. The current discovery-package transfer failure is recorded separately. Neither missing images nor UI approval blocks domain, adapter, CI or local data-contract work.
+Before image-dependent implementation, materialize the approved original reference in this executor through the supported Library flow and inspect it. The current discovery-package transfer failure is recorded separately. Missing images do not block domain, adapter, CI or local data-contract work.
 
 ## Approved flexible workspace and optional flow indicators
 
