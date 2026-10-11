@@ -279,7 +279,9 @@ function fingerprint(envelope: RoomCommandEnvelope): string {
   if (
     c.type === 'set-block-rows' &&
     exactKeys(c, ['type', 'blockId', 'rows']) &&
-    validId(c.blockId) &&
+    isCatalogId(c.blockId) &&
+    c.blockId.length <= 128 &&
+    !['__proto__', 'constructor', 'prototype'].includes(c.blockId) &&
     Number.isInteger(c.rows) &&
     c.rows >= 1 &&
     c.rows <= 256

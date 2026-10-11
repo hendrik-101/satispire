@@ -6,6 +6,7 @@ import {
   validateCatalog,
   type Catalog,
 } from '../src/domain/catalog.js';
+import { applyRoomCommand, createRoom } from '../src/domain/rooms.js';
 
 function chainFixture(first: string, second: string, extra: string[] = []) {
   const recipeIds = [`recipe-a`.padEnd(256, 'a'), `recipe-b`.padEnd(256, 'b')];
@@ -175,6 +176,48 @@ test('reserves crafted short IDs before assigning generated IDs and keeps bindin
     ),
   ).toEqual(plan);
 });
+
+test.each(['constructor', 'prototype'])(
+  'maps reserved catalog item %s to a block binding accepted by room row commands',
+  (itemId) => {
+    const { input, catalog } = chainFixture(itemId, 'unused');
+    const singleStageInput = {
+      ...input,
+      production: {
+        ...input.production,
+        targets: [{ itemId, rate: '1' }],
+        recipes: { [itemId]: catalog.recipes[0]!.id },
+      },
+    };
+    const plan = buildPlanDocument(singleStageInput, catalog);
+    expect(plan.production.nodes.map((node) => node.itemId)).toEqual([itemId]);
+    expect(plan.layoutBindings.blocks).toEqual([
+      { itemId, blockId: 'generated:block:0' },
+    ]);
+    const blockId = plan.layoutBindings.blocks[0]!.blockId;
+    expect(plan.layout.floors[0]!.blocks[0]!.id).toBe(blockId);
+    const room = createRoom({
+      roomId: 'room',
+      ownerId: 'owner',
+      ownerName: 'Owner',
+    });
+    const changed = applyRoomCommand(
+      room,
+      { roomId: 'room', participantId: 'owner' },
+      {
+        id: 'rows',
+        expectedRevision: 0,
+        command: { type: 'set-block-rows', blockId, rows: 2 },
+      },
+    );
+    expect(changed.room.intent.blockRows[blockId]).toBe(2);
+    expect(Object.getPrototypeOf(changed.room.intent.blockRows)).toBe(
+      Object.prototype,
+    );
+    expect(buildPlanDocument(singleStageInput, catalog)).toEqual(plan);
+  },
+);
+
 test('invalid documents or infeasible rooms fail instead of returning a partial layout', () => {
   expect(() =>
     buildPlanDocument({ ...fixture, schemaVersion: 2 }, syntheticCatalog),

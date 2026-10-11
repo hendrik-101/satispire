@@ -1,3 +1,5 @@
+import { buildPlanDocument } from '../src/planning.js';
+import type { Catalog } from '../src/domain/catalog.js';
 import { describe, expect, it } from 'vitest';
 import {
   applyRoomCommand,
@@ -102,6 +104,88 @@ describe('room permissions and atomic commands', () => {
       }),
     ).toThrow(/invalid-command/);
   });
+  it('applies row changes to a slash-containing block ID produced by the document builder', () => {
+    const itemId = 'catalog/item';
+    const catalog: Catalog = {
+      schemaVersion: 1,
+      catalogVersion: 'block-command-fixture',
+      provenance: { kind: 'synthetic', source: 'original test fixture' },
+      items: [
+        { id: 'raw', name: 'Raw', raw: true },
+        { id: itemId, name: 'Item', raw: false },
+      ],
+      machines: [{ id: 'machine', name: 'Machine' }],
+      recipes: [
+        {
+          id: 'recipe',
+          name: 'Recipe',
+          machineId: 'machine',
+          durationSeconds: '60',
+          inputs: [{ itemId: 'raw', quantity: '1' }],
+          outputs: [{ itemId, quantity: '1' }],
+        },
+      ],
+    };
+    const plan = buildPlanDocument(
+      {
+        schemaVersion: 1,
+        production: {
+          targets: [{ itemId, rate: '2' }],
+          recipes: { [itemId]: 'recipe' },
+          imports: ['raw'],
+        },
+        layout: {
+          footprint: { width: 32, depth: 32 },
+          floorHeight: 8,
+          rows: 1,
+        },
+      },
+      catalog,
+    );
+    const blockId = plan.layoutBindings.blocks.find(
+      (binding) => binding.itemId === itemId,
+    )!.blockId;
+    expect(blockId).toBe(itemId);
+    const original = fixture();
+    const result = applyRoomCommand(original, owner, {
+      id: 'rows',
+      expectedRevision: 0,
+      command: { type: 'set-block-rows', blockId, rows: 2 },
+    });
+    expect(result.room.intent.blockRows).toEqual({ [blockId]: 2 });
+    expect(result.revision).toBe(1);
+    expect(original.intent.blockRows).toEqual({});
+  });
+  it('accepts a slash-containing block ID at the 128-character boundary', () => {
+    const blockId = 'catalog/item/'.padEnd(128, 'x');
+    const result = applyRoomCommand(fixture(), owner, {
+      id: 'rows',
+      expectedRevision: 0,
+      command: { type: 'set-block-rows', blockId, rows: 1 },
+    });
+    expect(result.room.intent.blockRows[blockId]).toBe(1);
+  });
+  it.each([
+    'catalog/item/'.padEnd(129, 'x'),
+    '__proto__',
+    'constructor',
+    'prototype',
+  ])(
+    'rejects oversized or reserved block ID %s without mutation',
+    (blockId) => {
+      const room = fixture();
+      expect(() =>
+        applyRoomCommand(room, owner, {
+          id: 'rows',
+          expectedRevision: 0,
+          command: { type: 'set-block-rows', blockId, rows: 1 },
+        }),
+      ).toThrow(/invalid-command/);
+      expect(room.revision).toBe(0);
+      expect(room.intent.blockRows).toEqual({});
+      expect(room.receipts).toEqual({});
+    },
+  );
   it('normalizes exact rates and shares the planner arithmetic bounds', () => {
     const room = applyRoomCommand(
       fixture(),

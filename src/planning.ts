@@ -9,13 +9,16 @@ export interface LayoutBindings {
   connections: { connectionId: string; fromItemId: string; toItemId: string }[];
 }
 
-/** Preserve short source IDs and reserve them before allocating bounded fallbacks. */
+/** Preserve safe short IDs and reserve them before allocating bounded fallbacks. */
 function geometryIds(sources: string[], prefix: string): Map<string, string> {
-  const used = new Set(sources.filter((source) => source.length <= 128));
+  const reserved = new Set(['__proto__', 'constructor', 'prototype']);
+  const canPreserve = (source: string) =>
+    source.length <= 128 && !reserved.has(source);
+  const used = new Set(sources.filter(canPreserve));
   const result = new Map<string, string>();
   let sequence = 0;
   for (const source of sources) {
-    if (source.length <= 128) {
+    if (canPreserve(source)) {
       result.set(source, source);
       continue;
     }
