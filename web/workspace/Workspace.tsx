@@ -239,11 +239,13 @@ export function Workspace() {
   function applyProfile() {
     try {
       const allowed = new Set(availableRecipes(profileDraft).map((r) => r.id));
+      const active = new Set(factory.plan.nodes.map((node) => node.itemId));
+      const previousDefaults = availableChoices(factory.technology);
       const recipes = {
         ...availableChoices(profileDraft),
         ...Object.fromEntries(
-          Object.entries(factory.input.recipes).filter(([, id]) =>
-            allowed.has(id),
+          Object.entries(factory.input.recipes).filter(
+            ([itemId, id]) => active.has(itemId) && allowed.has(id),
           ),
         ),
       };
@@ -251,7 +253,13 @@ export function Workspace() {
       setChoices({
         ...recipes,
         ...Object.fromEntries(
-          Object.entries(choices).filter(([, id]) => allowed.has(id)),
+          Object.entries(choices).filter(
+            ([itemId, id]) =>
+              allowed.has(id) &&
+              (id !==
+                (factory.input.recipes[itemId] ?? previousDefaults[itemId]) ||
+                id !== previousDefaults[itemId]),
+          ),
         ),
       });
       closeProfile();

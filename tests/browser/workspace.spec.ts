@@ -359,3 +359,46 @@ test('unlocked silicon alternate exposes a supported circuit board chain', async
     page.getByText('15/2 / min', { exact: true }).first(),
   ).toBeVisible();
 });
+
+test('profile reseeds inactive automatic choices without overriding a supported alternate', async ({
+  page,
+}) => {
+  await ready(page);
+  await page.getByLabel('Plan-Datei').setInputFiles({
+    name: 'minimal-concrete.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(
+      JSON.stringify({
+        schemaVersion: 1,
+        catalogVersion: 'vanilla-1.0-tools-a1eb2fef-v1',
+        production: {
+          targets: [{ itemId: 'Desc_Cement_C', rate: '20' }],
+          recipes: { Desc_Cement_C: 'Recipe_Concrete_C' },
+          imports: ['Desc_Stone_C', 'Desc_OreIron_C', 'Desc_Coal_C'],
+        },
+      }),
+    ),
+  });
+  await page.getByLabel('Produktionsziel').selectOption('Desc_Cement_C');
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Technologie', exact: true }).click();
+  await page.getByLabel('HUB-Tier').selectOption('4');
+  await page.getByLabel('Rezepte suchen').fill('Steel Rod');
+  await page.getByLabel('Rezept Alternate: Steel Rod', { exact: true }).check();
+  await page.getByLabel('Rezepte suchen').fill('Iron Ingot');
+  await page.getByLabel('Rezept Iron Ingot', { exact: true }).uncheck();
+  await page.getByRole('button', { name: 'Profil anwenden' }).click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await page.getByLabel('Produktionsziel').selectOption('Desc_IronRod_C');
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(
+    page
+      .getByLabel('Stufe auswählen')
+      .locator('option[value="Desc_SteelIngot_C"]'),
+  ).toHaveCount(1);
+});
