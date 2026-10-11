@@ -27,6 +27,7 @@ import {
 import { FloorView } from './FloorView';
 import { Graph } from './Graph';
 import { Icon } from './Icon';
+import { ProductionView } from './ProductionView';
 
 const catalog = vanillaCatalog;
 const firstTechnology = technologyAtTier(2);
@@ -241,11 +242,18 @@ export function Workspace() {
       const recipes = {
         ...availableChoices(profileDraft),
         ...Object.fromEntries(
-          Object.entries(choices).filter(([, id]) => allowed.has(id)),
+          Object.entries(factory.input.recipes).filter(([, id]) =>
+            allowed.has(id),
+          ),
         ),
       };
       apply({ ...factory.input, recipes }, profileDraft);
-      setChoices(recipes);
+      setChoices({
+        ...recipes,
+        ...Object.fromEntries(
+          Object.entries(choices).filter(([, id]) => allowed.has(id)),
+        ),
+      });
       closeProfile();
     } catch (e) {
       setError(message(e));
@@ -501,20 +509,24 @@ export function Workspace() {
                 </label>
               </details>
             </div>
-            <div
-              className={
-                'views ' +
-                (preferences.preset === 'production' ? 'production-focus' : '')
-              }
-            >
-              <FloorView
-                catalog={catalog}
-                plan={factory.plan}
-                technology={factory.technology}
-                selected={selected}
-                zoom={preferences.camera.zoom}
-                rows={factory.rows}
-              />
+            <div className={'views preset-' + presentation.preset}>
+              {presentation.preset !== 'production' && (
+                <FloorView
+                  catalog={catalog}
+                  plan={factory.plan}
+                  technology={factory.technology}
+                  selected={selected}
+                  zoom={preferences.camera.zoom}
+                  rows={factory.rows}
+                />
+              )}
+              {presentation.preset !== 'floors' && (
+                <ProductionView
+                  plan={factory.plan}
+                  selected={selected}
+                  select={setSelected}
+                />
+              )}
               {presentation.panels.graph && (
                 <Graph
                   catalog={catalog}

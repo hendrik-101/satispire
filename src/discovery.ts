@@ -196,6 +196,8 @@ export function convertDiscovery(input: unknown): DiscoveryConversion {
     items: items.map((row) => ({
       id: row.id,
       name: row.id,
+      transport:
+        row.form === 'RF_LIQUID' || row.form === 'RF_GAS' ? 'pipe' : 'belt',
       raw: /(?:^|\.)FGResourceDescriptor(?:'|$)/.test(
         row.provenance.nativeClass,
       ),

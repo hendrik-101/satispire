@@ -483,6 +483,8 @@ input[type='checkbox'] {
   }
 }
 .technology-dialog {
+  overflow-y: auto;
+  overscroll-behavior: contain;
   width: min(720px, calc(100vw - 24px));
   max-height: calc(100dvh - 40px);
   background: #21272c;
@@ -490,6 +492,34 @@ input[type='checkbox'] {
   border: 1px solid #52616d;
   border-radius: 6px;
   padding: 20px;
+}
+.production-panel {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  border: 1px solid #39434c;
+  border-radius: 4px;
+  background: #1b2228;
+}
+.preset-split .production-panel {
+  flex: 0 1 340px;
+}
+.production-panel h2 {
+  padding: 13px 16px;
+  font-size: 16px;
+}
+.production-panel table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.production-panel th,
+.production-panel td {
+  padding: 10px;
+  text-align: left;
+  border-top: 1px solid #39434c;
+}
+.production-panel tr[aria-selected='true'] {
+  background: #2c3d4b;
 }
 .technology-dialog::backdrop {
   background: #101518bb;

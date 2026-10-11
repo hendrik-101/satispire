@@ -2,6 +2,27 @@ import { expect, test } from 'vitest';
 import { convertDiscovery } from '../src/discovery.js';
 import { solveProduction } from '../src/domain/production.js';
 
+test('retains liquid and gas transport for technology capacity sizing', () => {
+  const input = discoveryFixture();
+  input.items[0]!.form = 'RF_LIQUID';
+  input.items[1]!.form = 'RF_GAS';
+  input.recipes[0]!.durationSeconds = 0.1;
+  const { catalog } = convertDiscovery(input);
+  expect(catalog.items.map((item) => item.transport)).toEqual(['pipe', 'pipe']);
+  const plan = solveProduction(catalog, {
+    targets: [{ itemId: 'test:part', rate: '600' }],
+    recipes: { 'test:part': catalog.recipes[0]!.id },
+    imports: ['test:ore'],
+    technology: {
+      availableMachines: ['test:machine'],
+      unlockedRecipes: [catalog.recipes[0]!.id],
+      beltTier: 1,
+      pipeTier: 2,
+    },
+  });
+  expect(plan.nodes[0]!.machineCount).toBe(2);
+});
+
 export function discoveryFixture() {
   return {
     manifest: {

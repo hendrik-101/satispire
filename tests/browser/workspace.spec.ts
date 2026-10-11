@@ -238,6 +238,17 @@ test('explicit alternate unlock changes the solved chain and exact resource dema
   await page
     .getByLabel('Rezept für diese Stufe')
     .selectOption('Recipe_Alternate_Screw_C');
+  await page.getByRole('button', { name: 'Technologie', exact: true }).click();
+  await page.getByLabel('Maximales Belt-Tier').selectOption('1');
+  await page.getByRole('button', { name: 'Profil anwenden' }).click();
+  await expect(
+    page
+      .getByLabel('Stufe auswählen')
+      .locator('option[value="Desc_IronRod_C"]'),
+  ).toHaveCount(1);
+  await expect(page.getByLabel('Rezept für diese Stufe')).toHaveValue(
+    'Recipe_Alternate_Screw_C',
+  );
   await page
     .getByRole('button', { name: 'Plan berechnen', exact: true })
     .click();
@@ -247,4 +258,49 @@ test('explicit alternate unlock changes the solved chain and exact resource dema
       .locator('option[value="Desc_IronRod_C"]'),
   ).toHaveCount(0);
   await expect(page.getByText(/25\/2 \/ min/).first()).toBeVisible();
+});
+
+test('view presets change content, preserve graph toggle and narrow split fallback', async ({
+  page,
+}) => {
+  await ready(page);
+  await page.locator('.view-options summary').click();
+  await page.locator('.view-options select').first().selectOption('production');
+  await expect(
+    page.getByLabel('Produktionsübersicht', { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByLabel('Etagenansicht')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Graph', exact: true }).click();
+  await expect(page.getByLabel('Produktionsgraph')).toBeVisible();
+  await page.getByRole('button', { name: 'Graph', exact: true }).click();
+  await expect(
+    page.getByLabel('Produktionsübersicht', { exact: true }),
+  ).toBeVisible();
+  await page.locator('.view-options select').first().selectOption('split');
+  await expect(page.getByLabel('Etagenansicht')).toBeVisible();
+  await expect(
+    page.getByLabel('Produktionsübersicht', { exact: true }),
+  ).toBeVisible();
+  await page.setViewportSize({ width: 800, height: 700 });
+  await expect(
+    page.getByLabel('Produktionsübersicht', { exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByLabel('Etagenansicht')).toBeVisible();
+  await expect(page.locator('.view-options select').first()).toHaveValue(
+    'split',
+  );
+});
+
+test('technology actions remain reachable in short landscape viewport', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 700, height: 320 });
+  await ready(page);
+  await page.getByRole('button', { name: 'Technologie', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  expect(
+    await dialog.evaluate((node) => getComputedStyle(node).overflowY),
+  ).toBe('auto');
+  await page.getByRole('button', { name: 'Profil anwenden' }).click();
+  await expect(dialog).toHaveCount(0);
 });
