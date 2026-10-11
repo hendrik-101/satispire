@@ -201,10 +201,7 @@ export function Workspace() {
       recipe.outputs.some((output) => output.itemId === item.id),
     ),
   );
-  const showGraph =
-    preferences.panels.graph ||
-    preferences.preset === 'production' ||
-    preferences.preset === 'split';
+  const showGraph = preferences.panels.graph;
   const showFloors = preferences.preset !== 'production';
   return (
     <main
@@ -412,6 +409,11 @@ export function Workspace() {
               </label>
             </div>
             <div className="views">
+              {!showGraph && !showFloors && (
+                <p role="status">
+                  Graph ausgeblendet. Über den Graph-Schalter wieder einblenden.
+                </p>
+              )}
               {showGraph && (
                 <Graph
                   catalog={factory.catalog}

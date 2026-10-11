@@ -188,3 +188,44 @@ test('preserves all imported targets on unchanged recalculation', async ({
     page.getByText('15 / min', { exact: true }).first(),
   ).toBeVisible();
 });
+
+for (const preset of ['production', 'split']) {
+  test(
+    'graph toggle overrides ' +
+      preset +
+      ' preset without losing draft or selection',
+    async ({ page }) => {
+      await page.goto(url);
+      await expect(page.locator('main.workspace')).toHaveAttribute(
+        'data-ready',
+        'true',
+      );
+      await page.getByRole('button', { name: 'Graph', exact: true }).click();
+      await page
+        .getByRole('combobox', { name: /^Ansicht/ })
+        .selectOption(preset);
+      await page.getByLabel('Zielrate pro Minute').fill('37');
+      const selection = await page
+        .getByLabel('Stufe auswählen', { exact: true })
+        .inputValue();
+      await expect(page.getByLabel('Produktionsgraph')).toBeVisible();
+      await page.getByRole('button', { name: 'Graph', exact: true }).click();
+      await expect(
+        page.getByRole('button', { name: 'Graph', exact: true }),
+      ).toHaveAttribute('aria-pressed', 'false');
+      await expect(page.getByLabel('Produktionsgraph')).toHaveCount(0);
+      await expect(page.getByLabel('Zielrate pro Minute')).toHaveValue('37');
+      await expect(
+        page.getByLabel('Stufe auswählen', { exact: true }),
+      ).toHaveValue(selection);
+      await page.reload();
+      await expect(page.locator('main.workspace')).toHaveAttribute(
+        'data-ready',
+        'true',
+      );
+      await expect(page.getByLabel('Produktionsgraph')).toHaveCount(0);
+      await page.getByRole('button', { name: 'Graph', exact: true }).click();
+      await expect(page.getByLabel('Produktionsgraph')).toBeVisible();
+    },
+  );
+}
