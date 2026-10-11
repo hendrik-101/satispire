@@ -1,3 +1,4 @@
+import { isCatalogId } from './catalog.js';
 import { Rational } from './rational.js';
 
 /** Server adapters construct this context after verifying a capability. Never accept it from tools. */
@@ -264,7 +265,8 @@ function fingerprint(envelope: RoomCommandEnvelope): string {
   if (
     c.type === 'set-target' &&
     exactKeys(c, ['type', 'itemId', 'rate']) &&
-    validId(c.itemId) &&
+    isCatalogId(c.itemId) &&
+    !['__proto__', 'constructor', 'prototype'].includes(c.itemId) &&
     validRate(c.rate)
   ) {
     return JSON.stringify([

@@ -1,17 +1,57 @@
 import { z } from 'zod';
+import { CATALOG_ID_LIMIT, CATALOG_ID_PATTERN } from './domain/catalog.js';
+import { INPUT_ENTRY_LIMIT } from './domain/production.js';
 export const identity = z.string().min(1).max(128);
+export const catalogIdentity = z
+  .string()
+  .min(1)
+  .max(CATALOG_ID_LIMIT)
+  .regex(CATALOG_ID_PATTERN);
+
+const arrayPreflight = z.unknown().superRefine((value, context) => {
+  if (Array.isArray(value) && value.length > INPUT_ENTRY_LIMIT) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Production collection exceeds the ${INPUT_ENTRY_LIMIT}-entry limit`,
+    });
+  }
+});
+const recipePreflight = z.unknown().superRefine((value, context) => {
+  if (value === null || typeof value !== 'object' || Array.isArray(value))
+    return;
+  let count = 0;
+  // Match Zod's record iteration, including inherited enumerable keys, without
+  // reading any entry value or allocating a second array of every key.
+  for (const key in value) {
+    void key;
+    if (++count > INPUT_ENTRY_LIMIT) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Recipes exceed the ${INPUT_ENTRY_LIMIT}-entry limit`,
+      });
+      return;
+    }
+  }
+});
 export const productionSchema = z
   .object({
-    targets: z
-      .array(
-        z
-          .object({ itemId: identity, rate: z.string().min(1).max(256) })
-          .strict(),
-      )
-      .min(1)
-      .max(256),
-    recipes: z.record(identity, identity),
-    imports: z.array(identity).max(1024),
+    targets: arrayPreflight.pipe(
+      z
+        .array(
+          z
+            .object({
+              itemId: catalogIdentity,
+              rate: z.string().min(1).max(256),
+            })
+            .strict(),
+        )
+        .min(1)
+        .max(INPUT_ENTRY_LIMIT),
+    ),
+    recipes: recipePreflight.pipe(z.record(catalogIdentity, catalogIdentity)),
+    imports: arrayPreflight.pipe(
+      z.array(catalogIdentity).max(INPUT_ENTRY_LIMIT),
+    ),
   })
   .strict();
 const blockSchema = z
@@ -60,7 +100,7 @@ export const commandSchema = z
       z
         .object({
           type: z.literal('set-target'),
-          itemId: identity,
+          itemId: catalogIdentity,
           rate: z.string().min(1).max(256),
         })
         .strict(),

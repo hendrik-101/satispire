@@ -55,6 +55,53 @@ describe('room permissions and atomic commands', () => {
     expect(second.revision).toBe(2);
     expect(original.intent).toEqual({ targets: {}, blockRows: {} });
   });
+  it.each([129, 200, 256])(
+    'accepts catalog target IDs with slash at %i characters',
+    (length) => {
+      const room = fixture();
+      const itemId = 'catalog/item/'.padEnd(length, 'x');
+      const result = applyRoomCommand(room, owner, {
+        ...target(),
+        command: { type: 'set-target', itemId, rate: '1.50' },
+      });
+      expect(Object.keys(result.room.intent.targets)).toEqual([itemId]);
+      expect(result.room.intent.targets[itemId]).toBe('3/2');
+      expect(result.revision).toBe(1);
+      expect(room.intent.targets).toEqual({});
+    },
+  );
+  it.each([
+    'catalog/item/'.padEnd(257, 'x'),
+    '__proto__',
+    'constructor',
+    'prototype',
+    'catalog/item%',
+  ])('rejects invalid or unsafe catalog target ID %s atomically', (itemId) => {
+    const room = fixture();
+    expect(() =>
+      applyRoomCommand(room, owner, {
+        ...target(),
+        command: { type: 'set-target', itemId, rate: '1' },
+      }),
+    ).toThrow(/invalid-command/);
+    expect(room.intent.targets).toEqual({});
+    expect(room.receipts).toEqual({});
+    expect(room.revision).toBe(0);
+    expect(Object.getPrototypeOf(room.intent.targets)).toBe(Object.prototype);
+  });
+  it('preserves the 128-character limit for command and block IDs', () => {
+    const room = fixture();
+    expect(() =>
+      applyRoomCommand(room, owner, target('x'.repeat(129))),
+    ).toThrow(/invalid-command/);
+    expect(() =>
+      applyRoomCommand(room, owner, {
+        id: 'rows',
+        expectedRevision: 0,
+        command: { type: 'set-block-rows', blockId: 'x'.repeat(129), rows: 1 },
+      }),
+    ).toThrow(/invalid-command/);
+  });
   it('normalizes exact rates and shares the planner arithmetic bounds', () => {
     const room = applyRoomCommand(
       fixture(),

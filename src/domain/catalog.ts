@@ -46,6 +46,15 @@ export interface Catalog {
 }
 
 export const CATALOG_ENTRY_LIMIT = 2000;
+export const CATALOG_ID_LIMIT = 256;
+export const CATALOG_ID_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9:_./-]*$/;
+export function isCatalogId(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length <= CATALOG_ID_LIMIT &&
+    CATALOG_ID_PATTERN.test(value)
+  );
+}
 
 function record(value: unknown, path: string): Record<string, unknown> {
   if (value === null || typeof value !== 'object' || Array.isArray(value))
@@ -65,16 +74,20 @@ function supportedKeys(
 }
 
 function text(value: unknown, path: string): string {
-  if (typeof value !== 'string' || !value.trim() || value.length > 256)
+  if (
+    typeof value !== 'string' ||
+    !value.trim() ||
+    value.length > CATALOG_ID_LIMIT
+  )
     throw new Error(
-      `${path} must be a nonempty string within the 256-character bound`,
+      `${path} must be a nonempty string within the ${CATALOG_ID_LIMIT}-character bound`,
     );
   return value;
 }
 
 function id(value: unknown, path: string): string {
   const result = text(value, path);
-  if (!/^[a-zA-Z0-9][a-zA-Z0-9:_./-]*$/.test(result))
+  if (!isCatalogId(result))
     throw new Error(
       `${path} must be a stable ID containing letters, digits, colon, underscore, dot, slash or dash`,
     );

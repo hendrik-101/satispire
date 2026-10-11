@@ -32,7 +32,7 @@ export interface ProductionPlan {
 
 const ZERO = Rational.parse('0');
 const SIXTY = Rational.parse('60');
-const INPUT_ENTRY_LIMIT = 2000;
+export const INPUT_ENTRY_LIMIT = 2000;
 export const MACHINE_COUNT_LIMIT = 1_000_000;
 
 function applyFactor(
