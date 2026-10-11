@@ -7,6 +7,7 @@ import {
 import { productionSchema } from '../../src/inputs.js';
 import {
   defaultViewPreferences,
+  effectivePresentation,
   restorePreferences,
   updateViewPreferences,
   type ViewPreset,
@@ -15,7 +16,7 @@ import {
   convertDiscovery,
   type DiscoveryConversion,
 } from '../../src/discovery.js';
-import { initialProduction, displayName } from './model';
+import { initialProduction, displayName, defaultChoices } from './model';
 import { FloorView } from './FloorView';
 import { Graph } from './Graph';
 
@@ -47,6 +48,8 @@ export function Workspace() {
   const [motion, setMotion] = useState(false);
   const [visible, setVisible] = useState(true);
   const [rows, setRows] = useState(2);
+  const [viewportWidth, setViewportWidth] = useState(1200);
+  const presentation = effectivePresentation(preferences, viewportWidth);
   const importSequence = useRef(0);
   useEffect(() => {
     try {
@@ -56,11 +59,18 @@ export function Workspace() {
     } catch {
       /* safe defaults */
     }
+    const onResize = () =>
+      setViewportWidth(Math.min(65536, Math.max(1, window.innerWidth)));
+    onResize();
+    window.addEventListener('resize', onResize);
     setPreferencesLoaded(true);
     const onVisibility = () => setVisible(!document.hidden);
     onVisibility();
     document.addEventListener('visibilitychange', onVisibility);
-    return () => document.removeEventListener('visibilitychange', onVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('resize', onResize);
+    };
   }, []);
   useEffect(() => {
     if (preferencesLoaded) {
@@ -160,7 +170,10 @@ export function Workspace() {
       commitPlan(input);
       setTarget(input.targets[0]!.itemId);
       setRate(input.targets[0]!.rate);
-      setChoices(input.recipes);
+      setChoices({
+        ...defaultChoices(factory.catalog, factory.details),
+        ...input.recipes,
+      });
     } catch (failure) {
       if (sequence === importSequence.current) setError(errorMessage(failure));
     } finally {
@@ -196,13 +209,15 @@ export function Workspace() {
       }),
     );
   const select = (id: string) => setSelected(id);
-  const manufactured = factory.catalog.items.filter((item) =>
-    factory.catalog.recipes.some((recipe) =>
-      recipe.outputs.some((output) => output.itemId === item.id),
-    ),
+  const manufactured = factory.catalog.items.filter(
+    (item) =>
+      !item.raw &&
+      factory.catalog.recipes.some((recipe) =>
+        recipe.outputs.some((output) => output.itemId === item.id),
+      ),
   );
-  const showGraph = preferences.panels.graph;
-  const showFloors = preferences.preset !== 'production';
+  const showGraph = presentation.panels.graph;
+  const showFloors = presentation.preset !== 'production';
   return (
     <main
       className="workspace"
@@ -237,7 +252,13 @@ export function Workspace() {
             </select>
           </label>
           <button
-            aria-pressed={preferences.panels.navigation}
+            aria-pressed={presentation.panels.navigation}
+            disabled={viewportWidth < 1200}
+            title={
+              viewportWidth < 1200
+                ? 'Navigation auf schmalen Ansichten eingeklappt; Stufenauswahl bleibt verfügbar.'
+                : undefined
+            }
             onClick={() => panel('navigation')}
           >
             Navigation
@@ -357,7 +378,7 @@ export function Workspace() {
           </div>
         )}
         <div className="workspace-body">
-          {preferences.panels.navigation && (
+          {presentation.panels.navigation && (
             <aside className="navigation-panel" aria-label="Stufennavigation">
               <h2>Produktionsstufen</h2>
               {factory.plan.nodes.map((node, index) => (
@@ -473,7 +494,7 @@ export function Workspace() {
               </span>
             </div>
           </div>
-          {preferences.panels.inspector && stage && (
+          {presentation.panels.inspector && stage && (
             <aside className="inspector-panel" aria-label="Stufeninspector">
               <h2>{displayName(stage.itemId)}</h2>
               <p className="muted">{displayName(stage.machineId)}</p>

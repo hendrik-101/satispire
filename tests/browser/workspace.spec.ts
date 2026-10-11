@@ -68,6 +68,16 @@ test('imports discovery without upload and labels unknown real geometry', async 
     buildings: [{ id: 'test:machine', parameters: { mManufacturingSpeed: 1 } }],
     recipes: [
       {
+        id: 'test:raw-output',
+        durationSeconds: 6,
+        ingredients: [{ itemId: 'test:ore2', quantity: 1 }],
+        products: [{ itemId: 'test:ore', quantity: 1 }],
+        eligibleProducers: [{ id: 'test:machine', kind: 'buildable' }],
+        alternate: false,
+        events: null,
+        unlockIds: [],
+      },
+      {
         id: 'test:recipe',
         durationSeconds: 6,
         ingredients: [
@@ -99,6 +109,9 @@ test('imports discovery without upload and labels unknown real geometry', async 
     page.getByText('30 / min', { exact: true }).first(),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Graph', exact: true }).click();
+  await expect(
+    page.getByLabel('Produktionsziel').locator('option[value="test:ore"]'),
+  ).toHaveCount(0);
   const labels = page.locator('.edge-label');
   await expect(labels).toHaveCount(2);
   const coordinates = await labels.evaluateAll((nodes) =>
@@ -229,3 +242,77 @@ for (const preset of ['production', 'split']) {
     },
   );
 }
+
+test('can choose another target after importing only the active recipe chain', async ({
+  page,
+}) => {
+  await page.goto(url);
+  await expect(page.locator('main.workspace')).toHaveAttribute(
+    'data-ready',
+    'true',
+  );
+  await page.getByLabel('Plan-Datei').setInputFiles({
+    name: 'chain-only.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(
+      JSON.stringify({
+        schemaVersion: 1,
+        catalogVersion: 'synthetic-1',
+        production: {
+          targets: [{ itemId: 'example:plate', rate: '20' }],
+          recipes: {
+            'example:plate': 'example:press',
+            'example:ingot': 'example:smelt',
+          },
+          imports: ['example:ore'],
+        },
+      }),
+    ),
+  });
+  await expect(
+    page.getByText('30 / min', { exact: true }).first(),
+  ).toBeVisible();
+  await page.getByLabel('Produktionsziel').selectOption('example:rod');
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(
+    page.getByLabel('Stufe auswählen').locator('option[value="example:rod"]'),
+  ).toHaveCount(1);
+});
+
+test('responsive presentation preserves saved layout, selection and draft', async ({
+  page,
+}) => {
+  await page.goto(url);
+  await expect(page.locator('main.workspace')).toHaveAttribute(
+    'data-ready',
+    'true',
+  );
+  await page.getByRole('button', { name: 'Graph', exact: true }).click();
+  await page.getByRole('combobox', { name: /^Ansicht/ }).selectOption('split');
+  await page.getByRole('combobox', { name: /^Zoom/ }).selectOption('1.25');
+  await page.getByLabel('Zielrate pro Minute').fill('37');
+  const selection = await page.getByLabel('Stufe auswählen').inputValue();
+  const preferences = await page.evaluate(() =>
+    localStorage.getItem('satispire.personal-view.v1'),
+  );
+  await expect(page.getByLabel('Stufennavigation')).toBeVisible();
+  await page.setViewportSize({ width: 1199, height: 850 });
+  await expect(page.getByLabel('Stufennavigation')).toHaveCount(0);
+  await page.setViewportSize({ width: 800, height: 850 });
+  await expect(page.getByLabel('Etagenansicht')).toBeVisible();
+  await expect(page.getByLabel('Zielrate pro Minute')).toHaveValue('37');
+  await expect(page.getByLabel('Stufe auswählen')).toHaveValue(selection);
+  expect(
+    await page.evaluate(() =>
+      localStorage.getItem('satispire.personal-view.v1'),
+    ),
+  ).toBe(preferences);
+  await page.setViewportSize({ width: 1280, height: 850 });
+  await expect(page.getByLabel('Stufennavigation')).toBeVisible();
+  await expect(page.getByRole('combobox', { name: /^Ansicht/ })).toHaveValue(
+    'split',
+  );
+});

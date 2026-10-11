@@ -34,8 +34,12 @@ export function initialProduction(
 ): ProductionInput {
   const recipes = defaultChoices(catalog, details);
   const target =
-    catalog.items.find((item) => item.id === 'Desc_IronPlate_C') ??
-    catalog.items.find((item) => item.id === 'example:plate') ??
+    catalog.items.find(
+      (item) => item.id === 'Desc_IronPlate_C' && recipes[item.id],
+    ) ??
+    catalog.items.find(
+      (item) => item.id === 'example:plate' && recipes[item.id],
+    ) ??
     catalog.items.find((item) => recipes[item.id]);
   if (!target || !recipes[target.id])
     throw new Error('Kein unterstütztes Produktionsziel im Import.');
