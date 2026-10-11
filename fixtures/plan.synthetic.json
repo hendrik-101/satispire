@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "production": {
+    "targets": [
+      { "itemId": "example:plate", "rate": "20" },
+      { "itemId": "example:rod", "rate": "15" }
+    ],
+    "recipes": {
+      "example:ingot": "example:smelt",
+      "example:plate": "example:press",
+      "example:rod": "example:shape"
+    },
+    "imports": ["example:ore"]
+  },
+  "layout": {
+    "footprint": { "width": 32, "depth": 32 },
+    "floorHeight": 8,
+    "rows": 2
+  }
+}

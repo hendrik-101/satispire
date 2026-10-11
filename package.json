@@ -1,0 +1,40 @@
+{
+  "name": "satispire",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.14.0 <25"
+  },
+  "packageManager": "npm@11.9.0",
+  "scripts": {
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format:check": "prettier --check .",
+    "format": "prettier --write .",
+    "build": "tsc -p tsconfig.build.json",
+    "plan": "tsx src/cli.ts",
+    "mcp": "tsx src/adapters/stdio.ts",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build",
+    "test:browser": "playwright test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "convex": "1.46.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "@types/node": "24.10.0",
+    "@vitest/coverage-v8": "4.1.11",
+    "convex-test": "0.0.61",
+    "eslint": "9.39.5",
+    "prettier": "3.6.2",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.1",
+    "vitest": "4.1.11"
+  }
+}
