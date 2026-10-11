@@ -402,3 +402,41 @@ test('profile reseeds inactive automatic choices without overriding a supported 
       .locator('option[value="Desc_SteelIngot_C"]'),
   ).toHaveCount(1);
 });
+
+test('minimal imports restrict targets and enable alternatives using permitted resources', async ({
+  page,
+}) => {
+  await ready(page);
+  await page.getByLabel('Plan-Datei').setInputFiles({
+    name: 'iron-only.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(
+      JSON.stringify({
+        schemaVersion: 1,
+        catalogVersion: 'vanilla-1.0-tools-a1eb2fef-v1',
+        production: {
+          targets: [{ itemId: 'Desc_IronPlate_C', rate: '20' }],
+          recipes: {
+            Desc_IronPlate_C: 'Recipe_IronPlate_C',
+            Desc_IronIngot_C: 'Recipe_IngotIron_C',
+          },
+          imports: ['Desc_OreIron_C'],
+        },
+      }),
+    ),
+  });
+  await expect(
+    page
+      .getByLabel('Produktionsziel')
+      .locator('option[value="Desc_CopperSheet_C"]'),
+  ).toHaveCount(0);
+  await page.getByRole('button', { name: 'Technologie', exact: true }).click();
+  await page.getByLabel('Rezepte suchen').fill('Iron Wire');
+  await page.getByLabel('Rezept Alternate: Iron Wire', { exact: true }).check();
+  await page.getByRole('button', { name: 'Profil anwenden' }).click();
+  await page.getByLabel('Produktionsziel').selectOption('Desc_Wire_C');
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+});

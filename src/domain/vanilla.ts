@@ -60,6 +60,9 @@ export function availableRecipes(profile: TechnologyProfile) {
 }
 export function availableChoices(
   profile: TechnologyProfile,
+  imports: string[] = vanillaCatalog.items
+    .filter((i) => i.raw)
+    .map((i) => i.id),
 ): Record<string, string> {
   const result: Record<string, string> = {};
   const recipes = availableRecipes(profile).sort(
@@ -70,8 +73,12 @@ export function availableChoices(
   const raw = new Set(
     vanillaCatalog.items.filter((i) => i.raw).map((i) => i.id),
   );
+  const imported = new Set(imports);
+  if (imports.some((id) => !raw.has(id)))
+    throw new Error('Import policy must contain raw catalog items');
   function resolve(itemId: string, ancestors: Set<string>): boolean {
-    if (raw.has(itemId)) return true;
+    if (imported.has(itemId)) return true;
+    if (raw.has(itemId)) return false;
     if (ancestors.has(itemId)) return false;
     if (result[itemId]) return true;
     const path = new Set([...ancestors, itemId]);

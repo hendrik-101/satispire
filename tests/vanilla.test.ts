@@ -66,3 +66,26 @@ it('keeps default chains acyclic and solvable even with every alternate unlocked
     ).not.toThrow();
   }
 });
+it('selects alternatives using the explicit resource import policy', () => {
+  const profile = technologyAtTier(2, ['Recipe_Alternate_Wire_1_C']);
+  const imports = ['Desc_OreIron_C'];
+  const recipes = availableChoices(profile, imports);
+  expect(recipes.Desc_CopperSheet_C).toBeUndefined();
+  expect(recipes.Desc_Wire_C).toBe('Recipe_Alternate_Wire_1_C');
+  expect(() =>
+    solveProduction(vanillaCatalog, {
+      targets: [{ itemId: 'Desc_Wire_C', rate: '22.5' }],
+      recipes,
+      imports,
+      technology: profile,
+    }),
+  ).not.toThrow();
+});
+it('rejects manufactured and unknown imports consistently with the solver', () => {
+  const profile = technologyAtTier(2);
+  const imports = ['Desc_IronIngot_C'];
+  expect(() => availableChoices(profile, imports)).toThrow(/raw catalog items/);
+  expect(() => availableChoices(profile, ['unknown:item'])).toThrow(
+    /raw catalog items/,
+  );
+});

@@ -110,14 +110,17 @@ export function Workspace() {
     [factory.technology],
   );
   const manufactured = useMemo(() => {
-    const defaults = availableChoices(factory.technology);
+    const defaults = availableChoices(
+      factory.technology,
+      factory.input.imports,
+    );
     return catalog.items.filter((item) => {
       if (item.raw || !defaults[item.id]) return false;
       try {
         solveProduction(catalog, {
           targets: [{ itemId: item.id, rate: '1' }],
           recipes: defaults,
-          imports: firstInput.imports,
+          imports: factory.input.imports,
           technology: factory.technology,
         });
         return true;
@@ -125,7 +128,7 @@ export function Workspace() {
         return false;
       }
     });
-  }, [factory.technology]);
+  }, [factory.technology, factory.input.imports]);
   function evaluate(
     input: ProductionInput,
     technology: TechnologyProfile,
@@ -187,7 +190,10 @@ export function Workspace() {
       setFactory(next);
       setTarget(input.targets[0]!.itemId);
       setRate(input.targets[0]!.rate);
-      setChoices({ ...availableChoices(technology), ...input.recipes });
+      setChoices({
+        ...availableChoices(technology, input.imports),
+        ...input.recipes,
+      });
       setSelected(next.plan.nodes[0]?.itemId ?? '');
       setError('');
     } catch (e) {
@@ -240,9 +246,12 @@ export function Workspace() {
     try {
       const allowed = new Set(availableRecipes(profileDraft).map((r) => r.id));
       const active = new Set(factory.plan.nodes.map((node) => node.itemId));
-      const previousDefaults = availableChoices(factory.technology);
+      const previousDefaults = availableChoices(
+        factory.technology,
+        factory.input.imports,
+      );
       const recipes = {
-        ...availableChoices(profileDraft),
+        ...availableChoices(profileDraft, factory.input.imports),
         ...Object.fromEntries(
           Object.entries(factory.input.recipes).filter(
             ([itemId, id]) => active.has(itemId) && allowed.has(id),
