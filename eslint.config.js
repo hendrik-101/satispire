@@ -1,9 +1,22 @@
 import tseslint from 'typescript-eslint';
 export default tseslint.config(
-  { ignores: ['dist/**', 'coverage/**', 'node_modules/**'] },
+  {
+    ignores: [
+      'dist/**',
+      'web-dist/**',
+      '.tanstack/**',
+      'coverage/**',
+      'node_modules/**',
+      'web/routeTree.gen.ts',
+    ],
+  },
   ...tseslint.configs.recommended,
   {
-    files: ['**/*.ts'],
+    files: ['scripts/discovery/**/*.cjs'],
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
+  {
+    files: ['**/*.{ts,tsx}'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': [

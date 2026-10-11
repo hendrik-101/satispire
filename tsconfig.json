@@ -10,7 +10,8 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "types": ["node", "vitest/globals"],
-    "noEmit": true
+    "noEmit": true,
+    "jsx": "react-jsx"
   },
-  "include": ["src", "tests", "*.ts", "convex"]
+  "include": ["src", "tests", "*.ts", "convex", "web"]
 }
