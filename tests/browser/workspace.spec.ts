@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 const url = process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173';
 async function ready(page: import('@playwright/test').Page) {
   await page.goto(url);
@@ -106,6 +107,64 @@ test('exports and reimports multiple targets with matching version; rejects inva
   await expect(
     page.getByText('45 / min', { exact: true }).first(),
   ).toBeVisible();
+});
+test('changing an imported primary target replaces matching secondary targets', async ({
+  page,
+}) => {
+  await ready(page);
+  await page.getByLabel('Plan-Datei').setInputFiles({
+    name: 'multi-target.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(
+      JSON.stringify({
+        schemaVersion: 1,
+        catalogVersion: 'vanilla-1.0-tools-a1eb2fef-v1',
+        production: {
+          targets: [
+            { itemId: 'Desc_IronPlate_C', rate: '20' },
+            { itemId: 'Desc_IronRod_C', rate: '15' },
+            { itemId: 'Desc_IronScrew_C', rate: '40' },
+          ],
+          recipes: {
+            Desc_IronPlate_C: 'Recipe_IronPlate_C',
+            Desc_IronRod_C: 'Recipe_IronRod_C',
+            Desc_IronScrew_C: 'Recipe_Screw_C',
+            Desc_IronIngot_C: 'Recipe_IngotIron_C',
+          },
+          imports: ['Desc_OreIron_C'],
+        },
+      }),
+    ),
+  });
+  await expect(page.getByLabel('Produktionsziel')).toHaveValue(
+    'Desc_IronPlate_C',
+  );
+  await page.getByLabel('Produktionsziel').selectOption('Desc_IronRod_C');
+  await page.getByLabel('Zielrate pro Minute').fill('10');
+  for (let calculation = 0; calculation < 2; calculation++) {
+    await page
+      .getByRole('button', { name: 'Plan berechnen', exact: true })
+      .click();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    const download = page.waitForEvent('download');
+    await page
+      .getByRole('button', { name: 'Plan exportieren', exact: true })
+      .click();
+    const document = JSON.parse(
+      await readFile((await (await download).path())!, 'utf8'),
+    );
+    expect(document.production.targets).toEqual([
+      { itemId: 'Desc_IronRod_C', rate: '10' },
+      { itemId: 'Desc_IronScrew_C', rate: '40' },
+    ]);
+    await expect(page.getByLabel('Etagenansicht')).toContainText('20 / min');
+  }
+  const screenshot = test.info().outputPath('imported-target-replacement.png');
+  await page.screenshot({ path: screenshot, fullPage: true });
+  await test.info().attach('imported target replacement', {
+    path: screenshot,
+    contentType: 'image/png',
+  });
 });
 test('panel toggles preserve draft and zoom; narrow keyboard and reduced motion', async ({
   page,

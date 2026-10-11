@@ -203,7 +203,10 @@ export function Workspace() {
     try {
       apply({
         ...factory.input,
-        targets: [{ itemId: target, rate }, ...factory.input.targets.slice(1)],
+        targets: [
+          { itemId: target, rate },
+          ...factory.input.targets.slice(1).filter((t) => t.itemId !== target),
+        ],
         recipes: choices,
       });
     } catch (e) {
