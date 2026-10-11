@@ -28,6 +28,7 @@ import { FloorView } from './FloorView';
 import { Graph } from './Graph';
 import { Icon } from './Icon';
 import { ProductionView } from './ProductionView';
+import { MachineGlyph } from './MachineGlyph';
 import { createLocalApplication } from '../../src/application.js';
 import { createRoom } from '../../src/domain/rooms.js';
 import {
@@ -63,6 +64,11 @@ export function Workspace() {
   const [rate, setRate] = useState('20');
   const [choices, setChoices] = useState(firstInput.recipes);
   const [selected, setSelected] = useState(target);
+  const [selectedMachine, setSelectedMachine] = useState(1);
+  function selectStage(itemId: string) {
+    setSelected(itemId);
+    setSelectedMachine(1);
+  }
   const [preferences, setPreferences] = useState(() =>
     restorePreferences(initialView),
   );
@@ -194,7 +200,7 @@ export function Workspace() {
     setFactory(next);
     setError('');
     if (!next.plan.nodes.some((n) => n.itemId === selected))
-      setSelected(next.plan.nodes[0]?.itemId ?? '');
+      selectStage(next.plan.nodes[0]?.itemId ?? '');
     return next;
   }
   function calculate() {
@@ -241,7 +247,7 @@ export function Workspace() {
         ...availableChoices(technology, input.imports),
         ...input.recipes,
       });
-      setSelected(next.plan.nodes[0]?.itemId ?? '');
+      selectStage(next.plan.nodes[0]?.itemId ?? '');
       setError('');
     } catch (e) {
       if (id === sequence.current) setError(message(e));
@@ -336,6 +342,49 @@ export function Workspace() {
         : p[field].filter((v) => v !== id),
     }));
   }
+  const cameraControls = (
+    <>
+      <label>
+        Reihen
+        <select
+          aria-label="Reihen"
+          value={factory.rows}
+          onChange={(e) => {
+            try {
+              apply(factory.input, factory.technology, Number(e.target.value));
+            } catch (err) {
+              setError(message(err));
+            }
+          }}
+        >
+          <option value="0">Auto</option>
+          {[1, 2, 3, 4, 6, 8].map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Zoom
+        <select
+          aria-label="Zoom"
+          value={preferences.camera.zoom}
+          onChange={(e) =>
+            setPreferences((p) =>
+              updateViewPreferences(p, {
+                camera: { zoom: Number(e.target.value) },
+              }),
+            )
+          }
+        >
+          <option value="0.5">50 %</option>
+          <option value="1">100 %</option>
+          <option value="1.25">125 %</option>
+        </select>
+      </label>
+    </>
+  );
   return (
     <main className="workspace" data-ready={ready ? 'true' : 'false'}>
       <fieldset className="workspace hydration-boundary" disabled={!ready}>
@@ -345,6 +394,53 @@ export function Workspace() {
           <span className="catalog-version" title={catalog.catalogVersion}>
             Vanilla 1.0
           </span>
+          <form
+            className="planning-controls"
+            onSubmit={(e) => {
+              e.preventDefault();
+              calculate();
+            }}
+          >
+            <label className="sr-only" htmlFor="target">
+              Produktionsziel
+            </label>
+            <select
+              id="target"
+              aria-label="Produktionsziel"
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+              disabled={pending}
+            >
+              {manufactured.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.name}
+                </option>
+              ))}
+            </select>
+            <label className="sr-only" htmlFor="rate">
+              Zielrate pro Minute
+            </label>
+            <input
+              id="rate"
+              aria-label="Zielrate pro Minute"
+              value={rate}
+              onChange={(e) => setRate(e.target.value)}
+              inputMode="decimal"
+              disabled={pending}
+            />
+            <span className="rate-unit">/ min</span>
+            <button className="primary" type="submit" disabled={pending}>
+              Plan berechnen
+            </button>
+            <button
+              type="button"
+              className="technology-button"
+              onClick={openProfile}
+            >
+              <Icon name="technology" />
+              Technologie
+            </button>
+          </form>
           <div className="header-actions">
             {(['navigation', 'graph', 'inspector'] as const).map((name) => (
               <button
@@ -399,53 +495,7 @@ export function Workspace() {
             </button>
           </div>
         </header>
-        <form
-          className="planning-controls"
-          onSubmit={(e) => {
-            e.preventDefault();
-            calculate();
-          }}
-        >
-          <label className="sr-only" htmlFor="target">
-            Produktionsziel
-          </label>
-          <select
-            id="target"
-            aria-label="Produktionsziel"
-            value={target}
-            onChange={(e) => setTarget(e.target.value)}
-            disabled={pending}
-          >
-            {manufactured.map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.name}
-              </option>
-            ))}
-          </select>
-          <label className="sr-only" htmlFor="rate">
-            Zielrate pro Minute
-          </label>
-          <input
-            id="rate"
-            aria-label="Zielrate pro Minute"
-            value={rate}
-            onChange={(e) => setRate(e.target.value)}
-            inputMode="decimal"
-            disabled={pending}
-          />
-          <span className="rate-unit">/ min</span>
-          <button className="primary" type="submit" disabled={pending}>
-            Plan berechnen
-          </button>
-          <button
-            type="button"
-            className="technology-button"
-            onClick={openProfile}
-          >
-            <Icon name="technology" />
-            Technologie
-          </button>
-        </form>
+
         {error && !profileOpen && (
           <div className="error-banner" role="alert">
             {error}
@@ -463,7 +513,7 @@ export function Workspace() {
                     (selected === n.itemId ? 'selected' : '')
                   }
                   aria-pressed={selected === n.itemId}
-                  onClick={() => setSelected(n.itemId)}
+                  onClick={() => selectStage(n.itemId)}
                 >
                   <span>
                     {i + 1}. {itemName(n.itemId)}
@@ -492,7 +542,7 @@ export function Workspace() {
                 <select
                   aria-label="Stufe auswählen"
                   value={selected}
-                  onChange={(e) => setSelected(e.target.value)}
+                  onChange={(e) => selectStage(e.target.value)}
                 >
                   {factory.plan.nodes.map((n, i) => (
                     <option key={n.itemId} value={n.itemId}>
@@ -501,50 +551,16 @@ export function Workspace() {
                   ))}
                 </select>
               </label>
-              <label>
-                Reihen
-                <select
-                  aria-label="Reihen"
-                  value={factory.rows}
-                  onChange={(e) => {
-                    try {
-                      apply(
-                        factory.input,
-                        factory.technology,
-                        Number(e.target.value),
-                      );
-                    } catch (err) {
-                      setError(message(err));
-                    }
-                  }}
-                >
-                  <option value="0">Auto</option>
-                  {[1, 2, 3, 4, 6, 8].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Zoom
-                <select
-                  aria-label="Zoom"
-                  value={preferences.camera.zoom}
-                  onChange={(e) =>
-                    setPreferences((p) =>
-                      updateViewPreferences(p, {
-                        camera: { zoom: Number(e.target.value) },
-                      }),
-                    )
+              {width > 640 && cameraControls}
+              <details
+                className="view-options"
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') {
+                    event.currentTarget.open = false;
+                    event.currentTarget.querySelector('summary')?.focus();
                   }
-                >
-                  <option value="0.5">50 %</option>
-                  <option value="1">100 %</option>
-                  <option value="1.25">125 %</option>
-                </select>
-              </label>
-              <details className="view-options">
+                }}
+              >
                 <summary>Ansicht</summary>
                 <label>
                   Ansicht
@@ -563,6 +579,7 @@ export function Workspace() {
                     <option value="split">Verknüpft</option>
                   </select>
                 </label>
+                {width <= 640 && cameraControls}
                 <label>
                   <input
                     type="checkbox"
@@ -577,19 +594,24 @@ export function Workspace() {
             <div className={'views preset-' + presentation.preset}>
               {presentation.preset !== 'production' && (
                 <FloorView
+                  key={`${selected}:${factory.rows}:${stage.machineCount}`}
                   catalog={catalog}
                   plan={factory.plan}
                   technology={factory.technology}
                   selected={selected}
                   zoom={preferences.camera.zoom}
                   rows={factory.rows}
+                  machine={Math.min(selectedMachine, stage.machineCount)}
+                  selectMachine={setSelectedMachine}
+                  motion={motion && visible}
+                  compact={width <= 640}
                 />
               )}
               {presentation.preset !== 'floors' && (
                 <ProductionView
                   plan={factory.plan}
                   selected={selected}
-                  select={setSelected}
+                  select={selectStage}
                 />
               )}
               {presentation.panels.graph && (
@@ -597,7 +619,7 @@ export function Workspace() {
                   catalog={catalog}
                   plan={factory.plan}
                   selected={selected}
-                  select={setSelected}
+                  select={selectStage}
                   motion={motion && visible}
                 />
               )}
@@ -605,20 +627,32 @@ export function Workspace() {
           </div>
           {presentation.panels.inspector && (
             <aside className="inspector-panel" aria-label="Stufeninspector">
-              <h2>{itemName(stage.itemId)}</h2>
-              <p className="muted">{itemName(stage.machineId)}</p>
+              <div className="inspector-identity">
+                <svg viewBox="0 0 100 80" aria-hidden="true">
+                  <MachineGlyph
+                    machineId={stage.machineId}
+                    feeds={stage.inputs.length}
+                    selected
+                  />
+                </svg>
+                <div>
+                  <h2>{itemName(stage.itemId)}</h2>
+                  <span className="machine-identity">
+                    {itemName(stage.machineId)}{' '}
+                    {Math.min(selectedMachine, stage.machineCount)}
+                  </span>
+                </div>
+              </div>
               <dl>
-                <dt>Rate</dt>
+                <dt>Stufenrate</dt>
                 <dd>{stage.rate} / min</dd>
                 <dt>Maschinen</dt>
                 <dd>{stage.machineCount}</dd>
                 <dt>Auslastung</dt>
                 <dd>{stage.utilization}</dd>
-                <dt>Maße / Ports</dt>
-                <dd>Unbekannt</dd>
               </dl>
               <label>
-                Rezept für diese Stufe
+                Rezept
                 <select
                   aria-label="Rezept für diese Stufe"
                   value={choices[stage.itemId] ?? stage.recipeId}

@@ -1,6 +1,54 @@
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 const url = process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173';
+test('industrial canvas selection links the machine, graph and inspector', async ({
+  page,
+}) => {
+  await ready(page);
+  await page.getByLabel('Zielrate pro Minute').fill('80');
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Inspector', exact: true }).click();
+  await page.getByRole('button', { name: 'Graph', exact: true }).click();
+  const machine = page.getByRole('button', {
+    name: 'Constructor 2',
+    exact: true,
+  });
+  await machine.focus();
+  await page.keyboard.press('Enter');
+  await expect(machine).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByLabel('Stufeninspector')).toContainText(
+    'Constructor 2',
+  );
+  await expect(page.locator('.graph-node.selected')).toContainText(
+    'Iron Plate',
+  );
+  await page.locator('.graph-node').filter({ hasText: 'Iron Ingot' }).click();
+  await expect(page.getByLabel('Stufeninspector')).toContainText('Smelter 1');
+  await expect(
+    page.getByRole('button', { name: 'Smelter 1', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
+});
+test('mobile canvas has compact controls and secondary settings in a sheet', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await ready(page);
+  const drawing = page.locator('.drawing');
+  expect((await drawing.boundingBox())!.y).toBeLessThan(190);
+  await expect(page.getByLabel('Zoom', { exact: true })).toBeHidden();
+  await page.locator('.view-options summary').click();
+  await page.getByLabel('Zoom', { exact: true }).selectOption('1.25');
+  await expect(page.getByLabel('Zoom', { exact: true })).toHaveValue('1.25');
+  await page.keyboard.press('Escape');
+  await expect(page.getByLabel('Zoom', { exact: true })).toBeHidden();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
 async function ready(page: import('@playwright/test').Page) {
   await page.goto(url);
   await expect(page.locator('main.workspace')).toHaveAttribute(
@@ -8,6 +56,75 @@ async function ready(page: import('@playwright/test').Page) {
     'true',
   );
 }
+test('mobile camera reveals keyboard-selected machines and recovers after zoom and pan', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await ready(page);
+  await page.getByLabel('Zielrate pro Minute').fill('320');
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await page.locator('.view-options summary').click();
+  await page.getByLabel('Reihen', { exact: true }).selectOption('3');
+  await page.keyboard.press('Escape');
+  const scene = page.getByTestId('floor-scene');
+  const machine = page.getByRole('button', {
+    name: 'Constructor 6',
+    exact: true,
+  });
+  await machine.focus();
+  await page.keyboard.press('Enter');
+  await expect(machine).toHaveAttribute('aria-pressed', 'true');
+  const machineBox = (await machine.boundingBox())!;
+  const sceneBox = (await scene.boundingBox())!;
+  expect(machineBox.x + machineBox.width / 2).toBeGreaterThan(sceneBox.x);
+  expect(machineBox.x + machineBox.width / 2).toBeLessThan(
+    sceneBox.x + sceneBox.width,
+  );
+  const initialView = await scene.getAttribute('viewBox');
+  await page.getByRole('button', { name: 'Vergrößern', exact: true }).click();
+  await expect(scene).not.toHaveAttribute('viewBox', initialView!);
+  await page
+    .getByRole('button', { name: 'Schema einpassen', exact: true })
+    .click();
+  const fittedView = await scene.getAttribute('viewBox');
+  expect(Number(fittedView!.split(' ')[2])).toBeGreaterThan(58);
+  await page.mouse.move(sceneBox.x + 10, sceneBox.y + 10);
+  await page.mouse.down();
+  await page.mouse.move(sceneBox.x + 40, sceneBox.y + 20);
+  await page.mouse.up();
+  await expect(scene).not.toHaveAttribute('viewBox', fittedView!);
+  await page
+    .getByRole('button', { name: 'Schema einpassen', exact: true })
+    .click();
+  await expect(scene).toHaveAttribute('viewBox', fittedView!);
+});
+test('assembler schema exposes separate connected resource feeds', async ({
+  page,
+}) => {
+  await ready(page);
+  await page
+    .getByLabel('Produktionsziel')
+    .selectOption('Desc_IronPlateReinforced_C');
+  await page.getByLabel('Zielrate pro Minute').fill('20');
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await page
+    .getByLabel('Stufe auswählen', { exact: true })
+    .selectOption('Desc_IronPlateReinforced_C');
+  await expect(
+    page.getByRole('button', { name: 'Assembler 1', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await expect(
+    page.getByTestId('floor-scene').locator('[data-feed]'),
+  ).toHaveCount(2);
+  await expect(
+    page.locator('.machine-button.selected .machine-port'),
+  ).toHaveCount(3);
+});
 test('fixed Vanilla workflow, repeated calculations and error recovery', async ({
   page,
 }) => {

@@ -27,6 +27,27 @@ try {
   await page.getByRole('button', { name: 'Inspector', exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: 'docs/qa/vanilla-mobile.png', fullPage: true });
+  await page.locator('.view-options summary').click();
+  await page.screenshot({
+    path: 'docs/qa/vanilla-mobile-sheet.png',
+    fullPage: true,
+  });
+  await page.keyboard.press('Escape');
+  await page.setViewportSize({ width: 1440, height: 960 });
+  await page
+    .getByLabel('Produktionsziel')
+    .selectOption('Desc_IronPlateReinforced_C');
+  await page.getByLabel('Zielrate pro Minute').fill('20');
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await page
+    .getByLabel('Stufe auswählen', { exact: true })
+    .selectOption('Desc_IronPlateReinforced_C');
+  await page.screenshot({
+    path: 'docs/qa/vanilla-assembler.png',
+    fullPage: true,
+  });
   if (errors.length) throw new Error(errors.join('\n'));
   console.log('Captured desktop, panels and mobile; no browser page errors.');
 } finally {
