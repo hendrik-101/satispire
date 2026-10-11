@@ -62,7 +62,6 @@ export function Graph({
   return (
     <section className="graph-panel" aria-label="Produktionsgraph">
       <h2>Produktionsgraph</h2>
-      <p className="muted">Materialfluss · exakte Raten</p>
       <div className="graph-scroll">
         <svg
           width={width}
@@ -151,7 +150,9 @@ export function Graph({
                     <span>{label(id)}</span>
                     <strong>{item.rate} / min</strong>
                     <small>
-                      {node.machineCount} × {displayName(node.machineId)}
+                      {node.machineCount} ×{' '}
+                      {catalog.machines.find((m) => m.id === node.machineId)
+                        ?.name ?? node.machineId}
                     </small>
                   </button>
                 ) : (

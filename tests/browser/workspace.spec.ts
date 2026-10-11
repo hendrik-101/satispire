@@ -1,16 +1,22 @@
 import { expect, test } from '@playwright/test';
-
 const url = process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173';
-test('plans locally, preserves selected stage across panels and recovers from invalid demand', async ({
-  page,
-}) => {
+async function ready(page: import('@playwright/test').Page) {
   await page.goto(url);
-  await expect(page.locator('.workspace').first()).toHaveAttribute(
+  await expect(page.locator('main.workspace')).toHaveAttribute(
     'data-ready',
     'true',
   );
-  await expect(page.getByRole('heading', { name: 'Satispire' })).toBeVisible();
+}
+test('fixed Vanilla workflow, repeated calculations and error recovery', async ({
+  page,
+}) => {
+  await ready(page);
+  await expect(page.getByLabel('Discovery-Dateien')).toHaveCount(0);
+  await expect(page.getByLabel('Etagenansicht')).toBeVisible();
   await page.getByLabel('Zielrate pro Minute').fill('40');
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
   await page
     .getByRole('button', { name: 'Plan berechnen', exact: true })
     .click();
@@ -27,127 +33,103 @@ test('plans locally, preserves selected stage across panels and recovers from in
   await expect(
     page.getByText('40 / min', { exact: true }).first(),
   ).toBeVisible();
+  await page.getByLabel('Zielrate pro Minute').fill('1/3');
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(
+    page.getByText('1/3 / min', { exact: true }).first(),
+  ).toBeVisible();
 });
-
-test('imports discovery without upload and labels unknown real geometry', async ({
+test('technology applies atomically and interrupted changes preserve the plan', async ({
   page,
 }) => {
-  const requests: string[] = [];
-  page.on('request', (request) => {
-    if (request.method() === 'POST') requests.push(request.url());
-  });
-  await page.goto(url);
-  await expect(page.locator('.workspace').first()).toHaveAttribute(
-    'data-ready',
-    'true',
-  );
-  const bundle = {
-    manifest: {
-      schemaVersion: 'satispire.discovery/0.1',
-      catalogVersion: 'browser-private-test',
-      game: { version: 'test-1', changelist: 123 },
-      source: { sha256: 'a'.repeat(64) },
+  await ready(page);
+  await page.getByRole('button', { name: 'Technologie', exact: true }).click();
+  await page.getByLabel('Maschine Constructor', { exact: true }).uncheck();
+  await page.getByRole('button', { name: 'Profil anwenden' }).click();
+  await expect(page.getByRole('alert')).toBeVisible();
+  await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+  await page.getByRole('button', { name: 'Technologie', exact: true }).click();
+  await expect(
+    page.getByLabel('Maschine Constructor', { exact: true }),
+  ).toBeChecked();
+  await page.getByLabel('Maximales Belt-Tier').selectOption('1');
+  await page.getByRole('button', { name: 'Profil anwenden' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+});
+test('exports and reimports multiple targets with matching version; rejects invalid files', async ({
+  page,
+}) => {
+  await ready(page);
+  const payload = {
+    schemaVersion: 1,
+    catalogVersion: 'vanilla-1.0-tools-a1eb2fef-v1',
+    production: {
+      targets: [
+        { itemId: 'Desc_IronPlate_C', rate: '20' },
+        { itemId: 'Desc_IronRod_C', rate: '15' },
+      ],
+      recipes: {
+        Desc_IronPlate_C: 'Recipe_IronPlate_C',
+        Desc_IronRod_C: 'Recipe_IronRod_C',
+        Desc_IronIngot_C: 'Recipe_IngotIron_C',
+      },
+      imports: ['Desc_OreIron_C'],
     },
-    items: [
-      {
-        id: 'test:ore2',
-        form: 'RF_SOLID',
-        provenance: { nativeClass: 'FGResourceDescriptor' },
-      },
-      {
-        id: 'test:ore',
-        form: 'RF_SOLID',
-        provenance: { nativeClass: 'FGResourceDescriptor' },
-      },
-      {
-        id: 'test:part',
-        form: 'RF_SOLID',
-        provenance: { nativeClass: 'FGItemDescriptor' },
-      },
-    ],
-    buildings: [{ id: 'test:machine', parameters: { mManufacturingSpeed: 1 } }],
-    recipes: [
-      {
-        id: 'test:raw-output',
-        durationSeconds: 6,
-        ingredients: [{ itemId: 'test:ore2', quantity: 1 }],
-        products: [{ itemId: 'test:ore', quantity: 1 }],
-        eligibleProducers: [{ id: 'test:machine', kind: 'buildable' }],
-        alternate: false,
-        events: null,
-        unlockIds: [],
-      },
-      {
-        id: 'test:recipe',
-        durationSeconds: 6,
-        ingredients: [
-          { itemId: 'test:ore', quantity: 3 },
-          { itemId: 'test:ore2', quantity: 1 },
-        ],
-        products: [{ itemId: 'test:part', quantity: 2 }],
-        eligibleProducers: [{ id: 'test:machine', kind: 'buildable' }],
-        alternate: false,
-        events: null,
-        unlockIds: [],
-      },
-    ],
   };
-  await page.getByLabel('Discovery-Dateien').setInputFiles(
-    Object.entries(bundle).map(([name, data]) => ({
-      name: name + '.json',
-      mimeType: 'application/json',
-      buffer: Buffer.from(JSON.stringify(data)),
-    })),
-  );
+  await page.getByLabel('Plan-Datei').setInputFiles({
+    name: 'multi.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(payload)),
+  });
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Navigation', exact: true }).click();
   await expect(
-    page.getByText('Lokaler Spielimport', { exact: true }),
+    page.getByText('45 / min', { exact: true }).first(),
   ).toBeVisible();
-  await expect(
-    page.getByText('Physische Geometrie und Ports unbekannt.', { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByText('30 / min', { exact: true }).first(),
-  ).toBeVisible();
-  await page.getByRole('button', { name: 'Graph', exact: true }).click();
-  await expect(
-    page.getByLabel('Produktionsziel').locator('option[value="test:ore"]'),
-  ).toHaveCount(0);
-  const labels = page.locator('.edge-label');
-  await expect(labels).toHaveCount(2);
-  const coordinates = await labels.evaluateAll((nodes) =>
-    nodes.map((node) => node.getAttribute('x') + ',' + node.getAttribute('y')),
-  );
-  expect(new Set(coordinates).size).toBe(2);
-  expect(requests).toEqual([]);
-  await page.getByLabel('Discovery-Dateien').setInputFiles({
-    name: 'manifest.json',
+  const download = page.waitForEvent('download');
+  await page
+    .getByRole('button', { name: 'Plan exportieren', exact: true })
+    .click();
+  expect((await download).suggestedFilename()).toBe('satispire-plan.json');
+  await page.getByLabel('Plan-Datei').setInputFiles({
+    name: 'bad.json',
     mimeType: 'application/json',
     buffer: Buffer.from('{}'),
   });
   await expect(page.getByRole('alert')).toBeVisible();
   await expect(
-    page.getByText('Lokaler Spielimport', { exact: true }),
+    page.getByText('45 / min', { exact: true }).first(),
   ).toBeVisible();
 });
-
-test('restores personal layout and stays keyboard usable on a narrow viewport', async ({
+test('panel toggles preserve draft and zoom; narrow keyboard and reduced motion', async ({
   page,
 }) => {
-  await page.goto(url);
-  await expect(page.locator('.workspace').first()).toHaveAttribute(
-    'data-ready',
-    'true',
-  );
+  await ready(page);
   await page.getByRole('button', { name: 'Graph', exact: true }).click();
+  await page.getByLabel('Zielrate pro Minute').fill('37');
+  await page.getByLabel('Zoom', { exact: true }).selectOption('1.25');
+  const selected = await page
+    .getByLabel('Stufe auswählen', { exact: true })
+    .inputValue();
+  await page.getByRole('button', { name: 'Graph', exact: true }).click();
+  await expect(page.getByLabel('Zielrate pro Minute')).toHaveValue('37');
+  await expect(page.getByLabel('Stufe auswählen', { exact: true })).toHaveValue(
+    selected,
+  );
+  await expect(page.getByLabel('Zoom', { exact: true })).toHaveValue('1.25');
   await page.reload();
-  await expect(page.getByLabel('Produktionsgraph')).toBeVisible();
+  await expect(page.getByLabel('Zoom', { exact: true })).toHaveValue('1.25');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByLabel('Zielrate pro Minute').focus();
   await page.keyboard.press('Control+A');
   await page.keyboard.type('30');
-  await page
-    .getByRole('button', { name: 'Plan berechnen', exact: true })
-    .click();
+  await page.keyboard.press('Enter');
   await expect(
     page.getByText('30 / min', { exact: true }).first(),
   ).toBeVisible();
@@ -156,163 +138,113 @@ test('restores personal layout and stays keyboard usable on a narrow viewport', 
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
-});
-
-test('preserves all imported targets on unchanged recalculation', async ({
-  page,
-}) => {
-  await page.goto(url);
-  await expect(page.locator('main.workspace')).toHaveAttribute(
-    'data-ready',
-    'true',
-  );
-  await page.getByLabel('Plan-Datei').setInputFiles({
-    name: 'multi.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from(
-      JSON.stringify({
-        schemaVersion: 1,
-        catalogVersion: 'synthetic-1',
-        production: {
-          targets: [
-            { itemId: 'example:plate', rate: '20' },
-            { itemId: 'example:rod', rate: '15' },
-          ],
-          recipes: {
-            'example:ingot': 'example:smelt',
-            'example:plate': 'example:press',
-            'example:rod': 'example:shape',
-          },
-          imports: ['example:ore'],
-        },
-      }),
-    ),
-  });
-  await expect(
-    page.getByText('45 / min', { exact: true }).first(),
-  ).toBeVisible();
-  await page
-    .getByRole('button', { name: 'Plan berechnen', exact: true })
-    .click();
-  await expect(
-    page.getByText('45 / min', { exact: true }).first(),
-  ).toBeVisible();
-  await expect(
-    page.getByText('15 / min', { exact: true }).first(),
-  ).toBeVisible();
-});
-
-for (const preset of ['production', 'split']) {
-  test(
-    'graph toggle overrides ' +
-      preset +
-      ' preset without losing draft or selection',
-    async ({ page }) => {
-      await page.goto(url);
-      await expect(page.locator('main.workspace')).toHaveAttribute(
-        'data-ready',
-        'true',
-      );
-      await page.getByRole('button', { name: 'Graph', exact: true }).click();
-      await page
-        .getByRole('combobox', { name: /^Ansicht/ })
-        .selectOption(preset);
-      await page.getByLabel('Zielrate pro Minute').fill('37');
-      const selection = await page
-        .getByLabel('Stufe auswählen', { exact: true })
-        .inputValue();
-      await expect(page.getByLabel('Produktionsgraph')).toBeVisible();
-      await page.getByRole('button', { name: 'Graph', exact: true }).click();
-      await expect(
-        page.getByRole('button', { name: 'Graph', exact: true }),
-      ).toHaveAttribute('aria-pressed', 'false');
-      await expect(page.getByLabel('Produktionsgraph')).toHaveCount(0);
-      await expect(page.getByLabel('Zielrate pro Minute')).toHaveValue('37');
-      await expect(
-        page.getByLabel('Stufe auswählen', { exact: true }),
-      ).toHaveValue(selection);
-      await page.reload();
-      await expect(page.locator('main.workspace')).toHaveAttribute(
-        'data-ready',
-        'true',
-      );
-      await expect(page.getByLabel('Produktionsgraph')).toHaveCount(0);
-      await page.getByRole('button', { name: 'Graph', exact: true }).click();
-      await expect(page.getByLabel('Produktionsgraph')).toBeVisible();
-    },
-  );
-}
-
-test('can choose another target after importing only the active recipe chain', async ({
-  page,
-}) => {
-  await page.goto(url);
-  await expect(page.locator('main.workspace')).toHaveAttribute(
-    'data-ready',
-    'true',
-  );
-  await page.getByLabel('Plan-Datei').setInputFiles({
-    name: 'chain-only.json',
-    mimeType: 'application/json',
-    buffer: Buffer.from(
-      JSON.stringify({
-        schemaVersion: 1,
-        catalogVersion: 'synthetic-1',
-        production: {
-          targets: [{ itemId: 'example:plate', rate: '20' }],
-          recipes: {
-            'example:plate': 'example:press',
-            'example:ingot': 'example:smelt',
-          },
-          imports: ['example:ore'],
-        },
-      }),
-    ),
-  });
-  await expect(
-    page.getByText('30 / min', { exact: true }).first(),
-  ).toBeVisible();
-  await page.getByLabel('Produktionsziel').selectOption('example:rod');
-  await page
-    .getByRole('button', { name: 'Plan berechnen', exact: true })
-    .click();
-  await expect(page.getByRole('alert')).toHaveCount(0);
-  await expect(
-    page.getByLabel('Stufe auswählen').locator('option[value="example:rod"]'),
-  ).toHaveCount(1);
-});
-
-test('responsive presentation preserves saved layout, selection and draft', async ({
-  page,
-}) => {
-  await page.goto(url);
-  await expect(page.locator('main.workspace')).toHaveAttribute(
-    'data-ready',
-    'true',
-  );
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.getByRole('button', { name: 'Graph', exact: true }).click();
-  await page.getByRole('combobox', { name: /^Ansicht/ }).selectOption('split');
-  await page.getByRole('combobox', { name: /^Zoom/ }).selectOption('1.25');
-  await page.getByLabel('Zielrate pro Minute').fill('37');
-  const selection = await page.getByLabel('Stufe auswählen').inputValue();
-  const preferences = await page.evaluate(() =>
-    localStorage.getItem('satispire.personal-view.v1'),
-  );
-  await expect(page.getByLabel('Stufennavigation')).toBeVisible();
-  await page.setViewportSize({ width: 1199, height: 850 });
-  await expect(page.getByLabel('Stufennavigation')).toHaveCount(0);
-  await page.setViewportSize({ width: 800, height: 850 });
-  await expect(page.getByLabel('Etagenansicht')).toBeVisible();
-  await expect(page.getByLabel('Zielrate pro Minute')).toHaveValue('37');
-  await expect(page.getByLabel('Stufe auswählen')).toHaveValue(selection);
+  await page.locator('.view-options summary').click();
+  await page.getByLabel('Flussindikatoren').check();
   expect(
-    await page.evaluate(() =>
-      localStorage.getItem('satispire.personal-view.v1'),
-    ),
-  ).toBe(preferences);
-  await page.setViewportSize({ width: 1280, height: 850 });
-  await expect(page.getByLabel('Stufennavigation')).toBeVisible();
-  await expect(page.getByRole('combobox', { name: /^Ansicht/ })).toHaveValue(
-    'split',
-  );
+    await page
+      .locator('.moving-edge')
+      .evaluateAll((nodes) =>
+        nodes.every((n) => getComputedStyle(n).animationName === 'none'),
+      ),
+  ).toBe(true);
+});
+
+test('raw-only imports preserve the valid plan and late imports cannot overwrite row edits', async ({
+  page,
+}) => {
+  await ready(page);
+  const payload = {
+    schemaVersion: 1,
+    catalogVersion: 'vanilla-1.0-tools-a1eb2fef-v1',
+    production: {
+      targets: [{ itemId: 'Desc_OreIron_C', rate: '30' }],
+      recipes: {},
+      imports: ['Desc_OreIron_C'],
+    },
+  };
+  await page.getByLabel('Plan-Datei').setInputFiles({
+    name: 'raw.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(payload)),
+  });
+  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(
+    page.getByText('20 / min', { exact: true }).first(),
+  ).toBeVisible();
+  await page.evaluate(() => {
+    const original = File.prototype.text;
+    File.prototype.text = function () {
+      if (this.name !== 'slow.json') return original.call(this);
+      return original.call(this).then(
+        (text) =>
+          new Promise<string>((resolve) => {
+            Object.assign(window, { finishSlowImport: () => resolve(text) });
+          }),
+      );
+    };
+  });
+  const slow = {
+    ...payload,
+    production: {
+      targets: [{ itemId: 'Desc_IronPlate_C', rate: '60' }],
+      recipes: {
+        Desc_IronPlate_C: 'Recipe_IronPlate_C',
+        Desc_IronIngot_C: 'Recipe_IngotIron_C',
+      },
+      imports: ['Desc_OreIron_C'],
+    },
+  };
+  await page.getByLabel('Plan-Datei').setInputFiles({
+    name: 'slow.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(slow)),
+  });
+  await expect(
+    page.getByRole('button', { name: 'Plan berechnen', exact: true }),
+  ).toBeDisabled();
+  await page.getByLabel('Reihen', { exact: true }).selectOption('3');
+  await page.evaluate(() => {
+    (window as unknown as { finishSlowImport: () => void }).finishSlowImport();
+  });
+  await expect(page.getByLabel('Reihen', { exact: true })).toHaveValue('3');
+  await expect(
+    page.getByText('20 / min', { exact: true }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Plan berechnen', exact: true }),
+  ).toBeEnabled();
+});
+test('explicit alternate unlock changes the solved chain and exact resource demand', async ({
+  page,
+}) => {
+  await ready(page);
+  await page.getByRole('button', { name: 'Technologie', exact: true }).click();
+  await page.getByLabel('Rezepte suchen').fill('Cast Screw');
+  await page
+    .getByLabel('Rezept Alternate: Cast Screw', { exact: true })
+    .check();
+  await page.getByRole('button', { name: 'Profil anwenden' }).click();
+  await page.getByLabel('Produktionsziel').selectOption('Desc_IronScrew_C');
+  await page.getByLabel('Zielrate pro Minute').fill('50');
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await page
+    .getByLabel('Stufe auswählen', { exact: true })
+    .selectOption('Desc_IronScrew_C');
+  await page.getByRole('button', { name: 'Inspector', exact: true }).click();
+  await page
+    .getByLabel('Rezept für diese Stufe')
+    .selectOption('Recipe_Alternate_Screw_C');
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await expect(
+    page
+      .getByLabel('Stufe auswählen')
+      .locator('option[value="Desc_IronRod_C"]'),
+  ).toHaveCount(0);
+  await expect(page.getByText(/25\/2 \/ min/).first()).toBeVisible();
 });

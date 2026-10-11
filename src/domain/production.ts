@@ -1,4 +1,10 @@
 import {
+  validateTechnology,
+  requireTechnology,
+  transportCapacity,
+  type TechnologyProfile,
+} from './technology.js';
+import {
   validateCatalog,
   type Catalog,
   type CatalogRecipe,
@@ -13,6 +19,7 @@ export interface ProductionInput {
   targets: ItemRate[];
   recipes: Record<string, string>;
   imports: string[];
+  technology?: TechnologyProfile | undefined;
 }
 export interface ProductionNode extends ItemRate {
   recipeId: string;
@@ -79,7 +86,30 @@ export function perfectRatio(
   input: ProductionInput,
   options: { multiples?: Record<string, number> } = {},
 ): ProductionPlan {
-  const plan = solveProduction(catalog, input);
+  const data = validateCatalog(catalog);
+  const plan = solveProduction(data, input);
+  if (input.technology) {
+    for (const node of plan.nodes) {
+      const recipe = data.recipes.find((r) => r.id === node.recipeId)!;
+      const fullCrafts = SIXTY.divide(
+        Rational.parseCanonical(recipe.durationSeconds),
+      );
+      if (
+        [...recipe.inputs, ...recipe.outputs].some(
+          (part) =>
+            fullCrafts
+              .multiply(Rational.parseCanonical(part.quantity))
+              .compare(
+                transportCapacity(data, part.itemId, input.technology!),
+              ) > 0,
+        )
+      )
+        throw new Error(
+          'Perfect Ratio conflicts with the selected transport capacity: ' +
+            recipe.name,
+        );
+    }
+  }
   const settings = object(options, 'Perfect Ratio options');
   supportedKeys(settings, ['multiples'], 'Perfect Ratio options');
   const multiples =
@@ -167,7 +197,15 @@ function solveExactProduction(
 ): ProductionPlan {
   const data = validateCatalog(catalog);
   const request = object(input, 'production input');
-  supportedKeys(request, ['targets', 'recipes', 'imports'], 'production input');
+  supportedKeys(
+    request,
+    ['targets', 'recipes', 'imports', 'technology'],
+    'production input',
+  );
+  const technology =
+    request.technology === undefined
+      ? undefined
+      : validateTechnology(request.technology, data);
   if (
     !Array.isArray(request.targets) ||
     request.targets.length === 0 ||
@@ -257,6 +295,7 @@ function solveExactProduction(
       const recipe = selected.get(itemId);
       if (!recipe)
         throw new Error(`Choose an explicit selected recipe for ${itemId}`);
+      if (technology) requireTechnology(recipe, technology);
       if (recipe.outputs.length !== 1)
         throw new Error(
           `Coproduct recipe ${recipe.id} is unsupported; select a single-output recipe`,
@@ -288,7 +327,16 @@ function solveExactProduction(
     const machineDemand = crafts
       .multiply(Rational.parseCanonical(recipe.durationSeconds))
       .divide(SIXTY);
-    const count = machineDemand.ceil();
+    let count = machineDemand.ceil();
+    if (technology) {
+      for (const part of [...recipe.inputs, ...recipe.outputs]) {
+        const rate = crafts.multiply(Rational.parseCanonical(part.quantity));
+        const supplied = rate
+          .divide(transportCapacity(data, part.itemId, technology))
+          .ceil();
+        if (supplied > count) count = supplied;
+      }
+    }
     if (count > BigInt(MACHINE_COUNT_LIMIT))
       throw new Error(
         `Machine count for ${itemId} exceeds the ${MACHINE_COUNT_LIMIT} limit`,

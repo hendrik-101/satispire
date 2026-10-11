@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
-import { syntheticCatalog } from '../../src/domain/catalog.js';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   solveProduction,
   type ProductionInput,
@@ -13,140 +12,158 @@ import {
   type ViewPreset,
 } from '../../src/domain/view-preferences.js';
 import {
-  convertDiscovery,
-  type DiscoveryConversion,
-} from '../../src/discovery.js';
-import { initialProduction, displayName, defaultChoices } from './model';
+  vanillaCatalog,
+  technologyAtTier,
+  availableChoices,
+  availableRecipes,
+  itemName,
+  recipeUnlocks,
+} from '../../src/domain/vanilla.js';
+import { generateSupplyLayout } from '../../src/domain/supply-layout.js';
+import {
+  supplyLines,
+  type TechnologyProfile,
+} from '../../src/domain/technology.js';
 import { FloorView } from './FloorView';
 import { Graph } from './Graph';
+import { Icon } from './Icon';
 
-const firstInput = initialProduction(syntheticCatalog, {});
-const KEY = 'satispire.personal-view.v1';
-const errorMessage = (error: unknown) =>
+const catalog = vanillaCatalog;
+const firstTechnology = technologyAtTier(2);
+const firstInput: ProductionInput = {
+  targets: [{ itemId: 'Desc_IronPlate_C', rate: '20' }],
+  recipes: availableChoices(firstTechnology),
+  imports: catalog.items.filter((i) => i.raw).map((i) => i.id),
+  technology: firstTechnology,
+};
+const initialView = {
+  ...defaultViewPreferences,
+  panels: { navigation: false, graph: false, inspector: false },
+};
+const KEY = 'satispire.personal-view.v2';
+const message = (error: unknown) =>
   error instanceof Error
     ? error.message
-    : 'Daten konnten nicht verarbeitet werden.';
-
+    : 'Plan konnte nicht verarbeitet werden.';
 export function Workspace() {
   const [factory, setFactory] = useState(() => ({
-    catalog: syntheticCatalog,
     input: firstInput,
-    plan: solveProduction(syntheticCatalog, firstInput),
-    details: {} as DiscoveryConversion['details'],
-    excluded: [] as DiscoveryConversion['excluded'],
+    plan: solveProduction(catalog, firstInput),
+    technology: firstTechnology,
+    rows: 0,
   }));
   const [target, setTarget] = useState(firstInput.targets[0]!.itemId);
   const [rate, setRate] = useState('20');
   const [choices, setChoices] = useState(firstInput.recipes);
-  const [selected, setSelected] = useState(firstInput.targets[0]!.itemId);
+  const [selected, setSelected] = useState(target);
   const [preferences, setPreferences] = useState(() =>
-    restorePreferences(defaultViewPreferences),
+    restorePreferences(initialView),
   );
-  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [width, setWidth] = useState(1200);
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
   const [motion, setMotion] = useState(false);
   const [visible, setVisible] = useState(true);
-  const [rows, setRows] = useState(2);
-  const [viewportWidth, setViewportWidth] = useState(1200);
-  const presentation = effectivePresentation(preferences, viewportWidth);
-  const importSequence = useRef(0);
+  const [profileDraft, setProfileDraft] = useState(firstTechnology);
+  const [tier, setTier] = useState<number | 'custom'>(2);
+  const [search, setSearch] = useState('');
+  const [profileOpen, setProfileOpen] = useState(false);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const sequence = useRef(0);
+  const presentation = effectivePresentation(preferences, width);
   useEffect(() => {
     try {
-      setPreferences(
-        restorePreferences(JSON.parse(localStorage.getItem(KEY) ?? 'null')),
-      );
+      const saved = localStorage.getItem(KEY);
+      if (saved) setPreferences(restorePreferences(JSON.parse(saved)));
     } catch {
-      /* safe defaults */
+      /* safe local defaults */
     }
-    const onResize = () =>
-      setViewportWidth(Math.min(65536, Math.max(1, window.innerWidth)));
-    onResize();
-    window.addEventListener('resize', onResize);
-    setPreferencesLoaded(true);
-    const onVisibility = () => setVisible(!document.hidden);
-    onVisibility();
-    document.addEventListener('visibilitychange', onVisibility);
+    const resize = () =>
+      setWidth(Math.max(1, Math.min(65536, window.innerWidth)));
+    const visibility = () => setVisible(!document.hidden);
+    resize();
+    visibility();
+    setReady(true);
+    window.addEventListener('resize', resize);
+    document.addEventListener('visibilitychange', visibility);
     return () => {
-      document.removeEventListener('visibilitychange', onVisibility);
-      window.removeEventListener('resize', onResize);
+      window.removeEventListener('resize', resize);
+      document.removeEventListener('visibilitychange', visibility);
+      sequence.current++;
     };
   }, []);
   useEffect(() => {
-    if (preferencesLoaded) {
+    if (ready)
       try {
         localStorage.setItem(KEY, JSON.stringify(preferences));
       } catch {
-        /* local planning remains usable */
+        /* storage optional */
       }
-    }
-  }, [preferences, preferencesLoaded]);
-
-  function commitPlan(input: ProductionInput) {
-    try {
-      const plan = solveProduction(factory.catalog, input);
-      setFactory((current) => ({ ...current, input, plan }));
-      if (!plan.nodes.some((node) => node.itemId === selected))
-        setSelected(plan.nodes[0]?.itemId ?? '');
-      setError('');
-    } catch (failure) {
-      setError(errorMessage(failure));
-    }
+  }, [ready, preferences]);
+  useEffect(() => {
+    if (profileOpen) dialog.current?.showModal();
+  }, [profileOpen]);
+  const candidates = useMemo(
+    () => availableRecipes(factory.technology),
+    [factory.technology],
+  );
+  const manufactured = useMemo(() => {
+    const defaults = availableChoices(factory.technology);
+    return catalog.items.filter((item) => {
+      if (item.raw || !defaults[item.id]) return false;
+      try {
+        solveProduction(catalog, {
+          targets: [{ itemId: item.id, rate: '1' }],
+          recipes: defaults,
+          imports: firstInput.imports,
+          technology: factory.technology,
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    });
+  }, [factory.technology]);
+  function evaluate(
+    input: ProductionInput,
+    technology: TechnologyProfile,
+    rows = factory.rows,
+  ) {
+    const resolved = { ...input, technology };
+    const plan = solveProduction(catalog, resolved);
+    generateSupplyLayout(catalog, plan, technology, rows);
+    return { input: resolved, plan, technology, rows };
   }
-  async function importDiscovery(files: File[]) {
-    const sequence = ++importSequence.current;
-    setPending(true);
+  function apply(
+    input: ProductionInput,
+    technology = factory.technology,
+    rows = factory.rows,
+  ) {
+    sequence.current++;
+    setPending(false);
+    const next = evaluate(input, technology, rows);
+    setFactory(next);
+    setError('');
+    if (!next.plan.nodes.some((n) => n.itemId === selected))
+      setSelected(next.plan.nodes[0]?.itemId ?? '');
+    return next;
+  }
+  function calculate() {
+    sequence.current++;
+    setPending(false);
     try {
-      const required = ['manifest', 'items', 'recipes', 'buildings'];
-      if (
-        files.length !== 4 ||
-        required.some(
-          (name) =>
-            files.filter((file) => file.name === name + '.json').length !== 1,
-        )
-      )
-        throw new Error(
-          'Bitte manifest.json, items.json, recipes.json und buildings.json gemeinsam auswählen.',
-        );
-      if (
-        files.some((file) => file.size > 8_000_000) ||
-        files.reduce((sum, file) => sum + file.size, 0) > 24_000_000
-      )
-        throw new Error(
-          'Discovery-Import überschreitet das lokale Größenlimit.',
-        );
-      const bundle = Object.fromEntries(
-        await Promise.all(
-          files.map(async (file) => [
-            file.name.slice(0, -5),
-            JSON.parse(await file.text()) as unknown,
-          ]),
-        ),
-      );
-      const converted = convertDiscovery(bundle);
-      const input = initialProduction(converted.catalog, converted.details);
-      const plan = solveProduction(converted.catalog, input);
-      if (sequence !== importSequence.current) return;
-      setFactory({
-        catalog: converted.catalog,
-        input,
-        plan,
-        details: converted.details,
-        excluded: converted.excluded,
+      apply({
+        ...factory.input,
+        targets: [{ itemId: target, rate }, ...factory.input.targets.slice(1)],
+        recipes: choices,
       });
-      setTarget(input.targets[0]!.itemId);
-      setRate(input.targets[0]!.rate);
-      setChoices(input.recipes);
-      setSelected(input.targets[0]!.itemId);
-      setError('');
-    } catch (failure) {
-      if (sequence === importSequence.current) setError(errorMessage(failure));
-    } finally {
-      if (sequence === importSequence.current) setPending(false);
+    } catch (e) {
+      setError(message(e));
     }
   }
   async function importPlan(file: File) {
-    const sequence = ++importSequence.current;
+    const id = ++sequence.current;
     setPending(true);
     try {
       if (file.size > 1_000_000)
@@ -158,38 +175,42 @@ export function Workspace() {
         !('schemaVersion' in document) ||
         document.schemaVersion !== 1 ||
         !('catalogVersion' in document) ||
-        document.catalogVersion !== factory.catalog.catalogVersion ||
+        document.catalogVersion !== catalog.catalogVersion ||
         !('production' in document)
       )
-        throw new Error(
-          'Planversion oder Katalog passt nicht zum aktiven lokalen Import.',
-        );
+        throw new Error('Plan- oder Katalogversion passt nicht.');
       const input = productionSchema.parse(document.production);
-      solveProduction(factory.catalog, input);
-      if (sequence !== importSequence.current) return;
-      commitPlan(input);
+      const technology = input.technology ?? factory.technology;
+      const next = evaluate(input, technology);
+      if (id !== sequence.current) return;
+      setFactory(next);
       setTarget(input.targets[0]!.itemId);
       setRate(input.targets[0]!.rate);
-      setChoices({
-        ...defaultChoices(factory.catalog, factory.details),
-        ...input.recipes,
-      });
-    } catch (failure) {
-      if (sequence === importSequence.current) setError(errorMessage(failure));
+      setChoices({ ...availableChoices(technology), ...input.recipes });
+      setSelected(next.plan.nodes[0]?.itemId ?? '');
+      setError('');
+    } catch (e) {
+      if (id === sequence.current) setError(message(e));
     } finally {
-      if (sequence === importSequence.current) setPending(false);
+      if (id === sequence.current) setPending(false);
     }
   }
   function exportPlan() {
-    const content = {
-      schemaVersion: 1,
-      catalogVersion: factory.catalog.catalogVersion,
-      production: factory.input,
-    };
     const url = URL.createObjectURL(
-      new Blob([JSON.stringify(content, null, 2)], {
-        type: 'application/json',
-      }),
+      new Blob(
+        [
+          JSON.stringify(
+            {
+              schemaVersion: 1,
+              catalogVersion: catalog.catalogVersion,
+              production: factory.input,
+            },
+            null,
+            2,
+          ),
+        ],
+        { type: 'application/json' },
+      ),
     );
     const anchor = document.createElement('a');
     anchor.href = url;
@@ -197,317 +218,326 @@ export function Workspace() {
     anchor.click();
     URL.revokeObjectURL(url);
   }
-  const stage =
-    factory.plan.nodes.find((node) => node.itemId === selected) ??
-    factory.plan.nodes[0];
-  const game = factory.catalog.provenance.kind !== 'synthetic';
-  const detail = stage ? factory.details[stage.recipeId] : undefined;
   const panel = (name: 'navigation' | 'graph' | 'inspector') =>
-    setPreferences((current) =>
-      updateViewPreferences(current, {
-        panels: { [name]: !current.panels[name] },
-      }),
+    setPreferences((p) =>
+      updateViewPreferences(p, { panels: { [name]: !p.panels[name] } }),
     );
-  const select = (id: string) => setSelected(id);
-  const manufactured = factory.catalog.items.filter(
-    (item) =>
-      !item.raw &&
-      factory.catalog.recipes.some((recipe) =>
-        recipe.outputs.some((output) => output.itemId === item.id),
-      ),
-  );
-  const showGraph = presentation.panels.graph;
-  const showFloors = presentation.preset !== 'production';
+  const stage =
+    factory.plan.nodes.find((n) => n.itemId === selected) ??
+    factory.plan.nodes[0]!;
+  function openProfile() {
+    setProfileDraft(structuredClone(factory.technology));
+    setSearch('');
+    setTier('custom');
+    setProfileOpen(true);
+  }
+  function closeProfile() {
+    dialog.current?.close();
+    setProfileOpen(false);
+  }
+  function applyProfile() {
+    try {
+      const allowed = new Set(availableRecipes(profileDraft).map((r) => r.id));
+      const recipes = {
+        ...availableChoices(profileDraft),
+        ...Object.fromEntries(
+          Object.entries(choices).filter(([, id]) => allowed.has(id)),
+        ),
+      };
+      apply({ ...factory.input, recipes }, profileDraft);
+      setChoices(recipes);
+      closeProfile();
+    } catch (e) {
+      setError(message(e));
+    }
+  }
+  function toggleProfile(
+    field: 'availableMachines' | 'unlockedRecipes',
+    id: string,
+    checked: boolean,
+  ) {
+    setTier('custom');
+    setProfileDraft((p) => ({
+      ...p,
+      [field]: checked
+        ? [...new Set([...p[field], id])]
+        : p[field].filter((v) => v !== id),
+    }));
+  }
   return (
-    <main
-      className="workspace"
-      data-ready={preferencesLoaded ? 'true' : 'false'}
-    >
-      <fieldset
-        className="workspace hydration-boundary"
-        disabled={!preferencesLoaded}
-      >
+    <main className="workspace" data-ready={ready ? 'true' : 'false'}>
+      <fieldset className="workspace hydration-boundary" disabled={!ready}>
         <header className="app-header">
           <h1>Satispire</h1>
           <span className="project-name">Meine Fabrik</span>
-          <span className="session-status">Lokale Sitzung</span>
-          <button onClick={exportPlan}>Plan exportieren</button>
-        </header>
-        <nav className="toolbar" aria-label="Persönliche Ansicht">
-          <label>
-            Ansicht{' '}
-            <select
-              value={preferences.preset}
-              onChange={(event) =>
-                setPreferences((current) =>
-                  updateViewPreferences(current, {
-                    preset: event.target.value as ViewPreset,
-                  }),
-                )
-              }
+          <span className="catalog-version" title={catalog.catalogVersion}>
+            Vanilla 1.0
+          </span>
+          <div className="header-actions">
+            {(['navigation', 'graph', 'inspector'] as const).map((name) => (
+              <button
+                key={name}
+                className="icon-button"
+                aria-label={
+                  name === 'navigation'
+                    ? 'Navigation'
+                    : name === 'graph'
+                      ? 'Graph'
+                      : 'Inspector'
+                }
+                title={
+                  name === 'navigation'
+                    ? 'Navigation'
+                    : name === 'graph'
+                      ? 'Graph'
+                      : 'Inspector'
+                }
+                aria-pressed={presentation.panels[name]}
+                onClick={() => panel(name)}
+              >
+                <Icon name={name} />
+              </button>
+            ))}
+            <label
+              className="file-control icon-button"
+              title="Plan importieren"
             >
-              <option value="floors">Etagen</option>
-              <option value="production">Produktion</option>
-              <option value="split">Verknüpft</option>
-            </select>
-          </label>
-          <button
-            aria-pressed={presentation.panels.navigation}
-            disabled={viewportWidth < 1200}
-            title={
-              viewportWidth < 1200
-                ? 'Navigation auf schmalen Ansichten eingeklappt; Stufenauswahl bleibt verfügbar.'
-                : undefined
-            }
-            onClick={() => panel('navigation')}
-          >
-            Navigation
-          </button>
-          <button
-            aria-pressed={preferences.panels.graph}
-            onClick={() => panel('graph')}
-          >
-            Graph
-          </button>
-          <button
-            aria-pressed={preferences.panels.inspector}
-            onClick={() => panel('inspector')}
-          >
-            Inspector
-          </button>
-          <label className="motion-control">
-            <input
-              type="checkbox"
-              checked={motion}
-              onChange={(event) => setMotion(event.target.checked)}
-            />
-            Flussindikatoren
-          </label>
-        </nav>
-        <div className="data-bar">
-          <span className="data-kind">
-            {game ? 'Lokaler Spielimport' : 'Synthetisches Beispiel'}
-          </span>
-          <span>
-            {game
-              ? factory.catalog.provenance.manifest?.gameVersion +
-                ' · CL ' +
-                factory.catalog.provenance.manifest?.build
-              : 'Keine Spieldaten'}
-          </span>
-          <label className="file-control">
-            Discovery importieren
-            <input
-              type="file"
-              multiple
-              accept=".json"
-              aria-label="Discovery-Dateien"
-              disabled={pending}
-              onChange={(event) => {
-                const files = Array.from(event.target.files ?? []);
-                event.target.value = '';
-                if (files.length) void importDiscovery(files);
-              }}
-            />
-          </label>
-          <label className="file-control">
-            Plan importieren
-            <input
-              type="file"
-              accept=".json"
-              aria-label="Plan-Datei"
-              disabled={pending}
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = '';
-                if (file) void importPlan(file);
-              }}
-            />
-          </label>
-        </div>
+              <Icon name="import" />
+              <span className="sr-only">Plan importieren</span>
+              <input
+                type="file"
+                accept=".json"
+                aria-label="Plan-Datei"
+                disabled={pending}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (file) void importPlan(file);
+                }}
+              />
+            </label>
+            <button
+              className="icon-button"
+              aria-label="Plan exportieren"
+              title="Plan exportieren"
+              onClick={exportPlan}
+            >
+              <Icon name="export" />
+            </button>
+          </div>
+        </header>
         <form
           className="planning-controls"
-          onSubmit={(event) => {
-            event.preventDefault();
-            commitPlan({
-              targets: [
-                { itemId: target, rate },
-                ...factory.input.targets.slice(1),
-              ],
-              recipes: choices,
-              imports: factory.input.imports,
-            });
+          onSubmit={(e) => {
+            e.preventDefault();
+            calculate();
           }}
         >
-          <label>
+          <label className="sr-only" htmlFor="target">
             Produktionsziel
-            <select
-              aria-label="Produktionsziel"
-              value={target}
-              onChange={(event) => setTarget(event.target.value)}
-              disabled={pending}
-            >
-              {manufactured.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {displayName(item.name)}
-                </option>
-              ))}
-            </select>
           </label>
-          <label>
+          <select
+            id="target"
+            aria-label="Produktionsziel"
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            disabled={pending}
+          >
+            {manufactured.map((i) => (
+              <option key={i.id} value={i.id}>
+                {i.name}
+              </option>
+            ))}
+          </select>
+          <label className="sr-only" htmlFor="rate">
             Zielrate pro Minute
-            <input
-              aria-label="Zielrate pro Minute"
-              value={rate}
-              onChange={(event) => setRate(event.target.value)}
-              inputMode="decimal"
-              disabled={pending}
-            />
           </label>
+          <input
+            id="rate"
+            aria-label="Zielrate pro Minute"
+            value={rate}
+            onChange={(e) => setRate(e.target.value)}
+            inputMode="decimal"
+            disabled={pending}
+          />
+          <span className="rate-unit">/ min</span>
           <button className="primary" type="submit" disabled={pending}>
-            {pending ? 'Import wird geprüft' : 'Plan berechnen'}
+            Plan berechnen
           </button>
-          <span className="muted">
-            Rezepte bei 100 % · kein Energie- oder Weltmodifiermodell
-          </span>
+          <button
+            type="button"
+            className="technology-button"
+            onClick={openProfile}
+          >
+            <Icon name="technology" />
+            Technologie
+          </button>
         </form>
-        {error && (
+        {error && !profileOpen && (
           <div className="error-banner" role="alert">
             {error}
-            <span>Der letzte gültige Plan bleibt erhalten.</span>
           </div>
         )}
         <div className="workspace-body">
           {presentation.panels.navigation && (
             <aside className="navigation-panel" aria-label="Stufennavigation">
-              <h2>Produktionsstufen</h2>
-              {factory.plan.nodes.map((node, index) => (
+              <h2>Produktion</h2>
+              {factory.plan.nodes.map((n, i) => (
                 <button
-                  key={node.itemId}
+                  key={n.itemId}
                   className={
                     'stage-navigation ' +
-                    (selected === node.itemId ? 'selected' : '')
+                    (selected === n.itemId ? 'selected' : '')
                   }
-                  aria-pressed={selected === node.itemId}
-                  onClick={() => select(node.itemId)}
+                  aria-pressed={selected === n.itemId}
+                  onClick={() => setSelected(n.itemId)}
                 >
                   <span>
-                    {index + 1}. {displayName(node.itemId)}
+                    {i + 1}. {itemName(n.itemId)}
                   </span>
-                  <strong>{node.rate} / min</strong>
-                  <small>{node.machineCount} Maschinen</small>
+                  <strong>{n.rate} / min</strong>
+                  <small>
+                    {n.machineCount} × {itemName(n.machineId)}
+                  </small>
                 </button>
               ))}
-              <h2>Rohstoffimporte</h2>
+              <h2>Rohstoffe</h2>
               <ul className="imports">
-                {factory.plan.imports.map((item) => (
-                  <li key={item.itemId}>
-                    <span>{displayName(item.itemId)}</span>
-                    <strong>{item.rate} / min</strong>
+                {factory.plan.imports.map((i) => (
+                  <li key={i.itemId}>
+                    <span>{itemName(i.itemId)}</span>
+                    <strong>{i.rate} / min</strong>
                   </li>
                 ))}
               </ul>
-              <p className="muted">
-                Raten und Auswahl bleiben beim Ansichtswechsel unverändert.
-              </p>
             </aside>
           )}
           <div className="center-workspace">
-            <div className="accessible-stages">
+            <div className="canvas-toolbar">
               <label>
-                Stufe auswählen
+                <span className="sr-only">Stufe auswählen</span>
                 <select
                   aria-label="Stufe auswählen"
                   value={selected}
-                  onChange={(event) => select(event.target.value)}
+                  onChange={(e) => setSelected(e.target.value)}
                 >
-                  {factory.plan.nodes.map((node) => (
-                    <option key={node.itemId} value={node.itemId}>
-                      {displayName(node.itemId)}
+                  {factory.plan.nodes.map((n, i) => (
+                    <option key={n.itemId} value={n.itemId}>
+                      Etage {i + 1} · {itemName(n.itemId)}
                     </option>
                   ))}
                 </select>
               </label>
-            </div>
-            <div className="views">
-              {!showGraph && !showFloors && (
-                <p role="status">
-                  Graph ausgeblendet. Über den Graph-Schalter wieder einblenden.
-                </p>
-              )}
-              {showGraph && (
-                <Graph
-                  catalog={factory.catalog}
-                  plan={factory.plan}
-                  selected={selected}
-                  select={select}
-                  motion={motion && visible}
-                />
-              )}
-              {showFloors && (
-                <FloorView
-                  catalog={factory.catalog}
-                  input={factory.input}
-                  plan={factory.plan}
-                  selected={selected}
-                  zoom={preferences.camera.zoom}
-                  rows={rows}
-                />
-              )}
-            </div>
-            <div className="canvas-toolbar">
+              <label>
+                Reihen
+                <select
+                  aria-label="Reihen"
+                  value={factory.rows}
+                  onChange={(e) => {
+                    try {
+                      apply(
+                        factory.input,
+                        factory.technology,
+                        Number(e.target.value),
+                      );
+                    } catch (err) {
+                      setError(message(err));
+                    }
+                  }}
+                >
+                  <option value="0">Auto</option>
+                  {[1, 2, 3, 4, 6, 8].map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label>
                 Zoom
                 <select
+                  aria-label="Zoom"
                   value={preferences.camera.zoom}
-                  onChange={(event) =>
-                    setPreferences((current) =>
-                      updateViewPreferences(current, {
-                        camera: { zoom: Number(event.target.value) },
+                  onChange={(e) =>
+                    setPreferences((p) =>
+                      updateViewPreferences(p, {
+                        camera: { zoom: Number(e.target.value) },
                       }),
                     )
                   }
                 >
-                  <option value={0.5}>50 %</option>
-                  <option value={1}>100 %</option>
-                  <option value={1.25}>125 %</option>
+                  <option value="0.5">50 %</option>
+                  <option value="1">100 %</option>
+                  <option value="1.25">125 %</option>
                 </select>
               </label>
-              {!game && (
+              <details className="view-options">
+                <summary>Ansicht</summary>
                 <label>
-                  Reihen
+                  Ansicht
                   <select
-                    value={rows}
-                    onChange={(event) => setRows(Number(event.target.value))}
+                    value={preferences.preset}
+                    onChange={(e) =>
+                      setPreferences((p) =>
+                        updateViewPreferences(p, {
+                          preset: e.target.value as ViewPreset,
+                        }),
+                      )
+                    }
                   >
-                    <option value={1}>1</option>
-                    <option value={2}>2</option>
-                    <option value={3}>3</option>
-                    <option value={4}>4</option>
+                    <option value="floors">Etagen</option>
+                    <option value="production">Produktion</option>
+                    <option value="split">Verknüpft</option>
                   </select>
                 </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    aria-label="Flussindikatoren"
+                    checked={motion}
+                    onChange={(e) => setMotion(e.target.checked)}
+                  />{' '}
+                  Flussindikatoren
+                </label>
+              </details>
+            </div>
+            <div
+              className={
+                'views ' +
+                (preferences.preset === 'production' ? 'production-focus' : '')
+              }
+            >
+              <FloorView
+                catalog={catalog}
+                plan={factory.plan}
+                technology={factory.technology}
+                selected={selected}
+                zoom={preferences.camera.zoom}
+                rows={factory.rows}
+              />
+              {presentation.panels.graph && (
+                <Graph
+                  catalog={catalog}
+                  plan={factory.plan}
+                  selected={selected}
+                  select={setSelected}
+                  motion={motion && visible}
+                />
               )}
-              <span className="muted">
-                {game
-                  ? 'Keine verifizierte Gebäudegeometrie'
-                  : 'Ein Ursprung und Grundriss für alle Etagen'}
-              </span>
             </div>
           </div>
-          {presentation.panels.inspector && stage && (
+          {presentation.panels.inspector && (
             <aside className="inspector-panel" aria-label="Stufeninspector">
-              <h2>{displayName(stage.itemId)}</h2>
-              <p className="muted">{displayName(stage.machineId)}</p>
+              <h2>{itemName(stage.itemId)}</h2>
+              <p className="muted">{itemName(stage.machineId)}</p>
               <dl>
-                <dt>Produktionsrate</dt>
+                <dt>Rate</dt>
                 <dd>{stage.rate} / min</dd>
-                <dt>Aufgestellt</dt>
+                <dt>Maschinen</dt>
                 <dd>{stage.machineCount}</dd>
                 <dt>Auslastung</dt>
                 <dd>{stage.utilization}</dd>
-                <dt>Taktmodell</dt>
-                <dd>100 %</dd>
-                <dt>Energie / Shards</dt>
+                <dt>Maße / Ports</dt>
                 <dd>Unbekannt</dd>
               </dl>
               <label>
@@ -515,74 +545,182 @@ export function Workspace() {
                 <select
                   aria-label="Rezept für diese Stufe"
                   value={choices[stage.itemId] ?? stage.recipeId}
-                  onChange={(event) =>
-                    setChoices((current) => ({
-                      ...current,
-                      [stage.itemId]: event.target.value,
+                  onChange={(e) =>
+                    setChoices((c) => ({
+                      ...c,
+                      [stage.itemId]: e.target.value,
                     }))
                   }
                 >
-                  {factory.catalog.recipes
-                    .filter((recipe) =>
-                      recipe.outputs.some(
-                        (output) => output.itemId === stage.itemId,
-                      ),
-                    )
-                    .map((recipe) => (
-                      <option key={recipe.id} value={recipe.id}>
-                        {displayName(recipe.id)}
-                        {factory.details[recipe.id]?.alternate
-                          ? ' · Alternative'
-                          : ''}
+                  {candidates
+                    .filter((r) => r.outputs[0]!.itemId === stage.itemId)
+                    .map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
                       </option>
                     ))}
                 </select>
               </label>
-              <p className="muted">
-                Rezeptänderung mit „Plan berechnen“ prüfen und übernehmen.
-              </p>
-              {game && (
-                <div className="geometry-warning">
-                  <h3>Geometrie noch offen</h3>
-                  <p>
-                    Keine geprüften Maschinenports, keine Kollisions- oder
-                    Bauprüfung.
-                  </p>
-                  <p>
-                    {detail?.alternate ? 'Alternativrezept' : 'Standardrezept'}{' '}
-                    ·{' '}
-                    {detail?.eventRestricted
-                      ? 'Eventgebunden'
-                      : 'Kein exportiertes Eventfeld'}
-                  </p>
-                  <p>
-                    {detail?.unlockIds.length ?? 0} verknüpfte Freischaltungen;
-                    nicht als aktueller Spielstand verifiziert.
-                  </p>
-                </div>
-              )}
-              {game && (
-                <details>
-                  <summary>
-                    {factory.excluded.length} dokumentierte Ausschlüsse
-                  </summary>
-                  <ul className="diagnostics">
-                    {factory.excluded.map((entry, i) => (
-                      <li key={i}>
-                        {entry.id}: {entry.reason}
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              )}
+              <h3>Versorgung</h3>
+              <ul className="imports">
+                {[
+                  ...stage.inputs,
+                  { itemId: stage.itemId, rate: stage.rate },
+                ].map((i) => (
+                  <li key={i.itemId}>
+                    <span>{itemName(i.itemId)}</span>
+                    <strong>
+                      {i.rate} / min ·{' '}
+                      {supplyLines(
+                        catalog,
+                        i.itemId,
+                        i.rate,
+                        factory.technology,
+                      )}{' '}
+                      {catalog.items.find((it) => it.id === i.itemId)!
+                        .transport === 'pipe'
+                        ? 'Pipes'
+                        : 'Belts'}
+                    </strong>
+                  </li>
+                ))}
+              </ul>
             </aside>
           )}
         </div>
-        <footer>
-          Importierte Daten bleiben in diesem Browser. Kein Upload und keine
-          Online-Zusammenarbeit eingerichtet.
-        </footer>
       </fieldset>
+      {profileOpen && (
+        <dialog
+          ref={dialog}
+          className="technology-dialog"
+          aria-label="Technologieprofil"
+          onCancel={(e) => {
+            e.preventDefault();
+            closeProfile();
+          }}
+        >
+          <div className="dialog-heading">
+            <h2>Technologieprofil</h2>
+            <button aria-label="Schließen" onClick={closeProfile}>
+              ×
+            </button>
+          </div>
+          <div className="profile-controls">
+            <label>
+              HUB-Tier
+              <select
+                aria-label="HUB-Tier"
+                value={tier}
+                onChange={(e) => {
+                  if (e.target.value === 'custom') return;
+                  const next = Number(e.target.value);
+                  setTier(next);
+                  setProfileDraft(technologyAtTier(next));
+                }}
+              >
+                <option value="custom">Individuell</option>
+                {Array.from({ length: 10 }, (_, n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Belts
+              <select
+                aria-label="Maximales Belt-Tier"
+                value={profileDraft.beltTier}
+                onChange={(e) =>
+                  setProfileDraft((p) => ({
+                    ...p,
+                    beltTier: Number(e.target.value),
+                  }))
+                }
+              >
+                {[1, 2, 3, 4, 5, 6].map((n) => (
+                  <option key={n} value={n}>
+                    Mk.{n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Pipes
+              <select
+                aria-label="Maximales Pipe-Tier"
+                value={profileDraft.pipeTier}
+                onChange={(e) =>
+                  setProfileDraft((p) => ({
+                    ...p,
+                    pipeTier: Number(e.target.value),
+                  }))
+                }
+              >
+                <option value="1">Mk.1</option>
+                <option value="2">Mk.2</option>
+              </select>
+            </label>
+          </div>
+          <h3>Maschinen</h3>
+          <div className="machine-options">
+            {catalog.machines.map((m) => (
+              <label key={m.id}>
+                <input
+                  type="checkbox"
+                  aria-label={'Maschine ' + m.name}
+                  checked={profileDraft.availableMachines.includes(m.id)}
+                  onChange={(e) =>
+                    toggleProfile('availableMachines', m.id, e.target.checked)
+                  }
+                />
+                {m.name}
+              </label>
+            ))}
+          </div>
+          <h3>Rezeptfreischaltungen</h3>
+          <input
+            type="search"
+            aria-label="Rezepte suchen"
+            placeholder="Rezepte suchen"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <div className="recipe-options">
+            {catalog.recipes
+              .filter((r) =>
+                r.name.toLowerCase().includes(search.toLowerCase()),
+              )
+              .map((r) => (
+                <label key={r.id}>
+                  <input
+                    type="checkbox"
+                    aria-label={'Rezept ' + r.name}
+                    checked={profileDraft.unlockedRecipes.includes(r.id)}
+                    onChange={(e) =>
+                      toggleProfile('unlockedRecipes', r.id, e.target.checked)
+                    }
+                  />
+                  <span>
+                    {r.name}
+                    {recipeUnlocks[r.id]!.alternate ? ' · Alt' : ''}
+                  </span>
+                </label>
+              ))}
+          </div>
+          {error && (
+            <div className="error-banner" role="alert">
+              {error}
+            </div>
+          )}
+          <div className="dialog-actions">
+            <button onClick={closeProfile}>Abbrechen</button>
+            <button className="primary" onClick={applyProfile}>
+              Profil anwenden
+            </button>
+          </div>
+        </dialog>
+      )}
     </main>
   );
 }

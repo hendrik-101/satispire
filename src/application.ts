@@ -1,3 +1,4 @@
+import { generateSupplyLayout } from './domain/supply-layout.js';
 import { z } from 'zod';
 import { type Catalog, validateCatalog } from './domain/catalog.js';
 import { solveProduction } from './domain/production.js';
@@ -65,6 +66,32 @@ export function createLocalApplication(
           .strict()
           .parse(raw);
         return { ok: true, data: solveProduction(catalog, args.input) };
+      }
+      if (name === 'plan_factory') {
+        const args = z
+          .object({
+            roomId: identity,
+            input: z
+              .object({
+                production: productionSchema,
+                rows: z.number().int().min(0).max(64).default(0),
+              })
+              .strict(),
+          })
+          .strict()
+          .parse(raw);
+        if (!args.input.production.technology)
+          throw new Error(
+            'Factory planning requires an explicit technology profile',
+          );
+        const production = solveProduction(catalog, args.input.production);
+        const layout = generateSupplyLayout(
+          catalog,
+          production,
+          args.input.production.technology,
+          args.input.rows,
+        );
+        return { ok: true, data: { production, layout } };
       }
       if (name === 'generate_floors') {
         const args = z
