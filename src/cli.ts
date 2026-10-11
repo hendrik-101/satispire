@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readBoundedUtf8File } from './bounded-file.js';
 import { syntheticCatalog, validateCatalog } from './domain/catalog.js';
 import { buildPlanDocument } from './planning.js';
 const demo = {
@@ -33,8 +33,7 @@ async function main() {
     else if (flag === '--input' || flag === '--catalog') {
       const path = args[++i];
       if (!path) throw new Error(`${flag} requires a file path`);
-      const file = await readFile(path, 'utf8');
-      if (file.length > 8_000_000) throw new Error('Input exceeds 8 MB limit');
+      const file = await readBoundedUtf8File(path);
       const data: unknown = JSON.parse(file);
       if (flag === '--catalog') catalog = validateCatalog(data);
       else input = data;

@@ -47,6 +47,7 @@ export interface ModelContext {
   registerTool(tool: WebTool): void;
   unregisterTool(name: string): void;
 }
+/** Disposal deactivates callbacks and retries pending removals; host failures raise AggregateError. */
 export function registerWebMcp(
   document: { modelContext?: ModelContext },
   execute: ToolExecutor,
@@ -59,7 +60,31 @@ export function registerWebMcp(
   ) {
     return { available: false, dispose: () => {} };
   }
-  const registered: ToolName[] = [];
+  const registered = new Set<ToolName>();
+  let active = true;
+  const cleanup = (): unknown[] => {
+    // Deactivate first: even failed removals cannot retain executable access.
+    active = false;
+    const failures: unknown[] = [];
+    for (const name of registered) {
+      try {
+        context.unregisterTool(name);
+        registered.delete(name);
+      } catch (error) {
+        failures.push(error);
+      }
+    }
+    return failures;
+  };
+  const dispose = (): void => {
+    const failures = cleanup();
+    if (failures.length) {
+      throw new AggregateError(
+        failures,
+        'WebMCP tool cleanup failed; retry disposal',
+      );
+    }
+  };
   try {
     for (const definition of toolDefinitions) {
       context.registerTool({
@@ -79,18 +104,23 @@ export function registerWebMcp(
           ],
           additionalProperties: false,
         },
-        execute: (input) => execute(definition.name, input),
+        execute: async (input) =>
+          active
+            ? execute(definition.name, input)
+            : {
+                ok: false,
+                error: {
+                  code: 'adapter-disposed',
+                  message: 'WebMCP tools are inactive',
+                },
+              },
       });
-      registered.push(definition.name);
+      registered.add(definition.name);
     }
   } catch {
-    for (const name of registered) context.unregisterTool(name);
-    return { available: false, dispose: () => {} };
+    // Keep failures tracked on the returned handle so callers can retry cleanup.
+    cleanup();
+    return { available: false, dispose };
   }
-  return {
-    available: true,
-    dispose: () => {
-      for (const name of registered.splice(0)) context.unregisterTool(name);
-    },
-  };
+  return { available: true, dispose };
 }

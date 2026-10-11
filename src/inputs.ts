@@ -10,7 +10,7 @@ export const productionSchema = z
       )
       .min(1)
       .max(256),
-    recipes: z.record(identity),
+    recipes: z.record(identity, identity),
     imports: z.array(identity).max(1024),
   })
   .strict();

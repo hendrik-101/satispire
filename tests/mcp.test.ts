@@ -2,6 +2,70 @@ import { expect, test } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { createMcpServer } from '../src/adapters/mcp';
+import { createLocalApplication } from '../src/application';
+import { createRoom } from '../src/domain/rooms';
+import { syntheticCatalog } from '../src/domain/catalog';
+
+test('MCP rejects invalid recipe map keys and values in the shared input schema', async () => {
+  const app = createLocalApplication(
+    createRoom({ roomId: 'room-a', ownerId: 'owner', ownerName: 'Owner' }),
+    { roomId: 'room-a', participantId: 'owner' },
+    syntheticCatalog,
+  );
+  const server = createMcpServer(app.execute);
+  const client = new Client({ name: 'record-key-test', version: '1.0.0' });
+  const [clientTransport, serverTransport] =
+    InMemoryTransport.createLinkedPair();
+  await server.connect(serverTransport);
+  await client.connect(clientTransport);
+  try {
+    for (const recipes of [
+      { ['x'.repeat(129)]: 'example:press' },
+      { '': 'example:press' },
+      { 'example:plate': 'x'.repeat(129) },
+      { 'example:plate': '' },
+    ]) {
+      const result = await client.callTool({
+        name: 'solve_production',
+        arguments: {
+          roomId: 'room-a',
+          input: {
+            targets: [{ itemId: 'example:plate', rate: '20' }],
+            recipes,
+            imports: ['example:ore'],
+          },
+        },
+      });
+      expect(result.isError).toBe(true);
+      expect(result.structuredContent).toMatchObject({
+        ok: false,
+        error: { code: 'invalid-input', message: 'Invalid tool arguments' },
+      });
+    }
+    const valid = await client.callTool({
+      name: 'solve_production',
+      arguments: {
+        roomId: 'room-a',
+        input: {
+          targets: [{ itemId: 'example:plate', rate: '20' }],
+          recipes: {
+            'example:plate': 'example:press',
+            'example:ingot': 'example:smelt',
+          },
+          imports: ['example:ore'],
+        },
+      },
+    });
+    expect(valid.isError).toBe(false);
+    expect(valid.structuredContent).toMatchObject({
+      ok: true,
+      data: { imports: [{ itemId: 'example:ore', rate: '30' }] },
+    });
+  } finally {
+    await client.close();
+    await server.close();
+  }
+});
 
 test('MCP client lists and calls tools over the actual protocol', async () => {
   const calls: unknown[] = [];
