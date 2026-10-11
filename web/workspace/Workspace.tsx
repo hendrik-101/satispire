@@ -28,6 +28,12 @@ import { FloorView } from './FloorView';
 import { Graph } from './Graph';
 import { Icon } from './Icon';
 import { ProductionView } from './ProductionView';
+import { createLocalApplication } from '../../src/application.js';
+import { createRoom } from '../../src/domain/rooms.js';
+import {
+  registerWebMcp,
+  type ModelContext,
+} from '../../src/adapters/webmcp.js';
 
 const catalog = vanillaCatalog;
 const firstTechnology = technologyAtTier(2);
@@ -73,6 +79,44 @@ export function Workspace() {
   const dialog = useRef<HTMLDialogElement>(null);
   const sequence = useRef(0);
   const presentation = effectivePresentation(preferences, width);
+  useEffect(() => {
+    const room = createRoom({
+      roomId: 'local',
+      ownerId: 'workspace-owner',
+      ownerName: 'Owner',
+    });
+    const app = createLocalApplication(
+      room,
+      { roomId: room.id, participantId: 'workspace-owner' },
+      catalog,
+    );
+    const register = () =>
+      registerWebMcp(
+        document as Document & { modelContext?: ModelContext },
+        app.execute,
+      );
+    let handle = register();
+    const dispose = () => {
+      try {
+        handle.dispose();
+      } catch {
+        // The adapter deactivates callbacks before cleanup; unmount retries pending removals.
+      }
+    };
+    const resume = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        dispose();
+        handle = register();
+      }
+    };
+    window.addEventListener('pagehide', dispose);
+    window.addEventListener('pageshow', resume);
+    return () => {
+      window.removeEventListener('pagehide', dispose);
+      window.removeEventListener('pageshow', resume);
+      dispose();
+    };
+  }, []);
   useEffect(() => {
     try {
       const saved = localStorage.getItem(KEY);
