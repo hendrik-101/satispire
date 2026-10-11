@@ -304,3 +304,58 @@ test('technology actions remain reachable in short landscape viewport', async ({
   await page.getByRole('button', { name: 'Profil anwenden' }).click();
   await expect(dialog).toHaveCount(0);
 });
+
+test('responsive navigation and custom transport shortcuts remain consistent', async ({
+  page,
+}) => {
+  await ready(page);
+  await page.getByRole('button', { name: 'Navigation', exact: true }).click();
+  const saved = await page.evaluate(() =>
+    localStorage.getItem('satispire.personal-view.v2'),
+  );
+  await page.setViewportSize({ width: 800, height: 700 });
+  await expect(
+    page.getByRole('button', { name: 'Navigation', exact: true }),
+  ).toBeDisabled();
+  expect(
+    await page.evaluate(() =>
+      localStorage.getItem('satispire.personal-view.v2'),
+    ),
+  ).toBe(saved);
+  await page.setViewportSize({ width: 1440, height: 960 });
+  await expect(page.getByLabel('Stufennavigation')).toBeVisible();
+  await page.getByRole('button', { name: 'Technologie', exact: true }).click();
+  await page.getByLabel('HUB-Tier').selectOption('6');
+  await page.getByLabel('Maximales Belt-Tier').selectOption('1');
+  await expect(page.getByLabel('HUB-Tier')).toHaveValue('custom');
+  await page.getByLabel('HUB-Tier').selectOption('6');
+  await expect(page.getByLabel('Maximales Belt-Tier')).toHaveValue('4');
+  await page.getByLabel('Maximales Pipe-Tier').selectOption('1');
+  await expect(page.getByLabel('HUB-Tier')).toHaveValue('custom');
+  await page.getByLabel('HUB-Tier').selectOption('6');
+  await expect(page.getByLabel('Maximales Pipe-Tier')).toHaveValue('2');
+});
+
+test('unlocked silicon alternate exposes a supported circuit board chain', async ({
+  page,
+}) => {
+  await ready(page);
+  await page.getByRole('button', { name: 'Technologie', exact: true }).click();
+  await page.getByLabel('HUB-Tier').selectOption('5');
+  await page.getByLabel('Rezepte suchen').fill('Silica');
+  await page.getByLabel('Rezept Silica', { exact: true }).check();
+  await page.getByLabel('Rezepte suchen').fill('Silicon Circuit Board');
+  await page
+    .getByLabel('Rezept Alternate: Silicon Circuit Board', { exact: true })
+    .check();
+  await page.getByRole('button', { name: 'Profil anwenden' }).click();
+  await page.getByLabel('Produktionsziel').selectOption('Desc_CircuitBoard_C');
+  await page.getByLabel('Zielrate pro Minute').fill('7.5');
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(
+    page.getByText('15/2 / min', { exact: true }).first(),
+  ).toBeVisible();
+});

@@ -62,14 +62,30 @@ export function availableChoices(
   profile: TechnologyProfile,
 ): Record<string, string> {
   const result: Record<string, string> = {};
-  for (const recipe of availableRecipes(profile).sort(
+  const recipes = availableRecipes(profile).sort(
     (a, b) =>
       Number(recipeUnlocks[a.id]!.alternate) -
       Number(recipeUnlocks[b.id]!.alternate),
-  )) {
-    const id = recipe.outputs[0]!.itemId;
-    result[id] ??= recipe.id;
+  );
+  const raw = new Set(
+    vanillaCatalog.items.filter((i) => i.raw).map((i) => i.id),
+  );
+  function resolve(itemId: string, ancestors: Set<string>): boolean {
+    if (raw.has(itemId)) return true;
+    if (ancestors.has(itemId)) return false;
+    if (result[itemId]) return true;
+    const path = new Set([...ancestors, itemId]);
+    for (const recipe of recipes.filter(
+      (r) => r.outputs[0]!.itemId === itemId,
+    )) {
+      if (recipe.inputs.every((input) => resolve(input.itemId, path))) {
+        result[itemId] = recipe.id;
+        return true;
+      }
+    }
+    return false;
   }
+  for (const recipe of recipes) resolve(recipe.outputs[0]!.itemId, new Set());
   return result;
 }
 export function itemName(id: string): string {

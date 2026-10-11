@@ -301,6 +301,7 @@ export function Workspace() {
                       : 'Inspector'
                 }
                 aria-pressed={presentation.panels[name]}
+                disabled={name === 'navigation' && width < 1200}
                 onClick={() => panel(name)}
               >
                 <Icon name={name} />
@@ -643,12 +644,13 @@ export function Workspace() {
               <select
                 aria-label="Maximales Belt-Tier"
                 value={profileDraft.beltTier}
-                onChange={(e) =>
+                onChange={(e) => {
+                  setTier('custom');
                   setProfileDraft((p) => ({
                     ...p,
                     beltTier: Number(e.target.value),
-                  }))
-                }
+                  }));
+                }}
               >
                 {[1, 2, 3, 4, 5, 6].map((n) => (
                   <option key={n} value={n}>
@@ -662,12 +664,13 @@ export function Workspace() {
               <select
                 aria-label="Maximales Pipe-Tier"
                 value={profileDraft.pipeTier}
-                onChange={(e) =>
+                onChange={(e) => {
+                  setTier('custom');
                   setProfileDraft((p) => ({
                     ...p,
                     pipeTier: Number(e.target.value),
-                  }))
-                }
+                  }));
+                }}
               >
                 <option value="1">Mk.1</option>
                 <option value="2">Mk.2</option>

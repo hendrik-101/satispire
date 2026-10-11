@@ -29,3 +29,40 @@ it('gates alternates and machines by explicit technology', () => {
   expect(advanced.unlockedRecipes).toContain('Recipe_Alternate_Screw_C');
   expect(advanced.availableMachines).toContain('Desc_FoundryMk1_C');
 });
+it('uses a solvable unlocked alternate when the standard chain needs unsupported coproducts', () => {
+  const profile = technologyAtTier(5, [
+    'Recipe_Alternate_CircuitBoard_1_C',
+    'Recipe_Silica_C',
+  ]);
+  const recipes = availableChoices(profile);
+  expect(recipes.Desc_CircuitBoard_C).toBe('Recipe_Alternate_CircuitBoard_1_C');
+  const plan = solveProduction(vanillaCatalog, {
+    targets: [{ itemId: 'Desc_CircuitBoard_C', rate: '7.5' }],
+    recipes,
+    imports: vanillaCatalog.items.filter((i) => i.raw).map((i) => i.id),
+    technology: profile,
+  });
+  expect(plan.nodes.map((n) => n.itemId)).not.toContain('Desc_Plastic_C');
+  expect(plan.nodes.find((n) => n.itemId === 'Desc_CircuitBoard_C')?.rate).toBe(
+    '15/2',
+  );
+});
+it('keeps default chains acyclic and solvable even with every alternate unlocked', () => {
+  const profile = technologyAtTier(
+    9,
+    vanillaCatalog.recipes.map((r) => r.id),
+  );
+  const recipes = availableChoices(profile);
+  for (const itemId of Object.keys(recipes)) {
+    expect(
+      () =>
+        solveProduction(vanillaCatalog, {
+          targets: [{ itemId, rate: '1' }],
+          recipes,
+          imports: vanillaCatalog.items.filter((i) => i.raw).map((i) => i.id),
+          technology: profile,
+        }),
+      itemId,
+    ).not.toThrow();
+  }
+});
