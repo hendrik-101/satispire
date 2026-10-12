@@ -20,18 +20,20 @@ Static path escape/incorrect MIME; untrusted forwarded headers; build readiness/
 Files: src/runtime/http.ts, serve.ts, healthcheck.ts; scripts/write-build-info.mjs; tests/http-runtime.test.ts; package scripts/dependency and CI.
 Interfaces: startHttpRuntime({buildDirectory,hostname?,port?,gracefulShutdown?}) -> srvx Server; npm run build:runtime reads APP_REVISION (40 lowercase hex); npm start serves the compiled app with HOST/PORT.
 
-- [ ] Write real HTTP tests with a disposable built-handler fixture and observe RED.
-- [ ] Implement wrapper, strict metadata/settings and process entrypoints; observe GREEN.
-- [ ] Build actual app and run compiled HTTP smoke, inherited Chromium and gates.
+- [x] Write real HTTP tests with a disposable built-handler fixture and observe RED.
+- [x] Implement wrapper, strict metadata/settings and process entrypoints; observe GREEN.
+- [x] Build actual app and run compiled HTTP smoke, inherited Chromium and gates.
 
 ## Task 2: Container and deployment handoff
 
 Files: Dockerfile, .dockerignore, deploy/compose.test.yml, docs/deployment.md; scripts/runtime-smoke.mjs and container-smoke.mjs; CI.
 Interfaces: APP_REVISION build argument -> fixed /version.json revision; port 3000 inside image; externally supplied SATISPIRE_IMAGE digest, SATISPIRE_HOST_PORT and CLOUDFLARED_WEB_NETWORK.
 
-- [ ] Implement isolated image/health probe and required-variable Compose contract.
-- [ ] Prove actual local non-root/read-only container health, assets/planning, identity and shutdown; record any environment blockers honestly.
-- [ ] Document Netcup owner acceptance/rollback and scout-proven squash net-patch recipe.
+- [x] Implement isolated image/health probe and required-variable Compose contract.
+- [x] Prove actual local non-root/read-only container health, assets/planning, identity and shutdown; record any environment blockers honestly.
+- [x] Document Netcup owner acceptance/rollback and scout-proven squash net-patch recipe.
 - [ ] Publish separate Draft PR on PR15; run current-head CI and external normal/Security reviews/fixes. Do not merge/deploy.
 
 Ruling: existing user instructions explicitly authorize Cloud implementation and a small runtime/deployment artifact, with sole writer and isolated Draft PR. Continue inline without renewing design/plan execution approval; live integration/deployment remains withheld.
+
+Ruling: the user later authorized Squash integration of PR13–15 only. Main is 3ee83ed, with reviewed-tree equality and fresh CI/reviews before each merge; final main passes 326 units/45 browsers. Runtime is rebased unchanged onto that main, and remains a separate unmerged follow-up. Build-only executor CA uses a transient secret without weakening TLS. A real context privacy regression required stricter source-file inclusion.
