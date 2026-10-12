@@ -32,3 +32,11 @@ jobs:
       - run: npm run build:web
       - run: npm run smoke
       - run: npm run plan -- --demo
+      - run: node scripts/write-build-info.mjs
+        env:
+          APP_REVISION: ${{ github.sha }}
+      - run: npm run test:runtime
+      - run: npm run test:browser:runtime
+      - run: npm run test:container
+        env:
+          APP_REVISION: ${{ github.sha }}

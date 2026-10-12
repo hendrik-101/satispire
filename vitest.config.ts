@@ -5,7 +5,13 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts', 'convex/**/*.ts'],
-      exclude: ['src/cli.ts', 'src/adapters/stdio.ts', 'convex/schema.ts'],
+      exclude: [
+        'src/cli.ts',
+        'src/adapters/stdio.ts',
+        'convex/schema.ts',
+        'src/runtime/serve.ts',
+        'src/runtime/healthcheck.ts',
+      ],
       reporter: ['text', 'json-summary', 'html'],
       thresholds: { lines: 80, functions: 80, branches: 70, statements: 80 },
     },
