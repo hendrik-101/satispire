@@ -1017,3 +1017,9 @@ input[type='checkbox'] {
   left: 0;
   right: auto;
 }
+
+@media (max-width: 640px) {
+  .variant-control {
+    position: static;
+  }
+}

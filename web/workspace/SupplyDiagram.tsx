@@ -78,20 +78,35 @@ export function SupplyDiagram({
             {labels[i]!.text}
           </text>
           {floor.rowCounts.length > 1 &&
-            path([
-              { x: feeder(i), y: firstY - i * 1.2 },
-              {
-                x: feeder(i),
-                y: firstY + (floor.rowCounts.length - 1) * 16 - i * 1.2,
-              },
-            ])}
+            path(
+              floor.inputSide === 'south'
+                ? [
+                    {
+                      x: feeder(i),
+                      y: firstY + (floor.rowCounts.length - 1) * 16 - i * 1.2,
+                    },
+                    { x: feeder(i), y: firstY - i * 1.2 },
+                  ]
+                : [
+                    { x: feeder(i), y: firstY - i * 1.2 },
+                    {
+                      x: feeder(i),
+                      y: firstY + (floor.rowCounts.length - 1) * 16 - i * 1.2,
+                    },
+                  ],
+            )}
         </g>
       ))}
       {path(
-        [
-          { x: outputRail, y: firstY + 12 },
-          { x: outputRail, y: maxY + 5 },
-        ],
+        floor.outputSide === 'north'
+          ? [
+              { x: outputRail, y: maxY + 5 },
+              { x: outputRail, y: firstY + 12 },
+            ]
+          : [
+              { x: outputRail, y: firstY + 12 },
+              { x: outputRail, y: maxY + 5 },
+            ],
         true,
       )}
       <g data-output-attachment>
