@@ -23,7 +23,12 @@
     "smoke": "node scripts/smoke.mjs",
     "dev": "vite dev",
     "build:web": "vite build",
-    "import:discovery": "tsx scripts/import-discovery.ts"
+    "import:discovery": "tsx scripts/import-discovery.ts",
+    "build:runtime": "npm run build && npm run build:web && node scripts/write-build-info.mjs",
+    "start": "node dist/runtime/serve.js",
+    "test:runtime": "node scripts/runtime-smoke.mjs",
+    "test:container": "node scripts/container-smoke.mjs",
+    "test:browser:runtime": "playwright test --config playwright.runtime.config.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
@@ -32,7 +37,8 @@
     "convex": "1.46.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "zod": "3.25.76"
+    "zod": "3.25.76",
+    "srvx": "0.11.22"
   },
   "devDependencies": {
     "@playwright/test": "1.64.0",

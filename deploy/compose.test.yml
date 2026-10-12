@@ -1,0 +1,33 @@
+name: satispire-test
+services:
+  app:
+    image: '${SATISPIRE_IMAGE:?Supply the reviewed immutable image digest}'
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: '3000'
+    ports:
+      - '127.0.0.1:${SATISPIRE_HOST_PORT:?Supply a verified free loopback port}:3000'
+    networks:
+      web:
+        aliases:
+          - satispire-test-app
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    mem_limit: 512m
+    cpus: '1.0'
+    pids_limit: 128
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+networks:
+  web:
+    external: true
+    name: '${CLOUDFLARED_WEB_NETWORK:?Supply the existing tunnel network}'
