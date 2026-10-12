@@ -1,3 +1,4 @@
+import { variantSchema } from './domain/build-variants.js';
 import { generateSupplyLayout } from './domain/supply-layout.js';
 import { z } from 'zod';
 import { type Catalog, validateCatalog } from './domain/catalog.js';
@@ -75,6 +76,7 @@ export function createLocalApplication(
               .object({
                 production: productionSchema,
                 rows: z.number().int().min(0).max(64).default(0),
+                variant: variantSchema.optional(),
               })
               .strict(),
           })
@@ -90,6 +92,7 @@ export function createLocalApplication(
           production,
           args.input.production.technology,
           args.input.rows,
+          args.input.variant,
         );
         return { ok: true, data: { production, layout } };
       }

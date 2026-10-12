@@ -66,3 +66,23 @@ Both classic MCP and WebMCP expose `plan_factory` through the same application f
 For 20 Iron Plate/min, select `Recipe_IronPlate_C` for `Desc_IronPlate_C` and `Recipe_IngotIron_C` for `Desc_IronIngot_C`; allow `Desc_OreIron_C` imports, both corresponding recipes and the `Desc_ConstructorMk1_C`/`Desc_SmelterMk1_C` machine identities. With beltTier 1 and pipeTier 1, the result needs exactly 30 Iron Ore/min. The compiled MCP smoke exercises this exact call over stdio.
 
 The client workspace registers these tools against the same fixed Vanilla catalog when its host supplies the early-preview `document.modelContext` API. Its private room ID is `local`; command state is client-local, and planning tools return projections from explicit inputs. Tools are deactivated on unmount/pagehide and restored on a persisted pageshow. No host or a failing host leaves normal UI planning available. This is not a provisioned online collaboration service or a claim of native AI-client support. The actual-page browser test supplies a preview host, computes 20 Iron Plates/min from 30 Iron Ore/min and checks cross-room rejection, callback disposal/restoration and reload.
+
+## Build variants in `plan_factory`
+
+`plan_factory.input` accepts `production`, `rows` (0 = auto), and optional `variant`. Both classic MCP and WebMCP delegate to the same strict parser and pure supply projection. The default is:
+
+```json
+{
+  "schemaVersion": 1,
+  "pattern": "alternating",
+  "inputSide": "west",
+  "outputSide": "east",
+  "overrides": []
+}
+```
+
+Sides are `west`, `east`, `north`, `south`. `fixed` repeats the pair on every floor; `alternating` swaps the pair on odd zero-based floors. Same-side pairs are supported. Per-stage exceptions use `overrides: [{itemId,inputSide,outputSide}]` and must name unique manufactured stages in the current plan. Limits are 64 floors/overrides and 256 actual dependencies/transfers. Unknown fields/sides/versions fail explicitly.
+
+`layout.build` carries the normalized versioned variant and dependency-first floor contract, including each material's source floor (null for external intake). `layout.transfers` contains one named transfer per actual dependency: source/destination floor, common perimeter side/position, stable slot, inclusive span, and perimeter side-change count. Zero side changes means aligned endpoint sides. A stable local perimeter-distance heuristic chooses sides; this does not guarantee globally minimum crossings or physically routed lifts. Input and output positions on `layout.floors[].connections` are block-local. Transfer positions are shared floor coordinates. The old unconditional `floor.lift` placeholder is replaced by `transferIds` referencing actual dependencies. `floor.targetOutput` is null for internal-only stages; otherwise it holds requested delivery rate/line count with a separate `connections.targetOutput` terminal. Aggregate `floor.output` remains total production and transfers retain their individual internal rates. Physical geometry remains null, and synthetic `generate_floors` is unchanged.
+
+UI version-1 plan files now preserve optional `layout: {rows,variant}`. Old version-1 files without layout use automatic rows and the default variant; malformed layout is rejected atomically. Normal UI target changes remove exceptions for stages no longer present; importing a stale named exception fails rather than silently modifying an imported document.

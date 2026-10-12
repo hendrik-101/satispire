@@ -1,9 +1,13 @@
+import {
+  defaultBuildVariant,
+  type BuildVariant,
+} from '../../src/domain/build-variants.js';
+import { planFileSchema } from '../../src/plan-file.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   solveProduction,
   type ProductionInput,
 } from '../../src/domain/production.js';
-import { productionSchema } from '../../src/inputs.js';
 import {
   defaultViewPreferences,
   effectivePresentation,
@@ -44,6 +48,15 @@ const firstInput: ProductionInput = {
   imports: catalog.items.filter((i) => i.raw).map((i) => i.id),
   technology: firstTechnology,
 };
+function primaryStage(
+  input: ProductionInput,
+  plan: ReturnType<typeof solveProduction>,
+) {
+  return (
+    input.targets.find((t) => plan.nodes.some((n) => n.itemId === t.itemId))
+      ?.itemId ?? plan.nodes[0]!.itemId
+  );
+}
 const initialView = {
   ...defaultViewPreferences,
   panels: { navigation: false, graph: false, inspector: false },
@@ -59,6 +72,7 @@ export function Workspace() {
     plan: solveProduction(catalog, firstInput),
     technology: firstTechnology,
     rows: 0,
+    variant: defaultBuildVariant,
   }));
   const [target, setTarget] = useState(firstInput.targets[0]!.itemId);
   const [rate, setRate] = useState('20');
@@ -155,10 +169,25 @@ export function Workspace() {
   useEffect(() => {
     if (profileOpen) dialog.current?.showModal();
   }, [profileOpen]);
-  const candidates = useMemo(
-    () => availableRecipes(factory.technology),
-    [factory.technology],
-  );
+  const candidates = useMemo(() => {
+    const defaults = availableChoices(
+      factory.technology,
+      factory.input.imports,
+    );
+    return availableRecipes(factory.technology).filter((recipe) => {
+      try {
+        solveProduction(catalog, {
+          targets: [{ itemId: recipe.outputs[0]!.itemId, rate: '1' }],
+          recipes: { ...defaults, [recipe.outputs[0]!.itemId]: recipe.id },
+          imports: factory.input.imports,
+          technology: factory.technology,
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    });
+  }, [factory.technology, factory.input.imports]);
   const manufactured = useMemo(() => {
     const defaults = availableChoices(
       factory.technology,
@@ -179,28 +208,50 @@ export function Workspace() {
       }
     });
   }, [factory.technology, factory.input.imports]);
+  const supplyLayout = useMemo(
+    () =>
+      generateSupplyLayout(
+        catalog,
+        factory.plan,
+        factory.technology,
+        factory.rows,
+        factory.variant,
+      ),
+    [factory],
+  );
   function evaluate(
     input: ProductionInput,
     technology: TechnologyProfile,
     rows = factory.rows,
+    variant: BuildVariant = factory.variant,
+    pruneOverrides = true,
   ) {
     const resolved = { ...input, technology };
     const plan = solveProduction(catalog, resolved);
-    generateSupplyLayout(catalog, plan, technology, rows);
-    return { input: resolved, plan, technology, rows };
+    const normalized = pruneOverrides
+      ? {
+          ...variant,
+          overrides: variant.overrides.filter((o) =>
+            plan.nodes.some((n) => n.itemId === o.itemId),
+          ),
+        }
+      : variant;
+    generateSupplyLayout(catalog, plan, technology, rows, normalized);
+    return { input: resolved, plan, technology, rows, variant: normalized };
   }
   function apply(
     input: ProductionInput,
     technology = factory.technology,
     rows = factory.rows,
+    variant: BuildVariant = factory.variant,
   ) {
     sequence.current++;
     setPending(false);
-    const next = evaluate(input, technology, rows);
+    const next = evaluate(input, technology, rows, variant);
     setFactory(next);
     setError('');
     if (!next.plan.nodes.some((n) => n.itemId === selected))
-      selectStage(next.plan.nodes[0]?.itemId ?? '');
+      selectStage(primaryStage(next.input, next.plan));
     return next;
   }
   function calculate() {
@@ -225,20 +276,18 @@ export function Workspace() {
     try {
       if (file.size > 1_000_000)
         throw new Error('Plan überschreitet das Größenlimit.');
-      const document: unknown = JSON.parse(await file.text());
-      if (
-        !document ||
-        typeof document !== 'object' ||
-        !('schemaVersion' in document) ||
-        document.schemaVersion !== 1 ||
-        !('catalogVersion' in document) ||
-        document.catalogVersion !== catalog.catalogVersion ||
-        !('production' in document)
-      )
+      const document = planFileSchema.parse(JSON.parse(await file.text()));
+      if (document.catalogVersion !== catalog.catalogVersion)
         throw new Error('Plan- oder Katalogversion passt nicht.');
-      const input = productionSchema.parse(document.production);
+      const input = document.production;
       const technology = input.technology ?? factory.technology;
-      const next = evaluate(input, technology);
+      const next = evaluate(
+        input,
+        technology,
+        document.layout.rows,
+        document.layout.variant,
+        false,
+      );
       if (id !== sequence.current) return;
       setFactory(next);
       setTarget(input.targets[0]!.itemId);
@@ -250,7 +299,7 @@ export function Workspace() {
           next.plan.nodes.map((node) => [node.itemId, node.recipeId]),
         ),
       });
-      selectStage(next.plan.nodes[0]?.itemId ?? '');
+      selectStage(primaryStage(input, next.plan));
       setError('');
     } catch (e) {
       if (id === sequence.current) setError(message(e));
@@ -267,6 +316,7 @@ export function Workspace() {
               schemaVersion: 1,
               catalogVersion: catalog.catalogVersion,
               production: factory.input,
+              layout: { rows: factory.rows, variant: factory.variant },
             },
             null,
             2,
@@ -508,7 +558,7 @@ export function Workspace() {
           {presentation.panels.navigation && (
             <aside className="navigation-panel" aria-label="Stufennavigation">
               <h2>Produktion</h2>
-              {factory.plan.nodes.map((n, i) => (
+              {supplyLayout.floors.map((n, i) => (
                 <button
                   key={n.itemId}
                   className={
@@ -547,7 +597,7 @@ export function Workspace() {
                   value={selected}
                   onChange={(e) => selectStage(e.target.value)}
                 >
-                  {factory.plan.nodes.map((n, i) => (
+                  {supplyLayout.floors.map((n, i) => (
                     <option key={n.itemId} value={n.itemId}>
                       Etage {i + 1} · {itemName(n.itemId)}
                     </option>
@@ -604,6 +654,19 @@ export function Workspace() {
                   selected={selected}
                   zoom={preferences.camera.zoom}
                   rows={factory.rows}
+                  variant={factory.variant}
+                  changeVariant={(variant) => {
+                    try {
+                      apply(
+                        factory.input,
+                        factory.technology,
+                        factory.rows,
+                        variant,
+                      );
+                    } catch (e) {
+                      setError(message(e));
+                    }
+                  }}
                   machine={Math.min(selectedMachine, stage.machineCount)}
                   selectMachine={setSelectedMachine}
                   motion={motion && visible}
