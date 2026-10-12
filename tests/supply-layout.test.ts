@@ -45,12 +45,15 @@ it('sizes supply lanes for current belts and orients logical output towards lift
     high.floors.find((f) => f.itemId === 'Desc_IronPlate_C')!.inputs[0]!.lines,
   ).toBe(2);
   expect(
-    low.floors.every(
-      (f) =>
-        f.connections.output.side === 'east' &&
-        f.connections.input.side === 'east',
-    ),
-  ).toBe(true);
+    low.floors.map((f) => [
+      f.connections.input.side,
+      f.connections.output.side,
+    ]),
+  ).toEqual([
+    ['west', 'east'],
+    ['east', 'west'],
+  ]);
+  expect(low.transfers[0]).toMatchObject({ side: 'east', sideChanges: 0 });
 });
 it('rejects excessive layouts and invalid row settings rather than truncating machines', () => {
   const plan = solveProduction(vanillaCatalog, {
@@ -79,4 +82,33 @@ it('rejects raw-only plans before replacing the last valid workspace', () => {
   expect(() =>
     generateSupplyLayout(vanillaCatalog, plan, technology, 0),
   ).toThrow(/manufactured|Produktionsstufe/i);
+});
+it('separates target deliveries from internal transfers without double counting production', () => {
+  const plan = solveProduction(vanillaCatalog, {
+    ...input,
+    targets: [
+      { itemId: 'Desc_IronPlate_C', rate: '20' },
+      { itemId: 'Desc_IronIngot_C', rate: '20' },
+    ],
+  });
+  const layout = generateSupplyLayout(vanillaCatalog, plan, technology, 0);
+  const ingot = layout.floors.find((f) => f.itemId === 'Desc_IronIngot_C')!;
+  expect(ingot.output.rate).toBe('50');
+  expect(ingot.targetOutput).toMatchObject({
+    itemId: 'Desc_IronIngot_C',
+    rate: '20',
+    lines: 1,
+  });
+  expect(
+    layout.transfers.find((t) => t.fromItemId === 'Desc_IronIngot_C')!.rate,
+  ).toBe('30');
+  expect(ingot.connections.targetOutput).not.toEqual(ingot.connections.output);
+  const chain = generateSupplyLayout(
+    vanillaCatalog,
+    solveProduction(vanillaCatalog, input),
+    technology,
+    0,
+  );
+  expect(chain.floors[0]!.targetOutput).toBeNull();
+  expect(chain.floors[0]!.connections.targetOutput).toBeNull();
 });

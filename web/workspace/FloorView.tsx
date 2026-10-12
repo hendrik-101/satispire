@@ -1,3 +1,7 @@
+import { supplySceneMetrics } from './supply-scene.js';
+import { type BuildVariant } from '../../src/domain/build-variants.js';
+import { VariantControl } from './VariantControl.js';
+import { SupplyDiagram } from './SupplyDiagram.js';
 import { useId, useMemo, useRef, useState } from 'react';
 import type { Catalog } from '../../src/domain/catalog.js';
 import type { ProductionPlan } from '../../src/domain/production.js';
@@ -13,6 +17,8 @@ export function FloorView({
   selected,
   zoom,
   rows,
+  variant,
+  changeVariant,
   machine = 1,
   selectMachine,
   motion = false,
@@ -24,14 +30,16 @@ export function FloorView({
   selected: string;
   zoom: number;
   rows: number;
+  variant: BuildVariant;
+  changeVariant: (variant: BuildVariant) => void;
   machine?: number;
   selectMachine?: (id: number) => void;
   motion?: boolean;
   compact?: boolean;
 }) {
   const layout = useMemo(
-    () => generateSupplyLayout(catalog, plan, technology, rows),
-    [catalog, plan, technology, rows],
+    () => generateSupplyLayout(catalog, plan, technology, rows, variant),
+    [catalog, plan, technology, rows, variant],
   );
   const floor =
     layout.floors.find((f) => f.itemId === selected) ?? layout.floors[0]!;
@@ -47,51 +55,28 @@ export function FloorView({
     cameraX: number;
     cameraY: number;
   } | null>(null);
-  const maxX = Math.max(...floor.machines.map((m) => m.x + m.width));
-  const maxY = Math.max(...floor.machines.map((m) => m.y + m.depth));
-  const transferX = maxX + 13;
-  const inputX = maxX + 3;
-  const feeds = Math.max(0, Math.min(4, floor.inputs.length));
-  const feedIndices = Array.from({ length: feeds }, (_, i) => i);
-  const portX = (x: number, feed: number) =>
-    x + 1 + ((feed + 1) * 6) / (feeds + 1);
-  const outputX = maxX + 9;
-  const sceneWidth = transferX + 12;
-  const sceneHeight = maxY + 13;
+  const machines = floor.machines.map((m) => ({
+    ...m,
+    x: m.x + 17,
+    y: m.y + 17,
+  }));
+  const { feeds, sceneLeft, sceneTop, sceneWidth, sceneHeight } =
+    supplySceneMetrics(layout, floor);
   const scale = zoom * camera.scale;
   const viewWidth = sceneWidth / scale;
   const viewHeight = sceneHeight / scale;
-  const viewX = (sceneWidth - viewWidth) / 2 + camera.x;
-  const viewY = (sceneHeight - viewHeight) / 2 + camera.y;
-  const top = floor.machines[0]!.y - 3;
-  const bottom = maxY + 3;
-  const transferY = (top + bottom) / 2;
-  const belt = (d: string, output = false) => (
-    <g
-      className={`supply-belt ${output ? 'supply-belt-output' : 'supply-belt-input'}`}
-    >
-      <path
-        d={d}
-        fill="none"
-        stroke="#17232b"
-        strokeWidth="0.7"
-        strokeLinejoin="round"
-      />
-      <path
-        className="supply-belt-edge"
-        d={d}
-        fill="none"
-        stroke={output ? '#eea15d' : '#65b9e5'}
-        strokeWidth="0.3"
-        strokeLinejoin="round"
-        markerEnd={`url(#${marker}-${output ? 'out' : 'in'})`}
-      />
-    </g>
-  );
+  const viewX = sceneLeft + (sceneWidth - viewWidth) / 2 + camera.x;
+  const viewY = sceneTop + (sceneHeight - viewHeight) / 2 + camera.y;
   return (
     <section className="floor-panel" aria-label="Etagenansicht">
       <div className="canvas-heading">
         <h2>{itemName(floor.machineId)}</h2>
+        <VariantControl
+          variant={variant}
+          itemId={floor.itemId}
+          index={floor.index}
+          onChange={changeVariant}
+        />
       </div>
       <div className="floor-canvas-tools">
         <button
@@ -130,6 +115,9 @@ export function FloorView({
         <svg
           className={`floor-scene${motion ? ' flow-motion' : ''}`}
           data-testid="floor-scene"
+          data-floor-index={floor.index}
+          data-input-side={floor.inputSide}
+          data-output-side={floor.outputSide}
           viewBox={`${viewX} ${viewY} ${viewWidth} ${viewHeight}`}
           role="group"
           aria-label={`Blockschema ${itemName(floor.itemId)}`}
@@ -193,136 +181,8 @@ export function FloorView({
               </marker>
             ))}
           </defs>
-          <rect
-            className="block-boundary"
-            x="3"
-            y="2"
-            width={sceneWidth - 6}
-            height={sceneHeight - 4}
-            rx="1"
-            fill="#28303822"
-            stroke="#48545e"
-            strokeWidth="0.15"
-          />
-          {feedIndices.map((feed) => (
-            <g
-              key={feed}
-              data-feed={feed + 1}
-              aria-label={
-                floor.inputs[feed]
-                  ? itemName(floor.inputs[feed]!.itemId)
-                  : undefined
-              }
-            >
-              <text
-                x="4"
-                y={sceneHeight - 3 - feed * 2}
-                fontSize="1.7"
-                fill="#65b9e5"
-              >
-                {floor.inputs[feed]!.lines}×{' '}
-                {itemName(floor.inputs[feed]!.itemId)}
-              </text>
-              {belt(
-                `M ${transferX} ${transferY - 1.5 - feed * 0.9} H ${inputX + feed * 1.5} V ${top - feed * 1.6}`,
-              )}
-              {floor.rowCounts.length > 1 &&
-                belt(
-                  `M ${inputX + feed * 1.5} ${top - feed * 1.6} V ${top + (floor.rowCounts.length - 1) * 16 - feed * 1.6}`,
-                )}
-            </g>
-          ))}
-          {belt(
-            `M ${outputX} ${top + 12} V ${bottom} H ${transferX} V ${transferY + 1.5}`,
-            true,
-          )}
-          {floor.rowCounts.map((count, row) => {
-            const machines = floor.machines.filter((m) => m.y === 8 + row * 16);
-            const first = machines[0]!;
-            const inputY = first.y - 3;
-            const outputY = first.y + 9;
-            return (
-              <g key={row}>
-                {feedIndices.map((feed) => (
-                  <g key={feed}>
-                    {belt(
-                      `M ${inputX + feed * 1.5} ${inputY - feed * 1.6} H ${portX(first.x, feed)}`,
-                    )}
-                  </g>
-                ))}
-                {belt(`M ${first.x + 4} ${outputY} H ${outputX}`, true)}
-                {machines.slice(0, count).map((m) => (
-                  <g key={m.id}>
-                    {feedIndices.map((feed) => (
-                      <g key={feed}>
-                        {belt(
-                          `M ${portX(m.x, feed)} ${inputY - feed * 1.6} V ${m.y - 1}`,
-                        )}
-                        <rect
-                          className="supply-junction"
-                          x={portX(m.x, feed) - 0.5}
-                          y={inputY - feed * 1.6 - 0.5}
-                          width="1"
-                          height="1"
-                          rx="0.2"
-                          fill="#4a819e"
-                          stroke="#26343c"
-                          strokeWidth="0.15"
-                        />
-                      </g>
-                    ))}
-                    {belt(`M ${m.x + 4} ${m.y + 7} V ${outputY}`, true)}
-                    <rect
-                      className="supply-junction"
-                      x={m.x + 3.4}
-                      y={outputY - 0.6}
-                      width="1.2"
-                      height="1.2"
-                      rx="0.2"
-                      fill="#b47b49"
-                      stroke="#26343c"
-                      strokeWidth="0.15"
-                    />
-                  </g>
-                ))}
-              </g>
-            );
-          })}
-          <g
-            className="transfer-module"
-            aria-label="Symbolischer Etagenübergang"
-          >
-            <rect
-              x={transferX}
-              y={transferY - 5}
-              width="7"
-              height="10"
-              rx="0.7"
-              fill="#3b4852"
-              stroke="#8a9ca7"
-              strokeWidth="0.25"
-            />
-            <path
-              className="transfer-detail"
-              d={`M ${transferX + 2} ${transferY - 3} H ${transferX + 5} V ${transferY + 3} H ${transferX + 2} Z M ${transferX + 3.5} ${transferY - 2} V ${transferY + 2}`}
-              fill="none"
-              stroke="#b3c2cb"
-              strokeWidth="0.35"
-            />
-            <g data-aggregate="output">
-              <text
-                className="transfer-label"
-                x={transferX + 3.5}
-                y={transferY + 7}
-                fontSize="1.6"
-                fill="#a6b4be"
-                textAnchor="middle"
-              >
-                {floor.output.lines}× OUT
-              </text>
-            </g>
-          </g>
-          {floor.machines.map((m) => (
+          <SupplyDiagram layout={layout} floor={floor} marker={marker} />
+          {machines.map((m) => (
             <g
               key={m.id}
               className={`machine-button${machine === m.id ? ' selected' : ''}`}
@@ -368,7 +228,7 @@ export function FloorView({
               >
                 <MachineGlyph
                   machineId={floor.machineId}
-                  feeds={feeds}
+                  feeds={Math.min(4, feeds)}
                   selected={machine === m.id}
                   number={m.id}
                 />
