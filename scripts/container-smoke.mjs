@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { writeFile, rm } from 'node:fs/promises';
 import { spawn, execFileSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 const revision = process.env.APP_REVISION;
@@ -49,11 +50,60 @@ assert.equal(rendered.services.app.read_only, true);
 assert.deepEqual(rendered.services.app.cap_drop, ['ALL']);
 assert.equal(rendered.networks.web.external, true);
 let built = false,
-  created = false;
+  created = false,
+  contextBuilt = false;
+const probeName = `.env.satispire-smoke-${id}`;
+const probes = [probeName, `web/${probeName}`];
+const contextImage = `satispire-context-smoke:${id}`;
+const ownedProbes = [];
 try {
+  for (const path of probes) {
+    await writeFile(path, 'DISPOSABLE_CONTEXT_SENTINEL', { flag: 'wx' });
+    ownedProbes.push(path);
+  }
+  const probeBuild = spawn(
+    'docker',
+    [
+      'build',
+      ...(process.env.NODE_EXTRA_CA_CERTS
+        ? ['--secret', `id=build_ca,src=${process.env.NODE_EXTRA_CA_CERTS}`]
+        : []),
+      '--build-arg',
+      `APP_REVISION=${revision}`,
+      '--target',
+      'build',
+      '-t',
+      contextImage,
+      '.',
+    ],
+    { stdio: 'inherit' },
+  );
+  assert.equal(
+    await new Promise((resolve) => probeBuild.once('exit', resolve)),
+    0,
+  );
+  contextBuilt = true;
+  docker(
+    'run',
+    '--rm',
+    contextImage,
+    'node',
+    '-e',
+    `const fs=require('node:fs'); if (${JSON.stringify(probes)}.some(p=>fs.existsSync(p))) process.exit(1)`,
+  );
   const build = spawn(
     'docker',
-    ['build', '--build-arg', `APP_REVISION=${revision}`, '-t', image, '.'],
+    [
+      'build',
+      ...(process.env.NODE_EXTRA_CA_CERTS
+        ? ['--secret', `id=build_ca,src=${process.env.NODE_EXTRA_CA_CERTS}`]
+        : []),
+      '--build-arg',
+      `APP_REVISION=${revision}`,
+      '-t',
+      image,
+      '.',
+    ],
     { stdio: 'inherit' },
   );
   const code = await new Promise((resolve) => build.once('exit', resolve));
@@ -68,6 +118,7 @@ try {
     '--cap-drop=ALL',
     '--security-opt=no-new-privileges',
     '--memory=512m',
+    '--cpus=1.0',
     '--pids-limit=128',
     '--tmpfs',
     '/tmp:rw,size=64m,mode=1777',
@@ -88,6 +139,21 @@ try {
     docker('inspect', '--format', '{{json .Config}}', name),
   );
   assert.equal(config.User, 'node');
+  const policy = JSON.parse(
+    docker('inspect', '--format', '{{json .HostConfig}}', name),
+  );
+  assert.equal(policy.ReadonlyRootfs, true);
+  assert.deepEqual(policy.CapDrop, ['ALL']);
+  assert(policy.SecurityOpt.includes('no-new-privileges'));
+  assert.equal(policy.Memory, 512 * 1024 * 1024);
+  assert.equal(policy.NanoCpus, 1000000000);
+  docker(
+    'exec',
+    name,
+    'node',
+    '-e',
+    "if(require('node:fs').existsSync('/run/secrets/build_ca') || process.env.NODE_EXTRA_CA_CERTS) process.exit(1)",
+  );
   assert.equal(config.Labels['org.opencontainers.image.revision'], revision);
   assert.equal(docker('exec', name, 'id', '-u'), '1000');
   const ports = JSON.parse(
@@ -118,6 +184,8 @@ try {
     'Disposable container smoke passed: actual SSR/assets, healthy immutable revision, UID1000, read-only/cap-drop, loopback and SIGTERM.',
   );
 } finally {
+  for (const path of ownedProbes) await rm(path, { force: true });
+  if (contextBuilt) docker('image', 'rm', contextImage);
   if (created) docker('rm', '-f', name);
   if (built) docker('image', 'rm', image);
 }

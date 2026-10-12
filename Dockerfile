@@ -1,14 +1,22 @@
 FROM node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df AS dependencies
 WORKDIR /app
-RUN npm install --global --ignore-scripts npm@11.9.0
+RUN --mount=type=secret,id=build_ca \
+    if [ -f /run/secrets/build_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/build_ca; fi; \
+    npm install --global --ignore-scripts --fetch-retries=0 --fetch-timeout=30000 npm@11.9.0
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --ignore-scripts
+RUN --mount=type=secret,id=build_ca \
+    if [ -f /run/secrets/build_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/build_ca; fi; \
+    npm ci --omit=dev --ignore-scripts
 
 FROM node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df AS build
 WORKDIR /app
-RUN npm install --global --ignore-scripts npm@11.9.0
+RUN --mount=type=secret,id=build_ca \
+    if [ -f /run/secrets/build_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/build_ca; fi; \
+    npm install --global --ignore-scripts --fetch-retries=0 --fetch-timeout=30000 npm@11.9.0
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN --mount=type=secret,id=build_ca \
+    if [ -f /run/secrets/build_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/build_ca; fi; \
+    npm ci
 COPY . .
 ARG APP_REVISION
 RUN APP_REVISION="$APP_REVISION" npm run build:runtime
