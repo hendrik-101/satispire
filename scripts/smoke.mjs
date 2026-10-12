@@ -29,6 +29,34 @@ try {
   });
   assert.equal(room.isError, false);
   assert.equal(room.structuredContent.data.revision, 0);
+  const factory = await client.callTool({
+    name: 'plan_factory',
+    arguments: {
+      roomId: 'local',
+      input: {
+        production: {
+          targets: [{ itemId: 'Desc_IronPlate_C', rate: '20' }],
+          recipes: {
+            Desc_IronPlate_C: 'Recipe_IronPlate_C',
+            Desc_IronIngot_C: 'Recipe_IngotIron_C',
+          },
+          imports: ['Desc_OreIron_C'],
+          technology: {
+            availableMachines: ['Desc_SmelterMk1_C', 'Desc_ConstructorMk1_C'],
+            unlockedRecipes: ['Recipe_IronPlate_C', 'Recipe_IngotIron_C'],
+            beltTier: 1,
+            pipeTier: 1,
+          },
+        },
+        rows: 0,
+      },
+    },
+  });
+  assert.equal(factory.isError, false);
+  assert.deepEqual(factory.structuredContent.data.production.imports, [
+    { itemId: 'Desc_OreIron_C', rate: '30' },
+  ]);
+  assert.equal(factory.structuredContent.data.layout.units, 'logical');
   console.log('Compiled MCP smoke passed');
 } finally {
   await client.close();

@@ -4,6 +4,7 @@ export interface CatalogItem {
   id: string;
   name: string;
   raw: boolean;
+  transport?: 'belt' | 'pipe';
 }
 export interface CatalogMachine {
   id: string;
@@ -241,7 +242,7 @@ export function validateCatalog(input: unknown): Catalog {
     supportedKeys(
       object,
       path.startsWith('catalog.items')
-        ? ['id', 'name', 'raw']
+        ? ['id', 'name', 'raw', 'transport']
         : path.startsWith('catalog.machines')
           ? ['id', 'name']
           : ['id', 'name', 'machineId', 'durationSeconds', 'inputs', 'outputs'],
@@ -258,7 +259,21 @@ export function validateCatalog(input: unknown): Catalog {
       const entry = identity(value, `catalog.items[${index}]`);
       if (typeof entry.object.raw !== 'boolean')
         throw new Error(`catalog.items[${index}].raw must be boolean`);
-      return { id: entry.id, name: entry.name, raw: entry.object.raw };
+      const transport = entry.object.transport;
+      if (
+        transport !== undefined &&
+        transport !== 'belt' &&
+        transport !== 'pipe'
+      )
+        throw new Error(
+          `catalog.items[${index}].transport must be belt or pipe`,
+        );
+      return {
+        id: entry.id,
+        name: entry.name,
+        raw: entry.object.raw,
+        ...(transport === undefined ? {} : { transport }),
+      };
     },
   );
   const machines = entries(root.machines, 'catalog.machines').map(

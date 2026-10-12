@@ -257,6 +257,7 @@ test('MCP client lists and calls tools over the actual protocol', async () => {
       'apply_command',
       'solve_production',
       'generate_floors',
+      'plan_factory',
     ]);
     const result = await client.callTool({
       name: 'read_room',
@@ -321,24 +322,24 @@ test('stdio client computes a real plan and versioned mutation', async () => {
       arguments: {
         roomId: 'local',
         input: {
-          targets: [{ itemId: 'example:plate', rate: '20' }],
+          targets: [{ itemId: 'Desc_IronPlate_C', rate: '20' }],
           recipes: {
-            'example:plate': 'example:press',
-            'example:ingot': 'example:smelt',
+            Desc_IronPlate_C: 'Recipe_IronPlate_C',
+            Desc_IronIngot_C: 'Recipe_IngotIron_C',
           },
-          imports: ['example:ore'],
+          imports: ['Desc_OreIron_C'],
         },
       },
     });
     expect(plan.isError).toBe(false);
     expect(plan.structuredContent).toMatchObject({
       ok: true,
-      data: { imports: [{ itemId: 'example:ore', rate: '30' }] },
+      data: { imports: [{ itemId: 'Desc_OreIron_C', rate: '30' }] },
     });
     const envelope = {
       id: 'actual-edit',
       expectedRevision: 0,
-      command: { type: 'set-target', itemId: 'example:plate', rate: '20' },
+      command: { type: 'set-target', itemId: 'Desc_IronPlate_C', rate: '20' },
     };
     const change = await client.callTool({
       name: 'apply_command',

@@ -23,10 +23,12 @@ jobs:
       - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck
+      - run: npm run test:discovery
       - run: npm run test:coverage
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
       - run: npm audit --audit-level=high
       - run: npm run build
+      - run: npm run build:web
       - run: npm run smoke
       - run: npm run plan -- --demo

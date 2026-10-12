@@ -128,3 +128,45 @@ test('both planner tools return real validated plans in the bound room', async (
     data: { floors: [{ blocks: [{ block: { rowCounts: [3, 3, 2] } }] }] },
   });
 });
+test('Vanilla factory tool enforces profile and dimensions shared schematic supply', async () => {
+  const { vanillaCatalog, technologyAtTier, availableChoices } = await import(
+    '../src/domain/vanilla.js'
+  );
+  const app = createLocalApplication(
+    setup(),
+    { roomId: 'room-a', participantId: 'owner' },
+    vanillaCatalog,
+  );
+  const technology = { ...technologyAtTier(2), beltTier: 1 };
+  const production = {
+    targets: [{ itemId: 'Desc_IronPlate_C', rate: '320' }],
+    recipes: availableChoices(technology),
+    imports: ['Desc_OreIron_C'],
+    technology,
+  };
+  const result = await app.execute(
+    'plan_factory' as import('../src/adapters/webmcp.js').ToolName,
+    { roomId: 'room-a', input: { production, rows: 3 } },
+  );
+  expect(result).toMatchObject({
+    ok: true,
+    data: {
+      production: { imports: [{ itemId: 'Desc_OreIron_C', rate: '480' }] },
+      layout: { units: 'logical' },
+    },
+  });
+  const denied = await app.execute(
+    'plan_factory' as import('../src/adapters/webmcp.js').ToolName,
+    {
+      roomId: 'room-a',
+      input: {
+        production: {
+          ...production,
+          technology: { ...technology, availableMachines: [] },
+        },
+        rows: 3,
+      },
+    },
+  );
+  expect(denied).toMatchObject({ ok: false, error: { code: 'planner-error' } });
+});

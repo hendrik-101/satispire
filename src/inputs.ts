@@ -1,3 +1,4 @@
+import { technologySchema } from './domain/technology.js';
 import { z } from 'zod';
 import { CATALOG_ID_LIMIT, CATALOG_ID_PATTERN } from './domain/catalog.js';
 import { INPUT_ENTRY_LIMIT } from './domain/production.js';
@@ -35,6 +36,7 @@ const recipePreflight = z.unknown().superRefine((value, context) => {
 });
 export const productionSchema = z
   .object({
+    technology: technologySchema.optional(),
     targets: arrayPreflight.pipe(
       z
         .array(
