@@ -186,8 +186,13 @@ try {
     ...html.matchAll(/(?:src|href)="(\/assets\/[^"?]+\.(?:js|css))"/g),
   ].map((m) => m[1]);
   assert(assets.length > 0);
-  for (const path of new Set(assets))
-    assert.equal((await fetch(base + path)).status, 200);
+  for (const path of new Set(assets)) {
+    const response = await fetch(base + path, {
+      headers: { 'Accept-Encoding': 'br' },
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('content-encoding'), null);
+  }
   assert.equal((await fetch(base, { method: 'POST' })).status, 405);
   docker('stop', '--time', '10', name);
   const stopped = JSON.parse(

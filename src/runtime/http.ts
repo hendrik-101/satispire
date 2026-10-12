@@ -50,7 +50,10 @@ export async function startHttpRuntime(options: {
     gracefulShutdown:
       options.gracefulShutdown === false ? false : { gracefulTimeout: 5 },
     maxRequestBodySize: 65536,
-    error: () => new Response('Internal Server Error', { status: 500 }),
+    error: (error) => {
+      console.error('Satispire HTTP request failed', error);
+      return new Response('Internal Server Error', { status: 500 });
+    },
     async fetch(request) {
       if (request.method !== 'GET' && request.method !== 'HEAD')
         return new Response('Method Not Allowed', {
@@ -65,11 +68,19 @@ export async function startHttpRuntime(options: {
       if (path === '/healthz')
         return Response.json({ status: 'ok' }, { headers });
       if (path === '/version.json') return Response.json(version, { headers });
-      if (path.startsWith('/assets/'))
+      if (path.startsWith('/assets/')) {
+        // Avoid srvx's uncached, per-request Brotli/gzip work on the small test service.
+        const assetHeaders = new Headers(request.headers);
+        assetHeaders.delete('accept-encoding');
         return staticFiles(
-          request,
+          new Request(request.url, {
+            method: request.method,
+            headers: assetHeaders,
+            signal: request.signal,
+          }),
           () => new Response('Not Found', { status: 404 }),
         );
+      }
       // A native Request avoids adapter-specific cloning behavior in the SSR handler.
       return entry!.fetch!(
         new Request(request.url, {

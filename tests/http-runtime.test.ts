@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -37,6 +37,7 @@ beforeEach(async () => {
 afterEach(async () => {
   await server?.close(true);
   server = undefined;
+  vi.restoreAllMocks();
   await rm(directory, { recursive: true, force: true });
 });
 async function start() {
@@ -117,6 +118,7 @@ describe('HTTP runtime', () => {
     }
   });
   test('streams SSR output and returns generic errors without details', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     const base = await start();
     expect(await (await fetch(new URL('/stream', base))).text()).toBe(
       'streamed',
@@ -124,6 +126,28 @@ describe('HTTP runtime', () => {
     const error = await fetch(new URL('/error', base));
     expect(error.status).toBe(500);
     expect(await error.text()).toBe('Internal Server Error');
+  });
+  test('serves assets without per-request compression for br and gzip clients', async () => {
+    const base = await start();
+    for (const encoding of ['br', 'gzip', 'br, gzip']) {
+      const response = await fetch(new URL('/assets/app-test.js', base), {
+        headers: { 'Accept-Encoding': encoding },
+      });
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-encoding')).toBeNull();
+      expect(await response.text()).toBe('window.satispire = true;');
+    }
+  });
+  test('records the exception in private operator logs while returning a generic 500', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const base = await start();
+    const response = await fetch(new URL('/error', base));
+    expect(response.status).toBe(500);
+    expect(await response.text()).toBe('Internal Server Error');
+    expect(log).toHaveBeenCalledWith(
+      'Satispire HTTP request failed',
+      expect.objectContaining({ message: 'PRIVATE_ERROR_DETAIL' }),
+    );
   });
   test('refuses invalid immutable revision before starting', async () => {
     await writeFile(

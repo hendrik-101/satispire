@@ -63,7 +63,10 @@ try {
     'Actual SSR must reference executable JS and CSS',
   );
   for (const path of new Set(assets)) {
-    const response = await fetch(base + path);
+    const response = await fetch(base + path, {
+      headers: { 'Accept-Encoding': 'br' },
+    });
+    assert.equal(response.headers.get('content-encoding'), null);
     assert.equal(response.status, 200);
     assert.match(
       response.headers.get('content-type'),
