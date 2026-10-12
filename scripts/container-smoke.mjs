@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { writeFile, rm } from 'node:fs/promises';
+import { readFile, writeFile, rm } from 'node:fs/promises';
 import { spawn, execFileSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 const revision = process.env.APP_REVISION;
@@ -156,6 +156,20 @@ try {
   );
   assert.equal(config.Labels['org.opencontainers.image.revision'], revision);
   assert.equal(docker('exec', name, 'id', '-u'), '1000');
+  const notice = await readFile(
+    'docs/data/SatisfactoryTools-LICENSE.txt',
+    'utf8',
+  );
+  assert.equal(
+    docker(
+      'exec',
+      name,
+      'node',
+      '-e',
+      "process.stdout.write(require('node:fs').readFileSync('licenses/SatisfactoryTools-LICENSE.txt','utf8'))",
+    ),
+    notice.trim(),
+  );
   const ports = JSON.parse(
     docker('inspect', '--format', '{{json .NetworkSettings.Ports}}', name),
   );

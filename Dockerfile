@@ -31,6 +31,8 @@ COPY --from=dependencies /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/dist/runtime ./dist/runtime
 COPY --from=build /app/web-dist ./web-dist
+COPY --chmod=0444 --from=build /app/docs/data/SatisfactoryTools-LICENSE.txt ./licenses/SatisfactoryTools-LICENSE.txt
+RUN chmod 0755 /app/licenses && chmod 0444 /app/licenses/SatisfactoryTools-LICENSE.txt
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=6 \

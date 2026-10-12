@@ -18,7 +18,7 @@ HOST=127.0.0.1 PORT=3000 npm start
 
 ## Immutable container
 
-`Dockerfile` uses the verified Node 24.19.0 Bookworm image digest; build/dependency stages install npm 11.9.0. Its strict source-file allowlist excludes Git, local data, env/credentials, tests and dependency folders. An actual builder-stage regression creates disposable root/nested env sentinels and verifies neither entered the context. The final image contains only production dependencies, compiled runtime and web output. It runs UID 1000, Node directly as PID 1 and the builtin Node health probe; `wget` is not installed or required.
+`Dockerfile` uses the verified Node 24.19.0 Bookworm image digest; build/dependency stages install npm 11.9.0. Its strict source-file allowlist excludes Git, local data, env/credentials, tests and dependency folders. An actual builder-stage regression creates disposable root/nested env sentinels and verifies neither entered the context. The final image contains only production dependencies, compiled runtime, web output and the existing SatisfactoryTools numeric-data copyright/license notice. It runs UID 1000, Node directly as PID 1 and the builtin Node health probe; `wget` is not installed or required.
 
 Build a release only from a clean checkout of the accepted commit. `APP_REVISION` must match that checkout; the argument is build provenance, not an attestation that Docker independently verified Git. Record the accepted source SHA, OCI revision label, resulting image ID and published registry digest together. Publish only after separate authorization; a local build does not provide a GHCR digest.
 
