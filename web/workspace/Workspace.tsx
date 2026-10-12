@@ -44,6 +44,15 @@ const firstInput: ProductionInput = {
   imports: catalog.items.filter((i) => i.raw).map((i) => i.id),
   technology: firstTechnology,
 };
+function primaryStage(
+  input: ProductionInput,
+  plan: ReturnType<typeof solveProduction>,
+) {
+  return (
+    input.targets.find((t) => plan.nodes.some((n) => n.itemId === t.itemId))
+      ?.itemId ?? plan.nodes[0]!.itemId
+  );
+}
 const initialView = {
   ...defaultViewPreferences,
   panels: { navigation: false, graph: false, inspector: false },
@@ -155,10 +164,25 @@ export function Workspace() {
   useEffect(() => {
     if (profileOpen) dialog.current?.showModal();
   }, [profileOpen]);
-  const candidates = useMemo(
-    () => availableRecipes(factory.technology),
-    [factory.technology],
-  );
+  const candidates = useMemo(() => {
+    const defaults = availableChoices(
+      factory.technology,
+      factory.input.imports,
+    );
+    return availableRecipes(factory.technology).filter((recipe) => {
+      try {
+        solveProduction(catalog, {
+          targets: [{ itemId: recipe.outputs[0]!.itemId, rate: '1' }],
+          recipes: { ...defaults, [recipe.outputs[0]!.itemId]: recipe.id },
+          imports: factory.input.imports,
+          technology: factory.technology,
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    });
+  }, [factory.technology, factory.input.imports]);
   const manufactured = useMemo(() => {
     const defaults = availableChoices(
       factory.technology,
@@ -200,7 +224,7 @@ export function Workspace() {
     setFactory(next);
     setError('');
     if (!next.plan.nodes.some((n) => n.itemId === selected))
-      selectStage(next.plan.nodes[0]?.itemId ?? '');
+      selectStage(primaryStage(next.input, next.plan));
     return next;
   }
   function calculate() {
@@ -250,7 +274,7 @@ export function Workspace() {
           next.plan.nodes.map((node) => [node.itemId, node.recipeId]),
         ),
       });
-      selectStage(next.plan.nodes[0]?.itemId ?? '');
+      selectStage(primaryStage(input, next.plan));
       setError('');
     } catch (e) {
       if (id === sequence.current) setError(message(e));

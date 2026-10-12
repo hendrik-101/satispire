@@ -214,6 +214,15 @@ export function FloorView({
                   : undefined
               }
             >
+              <text
+                x="4"
+                y={sceneHeight - 3 - feed * 2}
+                fontSize="1.7"
+                fill="#65b9e5"
+              >
+                {floor.inputs[feed]!.lines}×{' '}
+                {itemName(floor.inputs[feed]!.itemId)}
+              </text>
               {belt(
                 `M ${transferX} ${transferY - 1.5 - feed * 0.9} H ${inputX + feed * 1.5} V ${top - feed * 1.6}`,
               )}
@@ -300,16 +309,18 @@ export function FloorView({
               stroke="#b3c2cb"
               strokeWidth="0.35"
             />
-            <text
-              className="transfer-label"
-              x={transferX + 3.5}
-              y={transferY + 7}
-              fontSize="1.6"
-              fill="#a6b4be"
-              textAnchor="middle"
-            >
-              TRANSFER
-            </text>
+            <g data-aggregate="output">
+              <text
+                className="transfer-label"
+                x={transferX + 3.5}
+                y={transferY + 7}
+                fontSize="1.6"
+                fill="#a6b4be"
+                textAnchor="middle"
+              >
+                {floor.output.lines}× OUT
+              </text>
+            </g>
           </g>
           {floor.machines.map((m) => (
             <g
