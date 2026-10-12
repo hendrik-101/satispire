@@ -144,3 +144,61 @@ test('normalizes repeated technology IDs before candidate probes and subsequent 
     .click();
   await expect(page.getByRole('alert')).toHaveCount(0);
 });
+
+test('drops recipe drafts whose dependency machine is removed by the profile', async ({
+  page,
+}) => {
+  await ready(page);
+  await page.getByLabel('Plan-Datei').setInputFiles({
+    name: 'steel-rod-draft.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(
+      JSON.stringify({
+        schemaVersion: 1,
+        catalogVersion: vanillaCatalog.catalogVersion,
+        production: {
+          targets: [{ itemId: 'Desc_IronRod_C', rate: '15' }],
+          recipes: {
+            Desc_IronRod_C: 'Recipe_IronRod_C',
+            Desc_IronIngot_C: 'Recipe_IngotIron_C',
+          },
+          imports: ['Desc_OreIron_C', 'Desc_Coal_C'],
+          technology: technologyAtTier(4, ['Recipe_Alternate_SteelRod_C']),
+        },
+      }),
+    ),
+  });
+  await expect(page.getByLabel('Produktionsziel')).toHaveValue(
+    'Desc_IronRod_C',
+  );
+  await page.getByRole('button', { name: 'Inspector', exact: true }).click();
+  await page
+    .getByLabel('Rezept für diese Stufe')
+    .selectOption('Recipe_Alternate_SteelRod_C');
+  await page.getByRole('button', { name: 'Technologie', exact: true }).click();
+  await page.getByLabel('Maschine Foundry', { exact: true }).uncheck();
+  await page
+    .getByRole('button', { name: 'Profil anwenden', exact: true })
+    .click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(page.getByLabel('Rezept für diese Stufe')).toHaveValue(
+    'Recipe_IronRod_C',
+  );
+  await expect(
+    page
+      .getByLabel('Rezept für diese Stufe')
+      .locator('option[value="Recipe_Alternate_SteelRod_C"]'),
+  ).toHaveCount(0);
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(page.getByTestId('floor-scene')).toHaveAttribute(
+    'aria-label',
+    'Blockschema Iron Rod',
+  );
+  await page.screenshot({
+    path: test.info().outputPath('dependency-draft.png'),
+    fullPage: true,
+  });
+});

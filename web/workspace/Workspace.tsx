@@ -57,6 +57,22 @@ function primaryStage(
       ?.itemId ?? plan.nodes[0]!.itemId
   );
 }
+function feasibleRecipes(technology: TechnologyProfile, imports: string[]) {
+  const defaults = availableChoices(technology, imports);
+  return availableRecipes(technology).filter((recipe) => {
+    try {
+      solveProduction(catalog, {
+        targets: [{ itemId: recipe.outputs[0]!.itemId, rate: '1' }],
+        recipes: { ...defaults, [recipe.outputs[0]!.itemId]: recipe.id },
+        imports: imports,
+        technology: technology,
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  });
+}
 const initialView = {
   ...defaultViewPreferences,
   panels: { navigation: false, graph: false, inspector: false },
@@ -169,25 +185,10 @@ export function Workspace() {
   useEffect(() => {
     if (profileOpen) dialog.current?.showModal();
   }, [profileOpen]);
-  const candidates = useMemo(() => {
-    const defaults = availableChoices(
-      factory.technology,
-      factory.input.imports,
-    );
-    return availableRecipes(factory.technology).filter((recipe) => {
-      try {
-        solveProduction(catalog, {
-          targets: [{ itemId: recipe.outputs[0]!.itemId, rate: '1' }],
-          recipes: { ...defaults, [recipe.outputs[0]!.itemId]: recipe.id },
-          imports: factory.input.imports,
-          technology: factory.technology,
-        });
-        return true;
-      } catch {
-        return false;
-      }
-    });
-  }, [factory.technology, factory.input.imports]);
+  const candidates = useMemo(
+    () => feasibleRecipes(factory.technology, factory.input.imports),
+    [factory.technology, factory.input.imports],
+  );
   const manufactured = useMemo(() => {
     const defaults = availableChoices(
       factory.technology,
@@ -350,7 +351,9 @@ export function Workspace() {
   }
   function applyProfile() {
     try {
-      const allowed = new Set(availableRecipes(profileDraft).map((r) => r.id));
+      const allowed = new Set(
+        feasibleRecipes(profileDraft, factory.input.imports).map((r) => r.id),
+      );
       const active = new Set(factory.plan.nodes.map((node) => node.itemId));
       const previousDefaults = availableChoices(
         factory.technology,
