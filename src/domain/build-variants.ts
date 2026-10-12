@@ -9,19 +9,35 @@ const itemId = z
   .min(1)
   .max(CATALOG_ID_LIMIT)
   .regex(CATALOG_ID_PATTERN);
+// Check length before Zod can spread/read entries, then copy bounded indexes.
+// Raw WebMCP arrays may define a custom iterator; JSON array semantics use indexes.
+const overridePreflight = z.unknown().transform((value, context) => {
+  if (!Array.isArray(value)) return value;
+  const count = value.length;
+  if (!Number.isSafeInteger(count) || count < 0 || count > 64) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Floor overrides exceed the 64-entry limit',
+    });
+    return z.NEVER;
+  }
+  return Array.from({ length: count }, (_, index) => value[index]);
+});
 export const variantSchema = z
   .object({
     schemaVersion: z.literal(1),
     pattern: z.enum(['alternating', 'fixed']),
     inputSide: sideSchema,
     outputSide: sideSchema,
-    overrides: z
-      .array(
-        z
-          .object({ itemId, inputSide: sideSchema, outputSide: sideSchema })
-          .strict(),
-      )
-      .max(64),
+    overrides: overridePreflight.pipe(
+      z
+        .array(
+          z
+            .object({ itemId, inputSide: sideSchema, outputSide: sideSchema })
+            .strict(),
+        )
+        .max(64),
+    ),
   })
   .strict();
 export type BuildVariant = z.infer<typeof variantSchema>;

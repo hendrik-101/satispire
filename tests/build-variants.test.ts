@@ -149,3 +149,56 @@ it('rejects malformed or stale overrides, duplicate stages, unknown feeds and cy
   ).toThrow(/duplicate/i);
   expect(() => deriveBuildVariants({ ...plan, nodes: [] })).toThrow();
 });
+it('preflights excessive override arrays without reading any entry', () => {
+  let reads = 0;
+  const overrides = Array.from({ length: 65 }, () => ({
+    itemId: 'a',
+    inputSide: 'west',
+    outputSide: 'east',
+  }));
+  Object.defineProperty(overrides, 0, {
+    get() {
+      reads++;
+      return { itemId: 'a', inputSide: 'west', outputSide: 'east' };
+    },
+  });
+  expect(() =>
+    deriveBuildVariants(plan, { ...defaultBuildVariant, overrides }),
+  ).toThrow();
+  expect(reads).toBe(0);
+});
+
+it('rejects huge sparse arrays before densification and uses bounded indexed WebMCP entries', () => {
+  const sparse = new Array(1_000_000_000);
+  let reads = 0;
+  Object.defineProperty(sparse, 0, {
+    get() {
+      reads++;
+      throw new Error('must not read');
+    },
+  });
+  expect(() =>
+    deriveBuildVariants(plan, { ...defaultBuildVariant, overrides: sparse }),
+  ).toThrow(/64-entry/);
+  expect(reads).toBe(0);
+  const overrides = [{ itemId: 'a', inputSide: 'west', outputSide: 'east' }];
+  Object.defineProperty(overrides, Symbol.iterator, {
+    value() {
+      throw new Error('must not iterate input');
+    },
+  });
+  expect(
+    deriveBuildVariants(plan, { ...defaultBuildVariant, overrides }).floors[2],
+  ).toMatchObject({ inputSide: 'west', outputSide: 'east' });
+});
+it('retains the legitimate 64-override schema boundary', async () => {
+  const { variantSchema } = await import('../src/domain/build-variants.js');
+  const overrides = Array.from({ length: 64 }, (_, i) => ({
+    itemId: `stage-${i}`,
+    inputSide: 'west',
+    outputSide: 'east',
+  }));
+  expect(
+    variantSchema.parse({ ...defaultBuildVariant, overrides }).overrides,
+  ).toEqual(overrides);
+});

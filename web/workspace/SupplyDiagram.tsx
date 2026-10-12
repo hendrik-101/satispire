@@ -1,3 +1,4 @@
+import { supplySceneMetrics } from './supply-scene.js';
 import type { generateSupplyLayout } from '../../src/domain/supply-layout.js';
 import { itemName } from '../../src/domain/vanilla.js';
 type Layout = ReturnType<typeof generateSupplyLayout>;
@@ -13,17 +14,11 @@ export function SupplyDiagram({
   floor: Floor;
   marker: string;
 }) {
-  const shift = 17;
+  const { shift, feeds, maxY, firstY, outputRail, feeders, labels } =
+    supplySceneMetrics(layout, floor);
   const port = (p: Point) => ({ x: p.x + shift, y: p.y + shift });
   const input = port(floor.connections.input),
     output = port(floor.connections.output);
-  const maxX = Math.max(...floor.machines.map((m) => m.x + m.width)) + shift;
-  const maxY = Math.max(...floor.machines.map((m) => m.y + m.depth)) + shift;
-  const feeds = floor.inputs.length;
-  const left = shift + 2,
-    right = maxX + 6 + feeds * 1.2;
-  const inputRail = floor.inputSide === 'east' ? right : left;
-  const outputRail = floor.outputSide === 'west' ? left - 2 : right + 2;
   const path = (points: Point[], out = false, key?: string) => (
     <g
       key={key}
@@ -47,11 +42,9 @@ export function SupplyDiagram({
       />
     </g>
   );
-  const feeder = (feed: number) =>
-    inputRail + (floor.inputSide === 'east' ? feed * 1.2 : -feed * 1.2);
+  const feeder = (feed: number) => feeders[feed]!;
   const inputAt = (m: Floor['machines'][number], feed: number) =>
     m.x + shift + 1 + ((feed + 1) * 6) / (feeds + 1);
-  const firstY = floor.machines[0]!.y + shift - 3;
   const transfers = layout.transfers.filter((t) =>
     t.span.includes(floor.index),
   );
@@ -81,13 +74,8 @@ export function SupplyDiagram({
             { x: feeder(i), y: input.y },
             { x: feeder(i), y: firstY - i * 1.2 },
           ])}
-          <text
-            x={shift + 2}
-            y={maxY + 11 + i * 2.2}
-            fontSize="1.7"
-            fill="#65b9e5"
-          >
-            {feed.lines}× {itemName(feed.itemId)}
+          <text x={labels[i]!.x} y={labels[i]!.y} fontSize="1.7" fill="#65b9e5">
+            {labels[i]!.text}
           </text>
           {floor.rowCounts.length > 1 &&
             path([

@@ -80,6 +80,51 @@ it('returns identical variant contracts through actual classic MCP and WebMCP', 
           .structuredContent,
       ).toEqual(expected);
     }
+    const excessive = {
+      roomId: 'local',
+      input: {
+        production,
+        variant: {
+          ...defaultBuildVariant,
+          overrides: Array.from({ length: 65 }, () => ({
+            itemId: 'Desc_IronPlateReinforced_C',
+            inputSide: 'west',
+            outputSide: 'east',
+          })),
+        },
+      },
+    };
+    expect(await tools.get('plan_factory')!.execute(excessive)).toMatchObject({
+      ok: false,
+      error: { code: 'invalid-input' },
+    });
+    expect(
+      (await client.callTool({ name: 'plan_factory', arguments: excessive }))
+        .structuredContent,
+    ).toMatchObject({ ok: false, error: { code: 'invalid-input' } });
+    const sparse = new Array(1_000_000_000);
+    let reads = 0;
+    Object.defineProperty(sparse, 0, {
+      get() {
+        reads++;
+        throw new Error('must not read');
+      },
+    });
+    expect(
+      await tools.get('plan_factory')!.execute({
+        ...excessive,
+        input: {
+          production,
+          variant: { ...defaultBuildVariant, overrides: sparse },
+        },
+      }),
+    ).toMatchObject({ ok: false, error: { code: 'invalid-input' } });
+    expect(reads).toBe(0);
+    expect(
+      await tools
+        .get('plan_factory')!
+        .execute({ ...excessive, roomId: 'foreign' }),
+    ).toMatchObject({ ok: false, error: { code: 'forbidden' } });
     const invalid = {
       roomId: 'local',
       input: {

@@ -290,3 +290,20 @@ test('mobile fit keeps a single machine readable while retaining its transfer', 
   });
   expect((await glyph.boundingBox())!.width).toBeGreaterThanOrEqual(40);
 });
+test('side controls edit the effective input on an alternating odd floor', async ({
+  page,
+}) => {
+  await ready(page);
+  await page.locator('.variant-control summary').click();
+  await expect(page.getByLabel('Eingangsseite')).toHaveValue('east');
+  await expect(page.getByLabel('Ausgangsseite')).toHaveValue('west');
+  await page.getByLabel('Eingangsseite').selectOption('north');
+  const scene = page.getByTestId('floor-scene');
+  await expect(scene).toHaveAttribute('data-input-side', 'north');
+  await expect(scene).toHaveAttribute('data-output-side', 'west');
+  await page
+    .getByLabel('Stufe auswählen', { exact: true })
+    .selectOption('Desc_IronIngot_C');
+  await expect(scene).toHaveAttribute('data-input-side', 'west');
+  await expect(scene).toHaveAttribute('data-output-side', 'north');
+});

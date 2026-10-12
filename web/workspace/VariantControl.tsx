@@ -71,7 +71,14 @@ export function VariantControl({
           o.itemId === itemId ? { ...o, [key]: value } : o,
         ),
       });
-    else onChange({ ...variant, [key]: value });
+    else {
+      const baseKey = swapped
+        ? key === 'inputSide'
+          ? 'outputSide'
+          : 'inputSide'
+        : key;
+      onChange({ ...variant, [baseKey]: value });
+    }
   };
   const preset =
     presets.find(
@@ -140,7 +147,7 @@ export function VariantControl({
               aria-label={
                 key === 'inputSide' ? 'Eingangsseite' : 'Ausgangsseite'
               }
-              value={override ? override[key] : variant[key]}
+              value={key === 'inputSide' ? inputSide : outputSide}
               onChange={(e) => update(key, e.target.value as BuildSide)}
             >
               {sides.map((s) => (

@@ -1,3 +1,4 @@
+import { supplySceneMetrics } from './supply-scene.js';
 import { type BuildVariant } from '../../src/domain/build-variants.js';
 import { VariantControl } from './VariantControl.js';
 import { SupplyDiagram } from './SupplyDiagram.js';
@@ -59,19 +60,8 @@ export function FloorView({
     x: m.x + 17,
     y: m.y + 17,
   }));
-  const feeds = floor.inputs.length;
-  // Fit the selected schematic's visible block and every spanning transfer.
-  // Shared floor coordinates remain unchanged; empty floor margin is not content.
-  const transfers = layout.transfers.filter((t) =>
-    t.span.includes(floor.index),
-  );
-  const sceneLeft = Math.min(8, ...transfers.map((t) => t.x + 1));
-  const sceneTop = Math.min(11, ...transfers.map((t) => t.y + 1));
-  const sceneWidth =
-    Math.max(17 + floor.width + 9, ...transfers.map((t) => t.x + 9)) -
-    sceneLeft;
-  const sceneHeight =
-    Math.max(17 + floor.depth + 6, ...transfers.map((t) => t.y + 9)) - sceneTop;
+  const { feeds, sceneLeft, sceneTop, sceneWidth, sceneHeight } =
+    supplySceneMetrics(layout, floor);
   const scale = zoom * camera.scale;
   const viewWidth = sceneWidth / scale;
   const viewHeight = sceneHeight / scale;
