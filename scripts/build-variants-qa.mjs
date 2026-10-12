@@ -53,6 +53,14 @@ try {
     .getByLabel('Stufe auswählen', { exact: true })
     .selectOption('Desc_IronPlateReinforced_C');
   await capture('multiple-inputs');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page
+    .getByRole('button', { name: 'Schema einpassen', exact: true })
+    .click();
+  await capture('mobile');
+  await page.locator('.variant-control summary').click();
+  await capture('mobile-control');
+  await page.setViewportSize({ width: 1586, height: 992 });
   const { technologyAtTier, vanillaCatalog } = await import(
     '../dist/domain/vanilla.js'
   );
@@ -89,13 +97,6 @@ try {
     .first()
     .waitFor();
   await capture('external-inputs');
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page
-    .getByRole('button', { name: 'Schema einpassen', exact: true })
-    .click();
-  await capture('mobile');
-  await page.locator('.variant-control summary').click();
-  await capture('mobile-control');
   if (errors.length) throw new Error(errors.join('\n'));
   console.log(
     'Actual Chromium captures: two floors, same-side, vertical, multiple inputs, mobile and contextual control. No page errors.',

@@ -100,7 +100,7 @@ export function generateSupplyLayout(
   });
   const footprint = {
     width: Math.max(
-      80,
+      64,
       ...blocks.map((b) => b.width + 24),
       build.transfers.length * 5 + 24,
     ),
