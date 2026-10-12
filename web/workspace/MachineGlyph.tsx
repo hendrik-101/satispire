@@ -242,8 +242,8 @@ export function MachineGlyph({
           />
         </>
       )}
-      {Array.from({ length: Math.max(1, Math.min(4, feeds)) }, (_, feed) => {
-        const count = Math.max(1, Math.min(4, feeds));
+      {Array.from({ length: Math.max(0, Math.min(4, feeds)) }, (_, feed) => {
+        const count = Math.max(0, Math.min(4, feeds));
         const center = 20 + ((feed + 1) * 60) / (count + 1);
         const width = count === 1 ? 16 : 10;
         return (

@@ -63,8 +63,7 @@ export function Graph({
     (edge) => depth(edge.to) - depth(edge.from) > 1,
   );
   const height =
-    contentHeight +
-    (bypassEdges.length ? 16 + Math.min(bypassEdges.length, 8) * 8 : 0);
+    contentHeight + (bypassEdges.length ? 16 + bypassEdges.length * 8 : 0);
   const positions = new Map(
     ids.map((id) => {
       const row = rows.get(depth(id))!;
@@ -139,7 +138,7 @@ export function Graph({
             const endY =
               to.y + (92 * (inputs.indexOf(edge) + 1)) / (inputs.length + 1);
             const bypassIndex = bypassEdges.indexOf(edge);
-            const bypassY = contentHeight + 8 + (bypassIndex % 8) * 8;
+            const bypassY = contentHeight + 8 + bypassIndex * 8;
             const path =
               bypassIndex < 0
                 ? `M ${startX} ${startY} C ${startX + 32} ${startY}, ${to.x - 32} ${endY}, ${to.x - 5} ${endY}`

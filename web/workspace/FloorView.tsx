@@ -51,7 +51,7 @@ export function FloorView({
   const maxY = Math.max(...floor.machines.map((m) => m.y + m.depth));
   const transferX = maxX + 13;
   const inputX = maxX + 3;
-  const feeds = Math.max(1, Math.min(4, floor.inputs.length));
+  const feeds = Math.max(0, Math.min(4, floor.inputs.length));
   const feedIndices = Array.from({ length: feeds }, (_, i) => i);
   const portX = (x: number, feed: number) =>
     x + 1 + ((feed + 1) * 6) / (feeds + 1);

@@ -245,7 +245,10 @@ export function Workspace() {
       setRate(input.targets[0]!.rate);
       setChoices({
         ...availableChoices(technology, input.imports),
-        ...input.recipes,
+        // Only reachable overrides were validated by the solver during import.
+        ...Object.fromEntries(
+          next.plan.nodes.map((node) => [node.itemId, node.recipeId]),
+        ),
       });
       selectStage(next.plan.nodes[0]?.itemId ?? '');
       setError('');
