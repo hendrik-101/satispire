@@ -83,3 +83,54 @@ it('reports incompatible full-machine ratios instead of returning underutilized 
   };
   expect(() => perfectRatio(catalog, input)).toThrow(/transport|Transport/);
 });
+it('normalizes bounded repeated technology IDs before repeated solver probes', async () => {
+  const { technologySchema, validateTechnology } = await import(
+    '../src/domain/technology.js'
+  );
+  const duplicated = {
+    ...technology,
+    availableMachines: Array.from(
+      { length: 2000 },
+      () => technology.availableMachines[0]!,
+    ),
+    unlockedRecipes: Array.from(
+      { length: 2000 },
+      () => technology.unlockedRecipes[0]!,
+    ),
+  };
+  const expected = {
+    ...technology,
+    availableMachines: [technology.availableMachines[0]!],
+    unlockedRecipes: [technology.unlockedRecipes[0]!],
+  };
+  expect(technologySchema.parse(duplicated)).toEqual(expected);
+  expect(validateTechnology(duplicated, syntheticCatalog)).toEqual(expected);
+  expect(
+    productionSchema.parse({ ...input, technology: duplicated }).technology,
+  ).toEqual(expected);
+  expect(duplicated.availableMachines).toHaveLength(2000);
+  expect(() =>
+    validateTechnology(
+      {
+        ...expected,
+        unlockedRecipes: [...expected.unlockedRecipes, 'not-known'],
+      },
+      syntheticCatalog,
+    ),
+  ).toThrow(/unbekanntes Rezept/);
+  expect(() =>
+    validateTechnology(
+      {
+        ...expected,
+        availableMachines: [...expected.availableMachines, 'not-known'],
+      },
+      syntheticCatalog,
+    ),
+  ).toThrow(/unbekannte Maschine/);
+  expect(() =>
+    technologySchema.parse({
+      ...duplicated,
+      unlockedRecipes: [...duplicated.unlockedRecipes, 'not-known'],
+    }),
+  ).toThrow();
+});
