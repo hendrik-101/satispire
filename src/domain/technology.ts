@@ -13,8 +13,14 @@ export const BELT_CAPACITIES = [
 export const PIPE_CAPACITIES = ['300', '600'] as const;
 export const technologySchema = z
   .object({
-    availableMachines: z.array(z.string().min(1).max(256)).max(2000),
-    unlockedRecipes: z.array(z.string().min(1).max(256)).max(2000),
+    availableMachines: z
+      .array(z.string().min(1).max(256))
+      .max(2000)
+      .transform((ids) => [...new Set(ids)]),
+    unlockedRecipes: z
+      .array(z.string().min(1).max(256))
+      .max(2000)
+      .transform((ids) => [...new Set(ids)]),
     beltTier: z.number().int().min(1).max(6),
     pipeTier: z.number().int().min(1).max(2),
   })
@@ -26,17 +32,11 @@ export function validateTechnology(
   catalog: Catalog,
 ): TechnologyProfile {
   const profile = technologySchema.parse(value);
-  if (
-    profile.availableMachines.some(
-      (id) => !catalog.machines.some((m) => m.id === id),
-    )
-  )
+  const machineIds = new Set(catalog.machines.map((m) => m.id));
+  const recipeIds = new Set(catalog.recipes.map((r) => r.id));
+  if (profile.availableMachines.some((id) => !machineIds.has(id)))
     throw new Error('Technologieprofil enthält eine unbekannte Maschine.');
-  if (
-    profile.unlockedRecipes.some(
-      (id) => !catalog.recipes.some((r) => r.id === id),
-    )
-  )
+  if (profile.unlockedRecipes.some((id) => !recipeIds.has(id)))
     throw new Error('Technologieprofil enthält ein unbekanntes Rezept.');
   return profile;
 }
