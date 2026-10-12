@@ -40,7 +40,7 @@ export const toolDefinitions = [
   {
     name: 'plan_factory',
     description:
-      'Compute a technology-constrained production plan and supply/block schematic from the pinned catalog; physical geometry may be unknown.',
+      'Compute a technology-constrained supply/block schematic. Optional input.variant: {schemaVersion:1, pattern:alternating|fixed, inputSide/outputSide:west|east|north|south, overrides:[{itemId,inputSide,outputSide}]}. Dependency-first floors, bundled intake and aligned symbolic transfers; physical geometry is unknown.',
     argument: 'input',
   },
 ] as const;

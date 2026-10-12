@@ -1,0 +1,58 @@
+# Build variants verification, 12 October 2026
+
+The isolated `feat/build-variants` branch starts from PR14 `4cfff72276ecaff5b072bb202e64216ee9a709b2`, preserving PR13 `484d9fb` and all published UI work. The later explicit basis-repair instruction was implemented separately in PR14 commit 70b32ac07f17beac9aa2939005e7ed357d24e41a and merged into this branch. The FloorView merge keeps the variant renderer and its equivalent computed transport labels; Workspace fixes merge unchanged. Remote branch/PR enumeration and `git ls-remote --heads origin` found only main, planner-core and local-workspace-ui: no published variants work was duplicated. No repository or ancestor AGENTS.md/.agents skill files were present. Existing project plans, contribution/design/geometry/security contracts were read.
+
+The pure version-1 build variant contract orders stages dependency-first, alternating west/east then east/west by default. Fixed same-side and custom west/east/north/south pairs plus per-stage overrides are shared by UI and `plan_factory` in classic MCP and WebMCP. Every input retains its material/rate/line count and source-floor identity, with null denoting external intake. Transfers exist only for actual dependencies; each has a common side/slot/position across its entire span. Side selection minimizes local endpoint perimeter distance with stable tie-breaking, and reports side changes. It is not a global minimum-crossing or physical routing claim.
+
+The canvas retains the authored upright industrial glyphs, thin colored resource paths, selection, optional panels and mobile fit/pan/zoom. Camera fit bounds include the selected visible block and every spanning transfer, without fitting empty shared-floor margin. One contextual details control holds presets, custom sides and selected-floor exceptions. Full row rails connect every machine when the direction changes. Aggregate labels show required line multiplicity. North-facing output attachments run above the machines. Plan files preserve rows/variants; legacy files receive defaults. Invalid/stale exceptions fail import atomically; normal target changes remove exceptions for stages that disappear. Primary manufactured targets stay focused when the old stage disappears, and recipe choices are limited to feasible chains under the current imports.
+
+## Actual local gates
+
+Node 24.19.0/npm 11.9.0; no dependency changes. `npm ci --cache /tmp/satispire-npm-cache` succeeded after the default home cache proved unwritable.
+
+- `npm run check`: discovery checks, formatting, lint, strict types, 326 unit tests, compiled CLI and real MCP stdio smoke, client/server builds pass.
+- `npm run test:coverage`: 95.78% lines, 88.69% branches, 98.56% functions, 94.84% statements; thresholds pass.
+- `npm audit --audit-level=high`: zero known vulnerabilities.
+- `PLAYWRIGHT_CHROMIUM_PATH=/usr/bin/chromium npm run test:browser`: all 45 Chromium cases pass after integrating the PR14 repairs and the first external review fixes: 27 inherited cases, five base-P2 regressions, eight workspace variant cases, three late-review cases and two synthetic 64-input renderer cases.
+- `git diff --check`: clean.
+
+Red/green evidence: new domain module and plan-file contract were initially missing; the initial browser cases failed on absent variant-side attributes/control. Pointer interception was diagnosed as inherited `pointer-events:none` on the canvas heading and repaired at the new contextual control. New rail regression initially failed without full-row coverage. A 240/min three-row north-output scenario reproduced an interior crossing and passed after the attachment moved above the machines. The 320/min scenario alone missed that crossing; the regression deliberately retains 240/min. The independent read-only review reproduced a mixed OreIron/Cable import where canvas/selector chose Copper Ingot and Inspector chose Cable. The first OreIron/IronPlate case missed this discrepancy because the lexical and dependency-first fallbacks coincided. The retained regression failed on Copper Ingot instead of Cable, then passed after selecting the first manufactured requested target. A mobile single-machine regression failed at 32.45 px glyph width; the secured pre-integration snapshot still failed at 36.52 px. After reducing an artificial logical floor-width minimum from 80 to 64 while fitting visible bounds, the final single-machine case passes at ≥40 px with its transfer retained. No physical dimensions were changed or claimed. Target deliveries now have distinct rate/line-count metadata and a separate same-side ZIEL terminal; an ingot conservation test verifies aggregate 50 = requested 20 + internal transfer 30.
+
+## Real screenshots
+
+`npm run build` then `node scripts/build-variants-qa.mjs` captures the live loopback app in Chromium, with no page errors. All images were inspected; these are browser captures, not generated mockups.
+
+- [Floor 1, left to right](build-variants-floor-one.png), [floor 2, right to left](build-variants-floor-two.png), 1586 × 992.
+- [Same-side input/output](build-variants-same-side.png), [vertical variant](build-variants-vertical.png), 1586 × 992.
+- [Multiple dependency inputs](build-variants-multiple-inputs.png), [two external ore inputs, no invented transfer](build-variants-external-inputs.png), 1586 × 992.
+- [Mobile complete fit](build-variants-mobile.png), [mobile contextual controls](build-variants-mobile-control.png), 390 × 844.
+
+Physical footprints/ports remain null. Transfer locations and paths are logical diagram topology; no measured lift dimensions, individual belts, clearance, game geometry, online infrastructure or deployment are claimed. `generate_floors` synthetic geometry is unchanged.
+
+External current-head Codex code review, Security review and CI must complete before Ready. No earlier-head or earlier-PR result is current approval. CodeRabbit remains after that gate; an absent integration is not bypassed with repeated comments. No merge or deployment.
+
+## First external review fixes
+
+Actual normal review on 622740b raised one P1 and two P2s; Security review on that head was clean. All remain Draft review work until fresh current-head gates complete.
+
+- P1: oversized/sparse override lists were rejected by Zod only after it read/spread entries. The shared schema now checks the raw array length before reading anything, then copies at most 64 indexed entries to an ordinary array. This also prevents a custom raw WebMCP iterator from bypassing length semantics. Ordinary 0–64 arrays, strict identity/side validation, unknown/duplicate override rejection, error codes and authorization order are preserved. The 65-entry getter regression failed with one entry read and passes with zero. A billion-length sparse array rejects without access; ordinary 64-entry schema control passes. Actual classic MCP and WebMCP reject oversized arguments; raw WebMCP sparse input rejects without reads; foreign-room calls remain forbidden. A fresh read-only boundary investigator and a separate fresh bypass/regression reviewer traced all callers and independently exercised 0–64, sparse lengths through 2³²−1, sync/async parsing, plan-file rejection and iterator suppression. Neither edited files. No surviving scoped bypass or regression was found. Evidence is retained in this existing authorized repository QA record; no separate scan/workbench artifact was created.
+- P2 fit: renderer rails and camera bounds now consume the same pure `supplySceneMetrics`. Bounds cover feed/output rails, all feed levels, labels, target terminal and spanning transfers. Actual Chromium static rendering of an authored valid 64-input synthetic catalog failed on both west/east fit before repair; both now fit all feed groups. [West capture](build-variants-64-feeds-west.png), [east capture](build-variants-64-feeds-east.png). No game geometry is inferred from this synthetic control.
+- P2 context: side selectors show effective selected-floor sides and map global edits through the odd-floor alternating swap. The real-page regression failed with Eingangsseite west while the floor intake was east; afterward it displays east, changes that intake to north, and verifies the preceding floor's output becomes north while the selected floor's output stays west. Explicit floor overrides continue to use direct keys.
+
+The later PR14 bounded technology-ID normalization (5271ab9) is also integrated. It preserves original availability semantics and rejects unknown IDs while preventing duplicate IDs from reaching repeated candidate probes. Updated full check, 326 units, 41 Chromium cases and coverage gates pass. Physical geometry stays null and no individual belts, merge or deployment are claimed.
+
+## Subsequent base repair integration
+
+PR15 68edac passed its external normal and Security reviews, with no open threads and green CI. A subsequent automatic Ready review on PR14 independently found that a draft Steel Rod could survive removal of its Foundry dependency. The base-only repair 4eb8817 was published separately and merged here without discarding either branch. Recipe option filtering and profile preservation now share a complete-chain feasibility helper. The exact base regression (draft Steel Rod, disable Foundry, apply profile, calculate) fails before repair and passes after; the inherited browser control also passes in this variants app. [Base screenshot and evidence](latest-p2-2026-10-12.md).
+
+Integrated local gates pass: full check, 326 units, all 42 Chromium cases and coverage (95.78% lines, 88.69% branches, 98.56% functions, 94.84% statements). The earlier 68edac external approvals precede this integration. This candidate remains Draft pending fresh exact-head normal/Security reviews and CI.
+
+## Automatic Ready review: popover and directional arrows
+
+After manual reviews and CI on 31e0222 were clean, its automatic Ready code review reported three additional P2s. PR15 was returned to Draft; PR14 remained Ready after its own automatic code and Security rounds completed without additional threads. All three new Chromium cases failed on the actual variants page before these repairs, then passed:
+
+- Particle Accelerator / Diamonds on a 390px mobile viewport: the popover extended past the floor clipping boundary. At the mobile breakpoint the details element now uses static positioning, anchoring its absolute popover to the existing canvas heading instead of the button after the machine name. Panel and every select/input fit within the floor at both 390px and 320px; the intake selector remains operable. [Actual 320px capture](build-variants-mobile-particle.png).
+- Three-row north output: the manifold marker pointed south (+34 logical SVG units in endpoint Y). Its point order now runs from the last row toward the north exit; the actual SVG path endpoint decreases in Y and retains the output arrow marker. [Actual capture](build-variants-north-output.png).
+- Three-row south input: the continuation marker pointed back south (+32 units) toward the source. Its point order now runs from the last row toward the northern row, consistent with the intake path. The actual endpoint decreases in Y and retains the input marker. [Actual capture](build-variants-south-input.png).
+
+All rail coordinates, scene bounds, recipe/domain/adapter behavior and physical-unknown assertions remain. Live Chromium gallery captures were refreshed and inspected. Full check passes (326 units), all 45 Chromium cases pass, coverage thresholds pass with the existing percentages. Fresh exact-head normal/Security reviews and CI remain required before Ready; earlier clean results precede these repairs.
