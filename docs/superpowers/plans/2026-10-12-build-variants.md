@@ -31,8 +31,8 @@ Files: web/workspace/FloorView.tsx, VariantControl.tsx, Workspace.tsx, workspace
 
 ### Task 3: Review gates
 
-- [ ] Run check, coverage, audit, browser and diff validation.
-- [ ] Commit and push isolated branch; create Draft PR based on feat/local-workspace-ui.
+- [x] Run check, coverage, audit, browser and diff validation.
+- [x] Commit and push isolated branch; create Draft PR based on feat/local-workspace-ui.
 - [ ] Request actual normal Codex/Security review, repair validated findings and rerun gates/reviews.
 - [ ] Promote only on current-head green CI and completed clean reviews; otherwise document blocker.
 
