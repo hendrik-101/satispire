@@ -6,3 +6,9 @@ coverage/
 .vite/
 playwright-report/
 test-results/
+
+local-data/
+.output/
+.tanstack/
+
+web-dist/

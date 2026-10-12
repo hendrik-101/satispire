@@ -2,7 +2,7 @@
 
 Parametric production and multistory factory planning for Satisfactory. Independent fan project, not affiliated with Coffee Stain.
 
-This first executable slice provides an exact production solver, synthetic machineblock/floor generation, a JSON CLI, shared authorized commands, classic MCP and feature-detected WebMCP adapters. The user approved a floor-centered workspace with optional graph and panels. TanStack Start UI implementation awaits local access to the approved image references; their supported transfer is currently blocked. Convex transaction functions are present and tested with `convex-test`; no online backend is assumed or provisioned.
+This first executable slice provides an exact production solver, synthetic machineblock/floor generation, a JSON CLI, shared authorized commands, classic MCP and feature-detected WebMCP adapters. The user approved a floor-centered workspace with optional graph and panels. The TanStack Start workspace now provides a fixed Vanilla 1.0 planning workflow, optional panels and a schematic block canvas. See [local workspace](docs/local-workspace.md) and [catalog provenance and limits](docs/data/vanilla.md). Reference-image transfers still fail in this Cloud executor; the previous PC inspection is retained as historical evidence only. Convex transaction functions are present and tested with `convex-test`; no online backend is assumed or provisioned.
 
 ## Run
 
@@ -18,7 +18,7 @@ npx playwright install --with-deps chromium
 npm run test:browser
 ```
 
-If a compatible Chromium is already installed, use `PLAYWRIGHT_CHROMIUM_PATH=/usr/bin/chromium npm run test:browser`. Browser tests verify adapter calls and fallback using a preview-API harness, not native AI-client WebMCP support or the pending product UI.
+If a compatible Chromium is already installed, use `PLAYWRIGHT_CHROMIUM_PATH=/usr/bin/chromium npm run test:browser`. Browser tests verify the local workspace and adapter calls/fallback in a preview-API harness; they do not establish native AI-client WebMCP support.
 
 The demo turns 20 example plates/min and 15 example rods/min into three stages, exact imports and automatically arranged stories sharing a 32×32 logical footprint. Results include machines, uneven rows, manifold topology, aggregate ports and lift reservations. These are original synthetic fixtures, **not Satisfactory recipes or physical measurements**. No individual conveyor segments are planned.
 
@@ -34,7 +34,7 @@ Rates are exact strings such as `20`, `0.1` or `1/3`. Explicit selected recipes 
 npm run plan -- --input my-plan.json --catalog my-normalized-catalog.json
 ```
 
-The versioned normalized contract and limitations are in [data-contract](docs/data-contract.md), [geometry-contract](docs/geometry-contract.md) and [clocking-contract](docs/clocking-contract.md). This slice accepts normalized user imports, not raw game Docs JSON. The separately prepared discovery importer has not yet transferred successfully into this environment. Do not commit raw game data, icons, meshes or a full catalog with unresolved redistribution rights. No real machine is marked layout-ready.
+The versioned normalized contract and limitations are in [data-contract](docs/data-contract.md), [geometry-contract](docs/geometry-contract.md) and [clocking-contract](docs/clocking-contract.md). This slice accepts normalized user imports, not raw game Docs JSON. The own discovery normalizer and bounded local converter are integrated; see [local workspace](docs/local-workspace.md). Do not commit raw game data, icons, meshes or a full catalog with unresolved redistribution rights. The public UI uses the fixed numeric Vanilla snapshot; physical footprints/ports remain unknown and are not marked layout-ready.
 
 ## MCP and collaboration
 

@@ -8,7 +8,8 @@ export type ToolName =
   | 'read_room'
   | 'apply_command'
   | 'solve_production'
-  | 'generate_floors';
+  | 'generate_floors'
+  | 'plan_factory';
 export type ToolExecutor = (
   name: ToolName,
   input: unknown,
@@ -34,6 +35,12 @@ export const toolDefinitions = [
     name: 'generate_floors',
     description:
       'Generate synthetic logical-grid floors and continuous lift reservations.',
+    argument: 'input',
+  },
+  {
+    name: 'plan_factory',
+    description:
+      'Compute a technology-constrained production plan and supply/block schematic from the pinned catalog; physical geometry may be unknown.',
     argument: 'input',
   },
 ] as const;

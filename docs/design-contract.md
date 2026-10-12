@@ -1,6 +1,6 @@
 # Workspace design contract
 
-Status: the user approved **A as the floor-centered base**, with the graph from B and side panels available on demand. Neither reference image has been materialized or viewed in this executor, so image-dependent implementation remains blocked and this contract is not screenshot compliance evidence.
+Status: the user approved **A as the floor-centered base**, with the graph from B and side panels available on demand. Both original references were materialized through Library and visually inspected on the PC on 11 October 2026 before UI implementation. The local slice follows the floor-centered dark workspace, optional actual material graph and inspector; it does not claim the illustrated online or physical planning features.
 
 ## Visual system
 
@@ -26,6 +26,14 @@ Before image-dependent implementation, materialize the approved original referen
 
 ## Approved flexible workspace and optional flow indicators
 
-The user approved A as the base on 11 October 2026, with the graph from B and side panels available on demand. Provide meaningful view presets plus independent panel toggles. Persist personal arrangement separately from shared factory intent. Switching panels/presets preserves selection, uncommitted draft and zoom where applicable and never itself regenerates the factory. Presenter following must not permanently overwrite personal preferences. Image inspection remains blocked in this executor; approval does not imply the references have been seen.
+The user approved A as the base on 11 October 2026, with the graph from B and side panels available on demand. Provide meaningful view presets plus independent panel toggles. Persist personal arrangement separately from shared factory intent. Switching panels/presets preserves selection, uncommitted draft and zoom where applicable and never itself regenerates the factory. Presenter following must not permanently overwrite personal preferences. Image inspection is completed for this local implementation.
 
 Subtle optional indicators may explain resource flow on visible connections, preferably only the selected chain. They are illustrative, not a time-accurate simulation. Pause them for a hidden tab and `prefers-reduced-motion`; retain static arrows and rate labels. Limit animation to visible connections and run no render loop while disabled. Do not animate machines or backgrounds decoratively. Performance alongside Satisfactory still needs actual measurement.
+
+## Cloud continuation, 11 October 2026
+
+The explicitly authorized Cloud restart preserves PR13 and PR14 and favors implementation over another planning loop. This executor attempted the current supported Library materialization flow for both original images; both byte transfers failed. No guessed URL or bypass was used. The existing visual contract and explicit user direction govern independent UI work. The revised UI has one header, one compact planning row, canvas-local controls and optional panels. Model status prose, exclusions and local game import are absent from normal UI. Physical dimensions and ports are unknown in the current catalog; the canvas is labeled Blockschema. Machine height and height-fit are explicitly excluded from this workspace MVP.
+
+## Explicit visual correction
+
+The user rejected the previous visual implementation while retaining the reduced text and existing functionality. The new candidate uses original industrial schematic machine silhouettes, connected symbolic feed/output ports, junctions, directed row manifolds and a compact east transfer module. Strong orange selection identifies one individual machine and links its stage to the graph and inspector. The desktop planning form is integrated into the header; graph is a bottom tray, inspector follows content height, and mobile secondary settings use a sheet. Following direct parent comparison, mobile starts with a complete-factory fit including the transfer; larger mobile zoom steps, pan and keyboard focus-pan provide a readable working view. Thin blue/orange connections and subtle authored steel shading reduce the heavy pale rails and flat machine surfaces identified in that review. These diagram symbols are not verified physical geometry or game assets. The parent's actual A/B inspection informs the supplied criteria; Cloud byte access remains blocked and does not count as image inspection. See [actual captures and verification](qa/visual-correction-2026-10-11.md). This candidate is not claimed to be user-accepted.

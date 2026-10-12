@@ -1,0 +1,17 @@
+# Late P2 review fixes — 12 October 2026
+
+PR14 was returned to Draft after three late review threads arrived for cd50d89 at 22:14:39 UTC on 11 October. Earlier clean review comments did not cover these subsequent findings. The visually reviewed design is retained; this patch changes only import recipe seeding, zero-input diagram semantics and bypass-lane allocation.
+
+## Reproduction and repair
+
+- [Inactive recipe overrides](https://github.com/hendrik-101/satispire/pull/14#discussion_r4243465294): a valid plate import with a dormant locked Steel Rod override imported successfully, but selecting Iron Rod then failed. Equivalent cases reproduced with a coproduct Silica override and an unsupported Circuit Board dependency chain. All three real-page regressions failed before the fix. The UI now seeds usable defaults and overlays only the active stages validated by the import's solved plan. The imported document remains the applied input; its active selected recipes are preserved. A control verifies that active Cast Screw remains selected and does not introduce a rod stage. Repeated target calculations succeed. [Actual recovery capture](import-default-recovery.png).
+- [Input-free recipes](https://github.com/hendrik-101/satispire/pull/14#discussion_r4243465297): Tier 9 Excited Photonic Matter (Recipe_QuantumEnergy_C, zero inputs) rendered one fictitious incoming feed. The regression failed with one data-feed group instead of zero. Both floor and glyph clamps now allow zero; output ports remain present. The regression verifies canvas, graph and inspector each show only the real output port and that the graph has no material edges. [Actual zero-input capture](input-free-photonic.png).
+- [Bypass lane reuse](https://github.com/hendrik-101/satispire/pull/14#discussion_r4243465301): Adaptive Control Unit with all alternates unlocked produces 12 long-span connections, but the old modulo yielded only eight distinct lane positions. The regression failed with eight unique lanes instead of twelve. Each bypass now receives its own lane and the SVG height grows to contain all lanes. The regression also scrolls to the bottom and checks that the last lane is reachable within the visible graph tray. [Actual scrolled graph capture](advanced-bypass-lanes.png); this is the left horizontal window, not a claim that every node fits in the tray at once.
+
+All three PNGs are actual Chromium page captures at 1280 × 720, opened and inspected in Cloud. Existing 1586 × 992 desktop and mobile comparison images remain at their published cd50d89 commit; no new design reference transfer or asset generation was attempted.
+
+## Verification
+
+`npm run check` completed with 309 unit tests, synthetic discovery, format/lint/strict types, compiled planner/MCP smoke and client/server web build. All 27 Chromium cases passed: six new late-review cases and the previous 21, including repeated/interrupted imports and calculations, profile restrictions, individual selection, mobile fit/zoom/pan and WebMCP lifecycle. The only initial control-test failure was an incorrect test locator; it was corrected to the existing accessible recipe label before verification. The five expected behavioral failures reproduced the three review findings.
+
+External normal/Security reviews and CI must be checked again on the published final commit. This repository evidence records local checks, not future review approval. No CodeRabbit retrigger, merge, deployment, dependencies, game assets, physical geometry guesses or styling changes.

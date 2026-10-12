@@ -30,7 +30,7 @@ test('registered tools execute application functions and propagate structured fa
     };
   });
   expect(handle.available).toBe(true);
-  expect(registered.size).toBe(4);
+  expect(registered.size).toBe(5);
   const result = await registered
     .get('solve_production')!
     .execute({ roomId: 'room-a', input: {} });
@@ -74,6 +74,7 @@ test('disposal attempts all tools and retries only failed removals', async () =>
     'apply_command',
     'solve_production',
     'generate_floors',
+    'plan_factory',
   ]);
   expect([...registered.keys()]).toEqual(['apply_command']);
   expect(
@@ -90,11 +91,12 @@ test('disposal attempts all tools and retries only failed removals', async () =>
     'apply_command',
     'solve_production',
     'generate_floors',
+    'plan_factory',
     'apply_command',
   ]);
   expect(registered.size).toBe(0);
   handle.dispose();
-  expect(attempts).toHaveLength(5);
+  expect(attempts).toHaveLength(6);
 });
 
 test('partial registration failure keeps failed cleanup retryable and all callbacks inactive', async () => {
