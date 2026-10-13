@@ -42,6 +42,7 @@ jobs:
           APP_REVISION: ${{ github.sha }}
           SATISPIRE_ARTIFACT_DIR: release-artifact
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         id: runtime_artifact
         with:
           name: satispire-runtime-${{ github.event_name }}-${{ github.sha }}
@@ -50,6 +51,7 @@ jobs:
           retention-days: 7
           compression-level: 0
       - name: Record runtime artifact identity
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           ARTIFACT_URL: ${{ steps.runtime_artifact.outputs.artifact-url }}
           ARTIFACT_DIGEST: ${{ steps.runtime_artifact.outputs.artifact-digest }}

@@ -9,7 +9,7 @@ Verification commands for the new candidate:
 - npm run check and npm run test:coverage retain all existing units/build/type/lint/adapter checks.
 - APP_REVISION=<actual HEAD> BUILDX_CONFIG=/tmp/satispire-artifact-buildx npm run test:artifact validates wrong-revision and dirty-checkout refusal, saved/loaded actual image, full inherited container checks, identity/commit binding, all bundle checksums and rejection after a deliberate disposable archive corruption.
 - APP_REVISION=<actual HEAD> npm run build:runtime; npm run test:runtime; npm run test:browser:runtime retain actual compiled production HTTP and all inherited browser checks.
-- PR CI on ubuntu-latest exports and uploads a candidate bundle using the unchanged contents:read permissions. Upload success is the concrete repository-permission probe. PR bundles are not Main releases; final Main artifacts require a successful main push after merge.
+- PR CI on ubuntu-latest checks the archive locally with unchanged contents:read permissions; it does not upload new archives. Main upload is prepared for a separately authorized main push. A first Draft creation attempt with PR artifact upload was rejected by automatic approval review for insufficient publication/destination authorization; PR uploading was removed rather than bypassed. Actual upload success remains unproven until that later authorized main job.
 
 Run results, final candidate commit and exact external review links belong in the PR description. Existing actual runtime desktop/mobile screenshots remain in http-runtime-desktop.png and http-runtime-mobile.png; this change alters no UI.
 

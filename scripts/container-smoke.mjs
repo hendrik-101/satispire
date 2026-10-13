@@ -253,6 +253,16 @@ try {
   );
   assert.equal(stopped.ExitCode, 0);
   if (artifactDirectory) {
+    assert.equal(
+      git('rev-parse', 'HEAD'),
+      revision,
+      'Artifact revision must still match checkout',
+    );
+    assert.equal(
+      git('status', '--porcelain'),
+      '',
+      'Artifact checkout changed during build',
+    );
     const ci = process.env.GITHUB_ACTIONS === 'true';
     const main =
       ci &&
