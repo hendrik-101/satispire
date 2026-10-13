@@ -1,0 +1,4 @@
+# Combine with compose.test.yml after verifying and loading the CI image archive.
+services:
+  app:
+    pull_policy: never

@@ -1,7 +1,7 @@
 name: satispire-test
 services:
   app:
-    image: '${SATISPIRE_IMAGE:?Supply the reviewed immutable image digest}'
+    image: '${SATISPIRE_IMAGE:?Supply the verified immutable image reference or loaded ID}'
     restart: unless-stopped
     environment:
       NODE_ENV: production
