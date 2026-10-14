@@ -28,6 +28,7 @@
     "start": "node dist/runtime/serve.js",
     "test:runtime": "node scripts/runtime-smoke.mjs",
     "test:container": "node scripts/container-smoke.mjs",
+    "test:artifact": "node scripts/artifact-smoke.mjs",
     "test:browser:runtime": "playwright test --config playwright.runtime.config.ts"
   },
   "dependencies": {

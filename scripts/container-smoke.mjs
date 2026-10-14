@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
-import { readFile, writeFile, rm } from 'node:fs/promises';
+import { randomUUID, createHash } from 'node:crypto';
+import { createReadStream } from 'node:fs';
+import { resolve, join } from 'node:path';
+import { readFile, writeFile, rm, mkdir, copyFile } from 'node:fs/promises';
 import { spawn, execFileSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 const revision = process.env.APP_REVISION;
@@ -29,6 +31,27 @@ assert(
   ).startsWith('unix://'),
   'Smoke may use only a local Docker context',
 );
+const artifactDirectory = process.env.SATISPIRE_ARTIFACT_DIR
+  ? resolve(process.env.SATISPIRE_ARTIFACT_DIR)
+  : undefined;
+const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim();
+if (artifactDirectory) {
+  assert.equal(
+    git('rev-parse', 'HEAD'),
+    revision,
+    'Artifact revision must match checkout',
+  );
+  assert.equal(
+    git('status', '--porcelain'),
+    '',
+    'Artifact requires a clean checkout',
+  );
+}
+const hashFile = async (path) => {
+  const hash = createHash('sha256');
+  for await (const chunk of createReadStream(path)) hash.update(chunk);
+  return hash.digest('hex');
+};
 const id = randomUUID().replaceAll('-', '');
 const name = `satispire-smoke-${id}`;
 const image = `satispire-smoke:${id}`;
@@ -51,7 +74,10 @@ assert.deepEqual(rendered.services.app.cap_drop, ['ALL']);
 assert.equal(rendered.networks.web.external, true);
 let built = false,
   created = false,
-  contextBuilt = false;
+  contextBuilt = false,
+  artifactOwned = false,
+  artifactComplete = false;
+let artifactImage;
 const probeName = `.env.satispire-smoke-${id}`;
 const probes = [probeName, `web/${probeName}`];
 const contextImage = `satispire-context-smoke:${id}`;
@@ -109,6 +135,33 @@ try {
   const code = await new Promise((resolve) => build.once('exit', resolve));
   assert.equal(code, 0);
   built = true;
+  if (artifactDirectory) {
+    // Exclusive directory creation: never overwrite an operator's existing bundle.
+    await mkdir(artifactDirectory, { mode: 0o700 });
+    artifactOwned = true;
+    artifactImage = JSON.parse(docker('image', 'inspect', image))[0];
+    assert.equal(
+      artifactImage.Config.Labels['org.opencontainers.image.revision'],
+      revision,
+    );
+    docker(
+      'image',
+      'save',
+      '--output',
+      join(artifactDirectory, 'image.tar'),
+      artifactImage.Id,
+    );
+    docker('image', 'rm', image);
+    built = false;
+    docker('image', 'load', '--input', join(artifactDirectory, 'image.tar'));
+    // Reattach our unique disposable tag; all existing checks run on loaded bytes.
+    assert.equal(
+      docker('image', 'inspect', '--format', '{{.Id}}', artifactImage.Id),
+      artifactImage.Id,
+    );
+    docker('image', 'tag', artifactImage.Id, image);
+    built = true;
+  }
   docker(
     'run',
     '-d',
@@ -199,10 +252,98 @@ try {
     docker('inspect', '--format', '{{json .State}}', name),
   );
   assert.equal(stopped.ExitCode, 0);
+  if (artifactDirectory) {
+    assert.equal(
+      git('rev-parse', 'HEAD'),
+      revision,
+      'Artifact revision must still match checkout',
+    );
+    assert.equal(
+      git('status', '--porcelain'),
+      '',
+      'Artifact checkout changed during build',
+    );
+    const ci = process.env.GITHUB_ACTIONS === 'true';
+    const main =
+      ci &&
+      process.env.GITHUB_EVENT_NAME === 'push' &&
+      process.env.GITHUB_REF === 'refs/heads/main';
+    if (ci) {
+      assert.equal(process.env.GITHUB_REPOSITORY, 'hendrik-101/satispire');
+      assert.equal(process.env.GITHUB_SHA, revision);
+      assert.match(process.env.GITHUB_RUN_ID ?? '', /^[0-9]+$/);
+      assert.match(process.env.GITHUB_RUN_ATTEMPT ?? '', /^[0-9]+$/);
+    }
+    const manifest = {
+      schemaVersion: 1,
+      kind: main ? 'main' : ci ? 'candidate' : 'local',
+      repository: 'hendrik-101/satispire',
+      revision,
+      sourceTree: git('rev-parse', 'HEAD^{tree}'),
+      imageId: artifactImage.Id,
+      platform: {
+        os: artifactImage.Os,
+        architecture: artifactImage.Architecture,
+      },
+      archive: {
+        file: 'image.tar',
+        sha256: await hashFile(join(artifactDirectory, 'image.tar')),
+      },
+      provenance: ci
+        ? {
+            event: process.env.GITHUB_EVENT_NAME,
+            ref: process.env.GITHUB_REF,
+            runId: process.env.GITHUB_RUN_ID,
+            runAttempt: process.env.GITHUB_RUN_ATTEMPT,
+          }
+        : null,
+    };
+    await writeFile(
+      join(artifactDirectory, 'manifest.json'),
+      JSON.stringify(manifest, null, 2) + '\n',
+      { flag: 'wx' },
+    );
+    await copyFile(
+      'deploy/compose.test.yml',
+      join(artifactDirectory, 'compose.test.yml'),
+    );
+    await copyFile(
+      'deploy/compose.artifact.yml',
+      join(artifactDirectory, 'compose.artifact.yml'),
+    );
+    await copyFile(
+      'docs/deployment.md',
+      join(artifactDirectory, 'DEPLOYMENT.md'),
+    );
+    const files = [
+      'image.tar',
+      'manifest.json',
+      'compose.test.yml',
+      'compose.artifact.yml',
+      'DEPLOYMENT.md',
+    ];
+    const sums = await Promise.all(
+      files.map(
+        async (file) =>
+          `${await hashFile(join(artifactDirectory, file))}  ${file}`,
+      ),
+    );
+    await writeFile(
+      join(artifactDirectory, 'SHA256SUMS'),
+      sums.join('\n') + '\n',
+      { flag: 'wx' },
+    );
+    artifactComplete = true;
+    console.log(
+      `Verified runtime bundle: ${artifactDirectory}; source ${revision}; image ${artifactImage.Id}; kind ${manifest.kind}`,
+    );
+  }
   console.log(
     'Disposable container smoke passed: actual SSR/assets, healthy immutable revision, UID1000, read-only/cap-drop, loopback and SIGTERM.',
   );
 } finally {
+  if (artifactOwned && !artifactComplete)
+    await rm(artifactDirectory, { recursive: true, force: true });
   for (const path of ownedProbes) await rm(path, { force: true });
   if (contextBuilt) docker('image', 'rm', contextImage);
   if (created) docker('rm', '-f', name);
