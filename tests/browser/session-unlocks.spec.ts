@@ -165,9 +165,9 @@ test('applied session unlocks survive reload and initialize a fresh session from
   await expect(
     page.getByLabel('Abgeschlossene Space-Elevator-Phase'),
   ).toHaveValue('1');
-  await page.getByLabel('Rezepte suchen').fill('Cast Screw');
+  await page.getByLabel('Rezepte suchen').fill('Cast Screws');
   await page
-    .getByLabel('Rezept Alternate: Cast Screw', { exact: true })
+    .getByLabel('Rezept Alternate: Cast Screws', { exact: true })
     .check();
   await page.getByRole('button', { name: 'Profil anwenden' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -179,15 +179,15 @@ test('applied session unlocks survive reload and initialize a fresh session from
   await expect(
     page.getByLabel('Maschine Foundry', { exact: true }),
   ).toBeChecked();
-  await page.getByLabel('Rezepte suchen').fill('Cast Screw');
+  await page.getByLabel('Rezepte suchen').fill('Cast Screws');
   await expect(
-    page.getByLabel('Rezept Alternate: Cast Screw', { exact: true }),
+    page.getByLabel('Rezept Alternate: Cast Screws', { exact: true }),
   ).toBeChecked();
   await page
     .getByLabel('Abgeschlossene Space-Elevator-Phase')
     .selectOption('2');
   await expect(
-    page.getByLabel('Rezept Alternate: Cast Screw', { exact: true }),
+    page.getByLabel('Rezept Alternate: Cast Screws', { exact: true }),
   ).toBeChecked();
   await page.getByRole('button', { name: 'Abbrechen' }).click();
   await page.evaluate(() => sessionStorage.clear());
