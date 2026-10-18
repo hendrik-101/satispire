@@ -7,9 +7,22 @@ const role = v.union(
   v.literal('editor'),
   v.literal('viewer'),
 );
+export const unlockProfileValidator = v.object({
+  schemaVersion: v.literal(1),
+  catalogVersion: v.string(),
+  hubTier: v.union(v.number(), v.null()),
+  spaceElevatorPhase: v.number(),
+  technology: v.object({
+    availableMachines: v.array(v.string()),
+    unlockedRecipes: v.array(v.string()),
+    beltTier: v.number(),
+    pipeTier: v.number(),
+  }),
+});
 const state = v.object({
   id: v.string(),
   revision: v.number(),
+  unlocks: v.optional(unlockProfileValidator),
   presenterId: v.union(v.string(), v.null()),
   intent: v.object({
     targets: v.record(v.string(), v.string()),

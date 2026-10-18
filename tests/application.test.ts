@@ -2,6 +2,8 @@ import { expect, test } from 'vitest';
 import { createRoom, createInvite, joinRoom } from '../src/domain/rooms';
 import { createLocalApplication } from '../src/application';
 import { syntheticCatalog } from '../src/domain/catalog';
+import { createUnlockProfile } from '../src/domain/session-unlocks';
+import { vanillaCatalog, technologyAtTier } from '../src/domain/vanilla';
 
 const setup = () => {
   let room = createRoom({
@@ -22,6 +24,36 @@ const command = {
   expectedRevision: 0,
   command: { type: 'set-block-rows', blockId: 'block-a', rows: 3 },
 };
+test('planner uses session unlocks even if a participant supplies a different profile', async () => {
+  const room = { ...setup(), unlocks: createUnlockProfile(2) };
+  const app = createLocalApplication(
+    room,
+    { roomId: room.id, participantId: 'viewer' },
+    vanillaCatalog,
+  );
+  const input = {
+    targets: [{ itemId: 'Desc_SteelIngot_C', rate: '20' }],
+    recipes: { Desc_SteelIngot_C: 'Recipe_IngotSteel_C' },
+    imports: ['Desc_OreIron_C', 'Desc_Coal_C'],
+    technology: technologyAtTier(9),
+  };
+  expect(
+    await app.execute('solve_production', { roomId: room.id, input }),
+  ).toMatchObject({ ok: false });
+  expect(
+    await app.execute('apply_command', {
+      roomId: room.id,
+      command: {
+        id: 'upgrade',
+        expectedRevision: 0,
+        command: { type: 'set-unlocks', profile: createUnlockProfile(3) },
+      },
+    }),
+  ).toMatchObject({ ok: true });
+  expect(
+    await app.execute('solve_production', { roomId: room.id, input }),
+  ).toMatchObject({ ok: true });
+});
 test('application command is authorized, atomic, versioned and idempotent', async () => {
   const app = createLocalApplication(
     setup(),

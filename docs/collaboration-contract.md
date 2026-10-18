@@ -1,6 +1,8 @@
 # Collaboration contract
 
-This checkout contains a pure room reducer and registered Convex functions, tested through `convex-test`. It has no deployed Convex URL, online transport integration, connection liveness, or workspace UI. The local application adapter is a single-process test/CLI service. Neither adapter constitutes a delivered online collaboration MVP.
+Session-wide unlocks are an optional `RoomState.unlocks` profile, independent of participant identity. `rooms:create` accepts the creator's browser profile as `unlocks` and snapshots it; omission uses the tier 2 default. Invites and joins preserve that snapshot. Every verified member may submit a `set-unlocks` command through `rooms:command`, including viewers; other edit commands retain their existing role restrictions. Unlock changes increment the shared revision and participate in command receipts and stale-edit rejection. Existing stored rooms without an unlock profile remain readable. The local workspace implements the same session state; online UI subscription/provisioning remains subject to the deployment limitations below.
+
+This checkout contains a pure room reducer and registered Convex functions, tested through `convex-test`. It has no deployed Convex URL, online transport integration, connection liveness, or online workspace UI. The local application adapter is a single-process test/CLI service. Neither adapter constitutes a delivered online collaboration MVP.
 
 ## Identity and capabilities
 
@@ -18,10 +20,11 @@ The envelope is `{ id, expectedRevision, command }`. Supported commands are:
 
 - `{ type: 'set-target', itemId, rate }`: a positive exact integer, decimal, or fraction string; the shared rational parser validates its arithmetic bounds and storage normalizes it.
 - `{ type: 'set-block-rows', blockId, rows }`: an integer row count from 1 through 256.
+- `{ type: 'set-unlocks', profile }`: a validated, versioned Vanilla session unlock profile; every member may change it.
 
 Commands record planner intent, not generated layouts or recipes. The catalog-aware solver and geometry generator validate their own inputs and supported scope. Unknown commands, extra command fields, invalid IDs, reserved property names, invalid rates, and invalid row counts fail without a partial change.
 
-Every edit checks membership and edit permission first. The command ID is room-scoped and bound to participant ID, original payload, and expected revision. A successful identical retry returns its original applied revision and leaves current state unchanged, even after newer edits. Reusing that ID with another participant, payload, or revision is rejected. A fresh command whose expected revision differs from the room's current revision is rejected. The caller must refresh and submit a new command ID after resolving the conflict.
+Every command checks membership first; planner edits additionally require edit permission, while unlock changes are allowed for all members. The command ID is room-scoped and bound to participant ID, original payload, and expected revision. A successful identical retry returns its original applied revision and leaves current state unchanged, even after newer edits. Reusing that ID with another participant, payload, or revision is rejected. A fresh command whose expected revision differs from the room's current revision is rejected. The caller must refresh and submit a new command ID after resolving the conflict.
 
 A successful fresh command increments planner revision once and records the receipt together with the intent. The reducer never mutates its input. Convex runs capability verification, revision/receipt checks, and the state replacement within one mutation transaction. Invitation, membership, and presence updates do not increment the planner revision.
 

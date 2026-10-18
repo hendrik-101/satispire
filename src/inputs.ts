@@ -1,4 +1,5 @@
 import { technologySchema } from './domain/technology.js';
+import { unlockProfileSchema } from './domain/session-unlocks.js';
 import { z } from 'zod';
 import { CATALOG_ID_LIMIT, CATALOG_ID_PATTERN } from './domain/catalog.js';
 import { INPUT_ENTRY_LIMIT } from './domain/production.js';
@@ -99,6 +100,12 @@ export const commandSchema = z
     id: identity,
     expectedRevision: z.number().int().nonnegative(),
     command: z.discriminatedUnion('type', [
+      z
+        .object({
+          type: z.literal('set-unlocks'),
+          profile: unlockProfileSchema,
+        })
+        .strict(),
       z
         .object({
           type: z.literal('set-target'),
