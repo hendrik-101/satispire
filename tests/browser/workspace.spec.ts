@@ -1,6 +1,48 @@
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { vanillaCatalog } from '../../src/domain/vanilla.js';
 const url = process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173';
+test('rejects a 1.0 plan without replacing the active 1.2 plan', async ({
+  page,
+}) => {
+  await ready(page);
+  await expect(page.locator('.catalog-version')).toContainText('1.2.4.0');
+  await page.getByLabel('Zielrate pro Minute').fill('40');
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await page.getByLabel('Plan-Datei').setInputFiles({
+    name: 'old-1.0.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(
+      JSON.stringify({
+        schemaVersion: 1,
+        catalogVersion: 'vanilla-1.0-tools-a1eb2fef-v1',
+        production: {
+          targets: [{ itemId: 'Desc_IronPlate_C', rate: '20' }],
+          recipes: {
+            Desc_IronPlate_C: 'Recipe_IronPlate_C',
+            Desc_IronIngot_C: 'Recipe_IngotIron_C',
+          },
+          imports: ['Desc_OreIron_C'],
+        },
+      }),
+    ),
+  });
+  await expect(page.getByRole('alert')).toContainText('1.2.4.0');
+  await expect(
+    page.getByText('40 / min', { exact: true }).first(),
+  ).toBeVisible();
+  const download = page.waitForEvent('download');
+  await page
+    .getByRole('button', { name: 'Plan exportieren', exact: true })
+    .click();
+  const exported = JSON.parse(
+    await readFile((await (await download).path())!, 'utf8'),
+  );
+  expect(exported.catalogVersion).toBe(vanillaCatalog.catalogVersion);
+  expect(exported.production.targets[0].rate).toBe('40');
+});
 test('industrial canvas selection links the machine, graph and inspector', async ({
   page,
 }) => {
@@ -21,11 +63,27 @@ test('industrial canvas selection links the machine, graph and inspector', async
   await expect(page.getByLabel('Stufeninspector')).toContainText(
     'Constructor 2',
   );
+  await expect(
+    page.getByRole('group', { name: 'Maschinenmaße' }),
+  ).toContainText('8,307 m');
+  await expect(page.getByRole('group', { name: 'Baufreiraum' })).toContainText(
+    'Höhe6 m',
+  );
+  await page.getByText('Quellen und Lizenzen', { exact: true }).click();
+  await expect(page.getByLabel('Quellen und Lizenzen')).toContainText(
+    '2026 Greg McDowell',
+  );
+  await expect(page.getByLabel('Quellen und Lizenzen')).toContainText(
+    '2026 Aadit Sachdev',
+  );
   await expect(page.locator('.graph-node.selected')).toContainText(
     'Iron Plate',
   );
   await page.locator('.graph-node').filter({ hasText: 'Iron Ingot' }).click();
   await expect(page.getByLabel('Stufeninspector')).toContainText('Smelter 1');
+  await expect(
+    page.getByRole('group', { name: 'Maschinenmaße' }),
+  ).toContainText('8,575 m');
   await expect(
     page.getByRole('button', { name: 'Smelter 1', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
@@ -196,7 +254,7 @@ test('exports and reimports multiple targets with matching version; rejects inva
   await ready(page);
   const payload = {
     schemaVersion: 1,
-    catalogVersion: 'vanilla-1.0-tools-a1eb2fef-v1',
+    catalogVersion: vanillaCatalog.catalogVersion,
     production: {
       targets: [
         { itemId: 'Desc_IronPlate_C', rate: '20' },
@@ -247,7 +305,7 @@ test('changing an imported primary target replaces matching secondary targets', 
     buffer: Buffer.from(
       JSON.stringify({
         schemaVersion: 1,
-        catalogVersion: 'vanilla-1.0-tools-a1eb2fef-v1',
+        catalogVersion: vanillaCatalog.catalogVersion,
         production: {
           targets: [
             { itemId: 'Desc_IronPlate_C', rate: '20' },
@@ -345,7 +403,7 @@ test('raw-only imports preserve the valid plan and late imports cannot overwrite
   await ready(page);
   const payload = {
     schemaVersion: 1,
-    catalogVersion: 'vanilla-1.0-tools-a1eb2fef-v1',
+    catalogVersion: vanillaCatalog.catalogVersion,
     production: {
       targets: [{ itemId: 'Desc_OreIron_C', rate: '30' }],
       recipes: {},
@@ -409,9 +467,9 @@ test('explicit alternate unlock changes the solved chain and exact resource dema
 }) => {
   await ready(page);
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
-  await page.getByLabel('Rezepte suchen').fill('Cast Screw');
+  await page.getByLabel('Rezepte suchen').fill('Cast Screws');
   await page
-    .getByLabel('Rezept Alternate: Cast Screw', { exact: true })
+    .getByLabel('Rezept Alternate: Cast Screws', { exact: true })
     .check();
   await page.getByRole('button', { name: 'Profil anwenden' }).click();
   await page.getByLabel('Produktionsziel').selectOption('Desc_IronScrew_C');
@@ -558,7 +616,7 @@ test('profile reseeds inactive automatic choices without overriding a supported 
     buffer: Buffer.from(
       JSON.stringify({
         schemaVersion: 1,
-        catalogVersion: 'vanilla-1.0-tools-a1eb2fef-v1',
+        catalogVersion: vanillaCatalog.catalogVersion,
         production: {
           targets: [{ itemId: 'Desc_Cement_C', rate: '20' }],
           recipes: { Desc_Cement_C: 'Recipe_Concrete_C' },
@@ -601,7 +659,7 @@ test('minimal imports restrict targets and enable alternatives using permitted r
     buffer: Buffer.from(
       JSON.stringify({
         schemaVersion: 1,
-        catalogVersion: 'vanilla-1.0-tools-a1eb2fef-v1',
+        catalogVersion: vanillaCatalog.catalogVersion,
         production: {
           targets: [{ itemId: 'Desc_IronPlate_C', rate: '20' }],
           recipes: {

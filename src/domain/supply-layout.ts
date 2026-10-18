@@ -1,6 +1,7 @@
 import { deriveBuildVariants } from './build-variants.js';
 import type { Catalog } from './catalog.js';
 import type { ProductionPlan } from './production.js';
+import { getMachineGeometry } from './machine-geometry.js';
 import {
   supplyLines,
   validateTechnology,
@@ -8,7 +9,7 @@ import {
   type TechnologyProfile,
 } from './technology.js';
 
-/** A schematic projection in logical units. Unknown game measurements stay null. */
+/** Logical schematic with separately sourced, version-bound machine geometry. */
 export function generateSupplyLayout(
   catalog: Catalog,
   plan: ProductionPlan,
@@ -75,6 +76,10 @@ export function generateSupplyLayout(
       inputs,
       output,
       targetOutput,
+      machineGeometry: getMachineGeometry(
+        catalog.catalogVersion,
+        node.machineId,
+      ),
       physicalFootprint: null,
       physicalPorts: null,
       machines: rowCounts.flatMap((count, row) =>

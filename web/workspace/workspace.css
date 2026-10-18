@@ -90,6 +90,21 @@ button[aria-pressed='true'] {
 .catalog-version {
   display: none;
 }
+.source-notices {
+  margin-top: 24px;
+  font-size: 12px;
+}
+.source-notices summary {
+  cursor: pointer;
+}
+.source-notices a {
+  color: #ffb16b;
+}
+.source-notices pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
 .header-actions {
   display: flex;
   gap: 4px;

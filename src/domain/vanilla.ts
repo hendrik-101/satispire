@@ -2,6 +2,7 @@ import {
   vanillaSnapshot,
   recipeUnlocks,
   machineUnlocks,
+  transportUnlocks,
 } from '../data/vanilla-snapshot.js';
 import { validateCatalog } from './catalog.js';
 import { type TechnologyProfile } from './technology.js';
@@ -34,19 +35,14 @@ export function technologyAtTier(
         );
       })
       .map((r) => r.id),
-    beltTier:
-      tier >= 9
-        ? 6
-        : tier >= 7
-          ? 5
-          : tier >= 5
-            ? 4
-            : tier >= 4
-              ? 3
-              : tier >= 2
-                ? 2
-                : 1,
-    pipeTier: tier >= 6 ? 2 : 1,
+    beltTier: Math.max(
+      1,
+      transportUnlocks.belt.filter((unlock) => unlock <= tier).length,
+    ),
+    pipeTier: Math.max(
+      1,
+      transportUnlocks.pipe.filter((unlock) => unlock <= tier).length,
+    ),
   };
 }
 export function availableRecipes(profile: TechnologyProfile) {

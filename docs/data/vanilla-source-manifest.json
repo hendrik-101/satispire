@@ -1,0 +1,31 @@
+{
+  "catalogVersion": "vanilla-1.2.4.0-mcdowell-a3313235-v1",
+  "author": "Greg McDowell",
+  "license": "MIT",
+  "referenceUrl": "https://github.com/GMcDowellJr/satisfactory_progression_planner/tree/a3313235d94ac1ab2e0bc4626cdb5ee6dd1f4bef/planning_data/game/reference",
+  "referenceRevision": "a3313235d94ac1ab2e0bc4626cdb5ee6dd1f4bef",
+  "referenceFiles": {
+    "building_recipes.csv": "a743adc4a11f2dc48c9af471c9b1b9a1422696760b06fd2582fb8f2673f92901",
+    "game_builds.csv": "152e6623400eb232a36ba02113a1b196179217e181b5fa3af3a46d4b2a526563",
+    "items.csv": "96b595ec19a319ba9b1fb3a26248d129abb288b1dc579db5b1a08606f40a49de",
+    "production_buildings.csv": "3de19f3aeffacff150164bced8d3e55449cc469a2804ea224ab8154793a22bd5",
+    "recipe_io.csv": "1302019dfc8cd20111490a2ef05ea07d74fdeef52c5504e7feb2d99ab396a74f",
+    "recipe_producers.csv": "78e261ffd640893ee044fabd96479eb43ae8ff72fd75f578c2595d68d04a1731",
+    "recipes.csv": "4ef5698f5cf4f0e3e60488192057ea455096dd2ba9fb116730a9be12f4d84e7f",
+    "schematic_recipe_unlocks.csv": "b1624eff6a6283e98b891a54169b027847a7d1dfd7b6f2b56baf03c00d19c617",
+    "schematics.csv": "51643d09671e2a0e7d883847a1b114724025a2c310945e55aeea120455b4fe94"
+  },
+  "geometry": {
+    "author": "Aadit Sachdev",
+    "license": "MIT",
+    "sourceUrl": "https://github.com/AaditS22/satisfactory-ai/blob/4ad031efd3631d67676af087035aef8ed32a3b93/data/catalog.json",
+    "sha256": "97427fcbcbb65f9cdd2deecc0a3937f7b04af7726df2efcd45ceac42285338a2"
+  },
+  "supplementalItems": {
+    "author": "Aadit Sachdev",
+    "license": "MIT",
+    "sourceUrl": "https://github.com/AaditS22/satisfactory-ai/blob/4ad031efd3631d67676af087035aef8ed32a3b93/data/game_data.json",
+    "sha256": "9921cfc8e60c1f361afb6f40963a9013970ccc51db8fc5dad19c9fe88d7e7fa3",
+    "scope": "Names and solid forms of 17 ammunition/equipment descriptors omitted by the reference items table; no recipe amounts imported from this file."
+  }
+}

@@ -3,8 +3,39 @@ import {
   vanillaCatalog,
   technologyAtTier,
   availableChoices,
+  recipeUnlocks,
 } from '../src/domain/vanilla.js';
 import { solveProduction } from '../src/domain/production.js';
+it('binds the active numeric catalog to the licensed 1.2.4.0 build instead of relabelling 1.0', () => {
+  expect(vanillaCatalog.catalogVersion).toBe(
+    'vanilla-1.2.4.0-mcdowell-a3313235-v1',
+  );
+  expect(vanillaCatalog.provenance.manifest).toMatchObject({
+    gameVersion: '1.2.4.0',
+    build: '502094',
+    sourceUrl:
+      'https://github.com/GMcDowellJr/satisfactory_progression_planner/tree/a3313235d94ac1ab2e0bc4626cdb5ee6dd1f4bef/planning_data/game/reference',
+  });
+});
+it('keeps the 1.2 Turbofuel MAM unlock separate from hard-drive alternates', () => {
+  const id = 'Recipe_Alternate_Turbofuel_C';
+  expect(recipeUnlocks[id]).toMatchObject({ alternate: false, tier: null });
+  expect(recipeUnlocks[id]!.unlockIds).toContain('Research_Sulfur_TurboFuel_C');
+  expect(technologyAtTier(9).unlockedRecipes).not.toContain(id);
+  expect(technologyAtTier(9, [id]).unlockedRecipes).toContain(id);
+});
+it('keeps 1.2 game modifiers explicit rather than calculating them as default recipes', () => {
+  const technology = technologyAtTier(2);
+  const modified = {
+    targets: [{ itemId: 'Desc_IronPlate_C', rate: '20' }],
+    recipes: availableChoices(technology),
+    imports: ['Desc_OreIron_C'],
+    recipeCostMultiplier: '1.75',
+  };
+  expect(() => solveProduction(vanillaCatalog, modified)).toThrow(
+    /unsupported.*recipeCostMultiplier/i,
+  );
+});
 it('ships fixed numeric game data and solves 20 plates for 30 iron ore', () => {
   const technology = technologyAtTier(2);
   const plan = solveProduction(vanillaCatalog, {
