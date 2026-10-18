@@ -3,13 +3,19 @@ import { makeFunctionReference } from 'convex/server';
 import { describe, expect, it } from 'vitest';
 import schema from '../convex/schema';
 import type { PresenceInput, PublicRoom } from '../src/domain/rooms';
+import {
+  createUnlockProfile,
+  type UnlockProfile,
+} from '../src/domain/session-unlocks';
 
 type Membership = { roomId: string; participantId: string; capability: string };
 type Invitation = { roomId: string; inviteId: string; invitation: string };
 const refs = {
-  create: makeFunctionReference<'action', { name: string }, Membership>(
-    'rooms:create',
-  ),
+  create: makeFunctionReference<
+    'action',
+    { name: string; unlocks?: UnlockProfile },
+    Membership
+  >('rooms:create'),
   invite: makeFunctionReference<
     'action',
     { roomId: string; capability: string; role: 'editor' | 'viewer' },
@@ -52,7 +58,9 @@ const refs = {
       capability: string;
       id: string;
       expectedRevision: number;
-      command: { type: 'set-target'; itemId: string; rate: string };
+      command:
+        | { type: 'set-target'; itemId: string; rate: string }
+        | { type: 'set-unlocks'; profile: UnlockProfile };
     },
     { revision: number; duplicate: boolean }
   >('rooms:command'),
@@ -81,6 +89,53 @@ const request = (
 });
 
 describe('transactional Convex room functions', () => {
+  it('starts with creator unlocks and shares subsequent edits by any participant', async () => {
+    const t = convexTest(schema, modules);
+    const owner = await t.action(refs.create, {
+      name: 'Creator',
+      unlocks: createUnlockProfile(7),
+    });
+    const invitation = await t.action(refs.invite, {
+      ...auth(owner),
+      role: 'viewer',
+    });
+    const viewer = await t.action(refs.join, {
+      roomId: owner.roomId,
+      invitation: invitation.invitation,
+      name: 'Guest',
+    });
+    expect((await t.query(refs.view, auth(viewer))).unlocks).toEqual(
+      createUnlockProfile(7),
+    );
+    const edit = {
+      ...auth(viewer),
+      id: 'shared-unlocks',
+      expectedRevision: 0,
+      command: {
+        type: 'set-unlocks' as const,
+        profile: createUnlockProfile(3),
+      },
+    };
+    await t.mutation(refs.command, edit);
+    for (const member of [owner, viewer])
+      expect((await t.query(refs.view, auth(member))).unlocks).toEqual(
+        createUnlockProfile(3),
+      );
+    expect(await t.mutation(refs.command, edit)).toEqual({
+      revision: 1,
+      duplicate: true,
+    });
+    await expect(
+      t.mutation(refs.command, { ...edit, ...auth(owner), id: 'stale' }),
+    ).rejects.toThrow(/revision-conflict/);
+    const other = await t.action(refs.create, { name: 'Other' });
+    await expect(
+      t.mutation(refs.command, { ...edit, roomId: other.roomId }),
+    ).rejects.toThrow(/forbidden/);
+    expect((await t.query(refs.view, auth(other))).unlocks).toEqual(
+      createUnlockProfile(),
+    );
+  });
   it('creates random capabilities and only persists their hashes', async () => {
     const t = convexTest(schema, modules);
     const owner = await t.action(refs.create, { name: 'Alex' });

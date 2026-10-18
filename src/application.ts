@@ -29,6 +29,7 @@ export function createLocalApplication(
   initial: RoomState,
   context: RoomContext,
   inputCatalog: Catalog,
+  onRoomChange?: (room: RoomState) => void,
 ): { execute: ToolExecutor } {
   let room = structuredClone(initial);
   const principal = structuredClone(context);
@@ -56,6 +57,7 @@ export function createLocalApplication(
         const result = applyRoomCommand(room, principal, args.command);
         // No awaits between reading revision and replacing state.
         room = result.room;
+        if (!result.duplicate) onRoomChange?.(structuredClone(room));
         return {
           ok: true,
           data: { revision: result.revision, duplicate: result.duplicate },
@@ -66,7 +68,13 @@ export function createLocalApplication(
           .object({ roomId: identity, input: productionSchema })
           .strict()
           .parse(raw);
-        return { ok: true, data: solveProduction(catalog, args.input) };
+        return {
+          ok: true,
+          data: solveProduction(catalog, {
+            ...args.input,
+            ...(room.unlocks ? { technology: room.unlocks.technology } : {}),
+          }),
+        };
       }
       if (name === 'plan_factory') {
         const args = z
@@ -82,15 +90,19 @@ export function createLocalApplication(
           })
           .strict()
           .parse(raw);
-        if (!args.input.production.technology)
+        const input = {
+          ...args.input.production,
+          ...(room.unlocks ? { technology: room.unlocks.technology } : {}),
+        };
+        if (!input.technology)
           throw new Error(
             'Factory planning requires an explicit technology profile',
           );
-        const production = solveProduction(catalog, args.input.production);
+        const production = solveProduction(catalog, input);
         const layout = generateSupplyLayout(
           catalog,
           production,
-          args.input.production.technology,
+          input.technology,
           args.input.rows,
           args.input.variant,
         );

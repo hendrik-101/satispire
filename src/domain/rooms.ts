@@ -1,5 +1,9 @@
 import { isCatalogId } from './catalog.js';
 import { Rational } from './rational.js';
+import {
+  validateUnlockProfile,
+  type UnlockProfile,
+} from './session-unlocks.js';
 
 /** Server adapters construct this context after verifying a capability. Never accept it from tools. */
 export interface RoomContext {
@@ -34,7 +38,8 @@ export interface PlannerIntent {
 }
 export type RoomCommand =
   | { type: 'set-target'; itemId: string; rate: string }
-  | { type: 'set-block-rows'; blockId: string; rows: number };
+  | { type: 'set-block-rows'; blockId: string; rows: number }
+  | { type: 'set-unlocks'; profile: UnlockProfile };
 export interface RoomCommandEnvelope {
   id: string;
   expectedRevision: number;
@@ -60,6 +65,7 @@ export interface RoomState {
   invites: Record<string, Invite>;
   receipts: Record<string, Receipt>;
   presenterId: string | null;
+  unlocks?: UnlockProfile;
 }
 export type PublicRoom = Omit<RoomState, 'invites' | 'receipts'>;
 export type RoomErrorCode =
@@ -130,6 +136,7 @@ export function createRoom(input: {
   roomId: string;
   ownerId: string;
   ownerName: string;
+  unlocks?: UnlockProfile;
 }): RoomState {
   if (!validId(input.roomId)) fail('invalid-participant');
   const p = participant(input.ownerId, input.ownerName, 'owner', 0);
@@ -141,6 +148,9 @@ export function createRoom(input: {
     invites: {},
     receipts: {},
     presenterId: null,
+    ...(input.unlocks === undefined
+      ? {}
+      : { unlocks: validateUnlockProfile(input.unlocks) }),
   };
 }
 export function authorizeRoom(
@@ -170,6 +180,7 @@ export function roomView(room: RoomState, context: RoomContext): PublicRoom {
     intent: room.intent,
     participants: room.participants,
     presenterId: room.presenterId,
+    ...(room.unlocks === undefined ? {} : { unlocks: room.unlocks }),
   });
   for (const p of Object.values(result.participants)) {
     if (
@@ -262,6 +273,17 @@ function fingerprint(envelope: RoomCommandEnvelope): string {
     typeof c !== 'object'
   )
     fail('invalid-command');
+  if (c.type === 'set-unlocks' && exactKeys(c, ['type', 'profile'])) {
+    try {
+      return JSON.stringify([
+        envelope.expectedRevision,
+        c.type,
+        validateUnlockProfile(c.profile),
+      ]);
+    } catch {
+      return fail('invalid-command');
+    }
+  }
   if (
     c.type === 'set-target' &&
     exactKeys(c, ['type', 'itemId', 'rate']) &&
@@ -300,7 +322,11 @@ export function applyRoomCommand(
   context: RoomContext,
   envelope: RoomCommandEnvelope,
 ): { room: RoomState; revision: number; duplicate: boolean } {
-  authorizeRoom(room, context, 'edit');
+  authorizeRoom(
+    room,
+    context,
+    envelope.command?.type === 'set-unlocks' ? 'read' : 'edit',
+  );
   const signature = fingerprint(envelope);
   const receipt = Object.hasOwn(room.receipts, envelope.id)
     ? room.receipts[envelope.id]
@@ -325,16 +351,21 @@ export function applyRoomCommand(
             [c.itemId]: Rational.parse(c.rate).toString(),
           },
         }
-      : {
-          ...room.intent,
-          blockRows: { ...room.intent.blockRows, [c.blockId]: c.rows },
-        };
+      : c.type === 'set-block-rows'
+        ? {
+            ...room.intent,
+            blockRows: { ...room.intent.blockRows, [c.blockId]: c.rows },
+          }
+        : room.intent;
   const revision = room.revision + 1;
   return {
     room: {
       ...room,
       intent,
       revision,
+      ...(c.type === 'set-unlocks'
+        ? { unlocks: validateUnlockProfile(c.profile) }
+        : {}),
       receipts: {
         ...room.receipts,
         [envelope.id]: {

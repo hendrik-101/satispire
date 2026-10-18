@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { productionSchema } from './inputs.js';
+import { unlockProfileSchema } from './domain/session-unlocks.js';
 import { defaultBuildVariant, variantSchema } from './domain/build-variants.js';
 export const planLayoutSchema = z
   .object({
@@ -12,6 +13,7 @@ export const planFileSchema = z
     schemaVersion: z.literal(1),
     catalogVersion: z.string().min(1).max(256),
     production: productionSchema,
+    unlocks: unlockProfileSchema.optional(),
     layout: planLayoutSchema.default({ rows: 0, variant: defaultBuildVariant }),
   })
   .strict();

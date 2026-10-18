@@ -177,6 +177,13 @@ test('external ore feeds share one intake side without fake transfers and obsole
     imports: ['Desc_OreIron_C', 'Desc_OreCopper_C'],
     technology: technologyAtTier(4, ['Recipe_Alternate_IngotIron_C']),
   };
+  // The exported shared profile must describe the edited plan's technology too.
+  document.unlocks = {
+    ...document.unlocks,
+    hubTier: null,
+    spaceElevatorPhase: 1,
+    technology: document.production.technology,
+  };
   document.layout = {
     rows: 0,
     variant: {

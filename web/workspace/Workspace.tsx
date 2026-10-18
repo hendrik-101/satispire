@@ -3,6 +3,13 @@ import {
   type BuildVariant,
 } from '../../src/domain/build-variants.js';
 import { planFileSchema } from '../../src/plan-file.js';
+import {
+  createUnlockProfile,
+  validateUnlockProfile,
+  MAX_HUB_TIER_BY_PHASE,
+  type UnlockProfile,
+} from '../../src/domain/session-unlocks.js';
+import { loadUnlockProfile, saveUnlockProfile } from './unlock-storage';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   solveProduction,
@@ -79,11 +86,36 @@ const initialView = {
   panels: { navigation: false, graph: false, inspector: false },
 };
 const KEY = 'satispire.personal-view.v2';
+const roomContext = { roomId: 'local', participantId: 'workspace-owner' };
+// Access is deferred so browsers which block even the storage getter remain usable.
+const sessionUnlockStorage = {
+  getItem: (key: string) => window.sessionStorage.getItem(key),
+  setItem: (key: string, value: string) =>
+    window.sessionStorage.setItem(key, value),
+};
+const browserUnlockStorage = {
+  getItem: (key: string) => window.localStorage.getItem(key),
+  setItem: (key: string, value: string) =>
+    window.localStorage.setItem(key, value),
+};
 const message = (error: unknown) =>
   error instanceof Error
     ? error.message
     : 'Plan konnte nicht verarbeitet werden.';
 export function Workspace() {
+  const [sessionProfile, setSessionProfile] = useState(createUnlockProfile);
+  const sessionRoom = useRef(
+    createRoom({
+      roomId: roomContext.roomId,
+      ownerId: roomContext.participantId,
+      ownerName: 'Owner',
+      unlocks: createUnlockProfile(),
+    }),
+  );
+  const application = useRef<ReturnType<typeof createLocalApplication> | null>(
+    null,
+  );
+  const [storageNotice, setStorageNotice] = useState('');
   const [factory, setFactory] = useState(() => ({
     input: firstInput,
     plan: solveProduction(catalog, firstInput),
@@ -111,22 +143,29 @@ export function Workspace() {
   const [visible, setVisible] = useState(true);
   const [profileDraft, setProfileDraft] = useState(firstTechnology);
   const [tier, setTier] = useState<number | 'custom'>(2);
+  const [phase, setPhase] = useState(0);
   const [search, setSearch] = useState('');
   const [profileOpen, setProfileOpen] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const sequence = useRef(0);
+  const profileRevision = useRef(0);
+  const planMatchesSession =
+    JSON.stringify(factory.technology) ===
+    JSON.stringify(sessionProfile.technology);
   const presentation = effectivePresentation(preferences, width);
   useEffect(() => {
-    const room = createRoom({
-      roomId: 'local',
-      ownerId: 'workspace-owner',
-      ownerName: 'Owner',
-    });
+    if (!ready) return;
+    const room = sessionRoom.current;
     const app = createLocalApplication(
       room,
       { roomId: room.id, participantId: 'workspace-owner' },
       catalog,
+      (next) => {
+        sessionRoom.current = next;
+        if (next.unlocks) setSessionProfile(next.unlocks);
+      },
     );
+    application.current = app;
     const register = () =>
       registerWebMcp(
         document as Document & { modelContext?: ModelContext },
@@ -152,9 +191,43 @@ export function Workspace() {
       window.removeEventListener('pagehide', dispose);
       window.removeEventListener('pageshow', resume);
       dispose();
+      application.current = null;
     };
-  }, []);
+  }, [ready]);
   useEffect(() => {
+    const restored = loadUnlockProfile(
+      sessionUnlockStorage,
+      browserUnlockStorage,
+      roomContext,
+    );
+    sessionRoom.current = createRoom({
+      roomId: roomContext.roomId,
+      ownerId: roomContext.participantId,
+      ownerName: 'Owner',
+      unlocks: restored,
+    });
+    setSessionProfile(restored);
+    try {
+      const recipes = availableChoices(restored.technology, firstInput.imports);
+      const itemId = recipes[firstInput.targets[0]!.itemId]
+        ? firstInput.targets[0]!.itemId
+        : Object.keys(recipes)[0];
+      if (!itemId)
+        throw new Error('Keine berechenbaren Produktionsziele freigeschaltet.');
+      const input = {
+        ...firstInput,
+        recipes,
+        technology: restored.technology,
+        targets: [{ itemId, rate: '20' }],
+      };
+      const next = evaluate(input, restored.technology, 0, defaultBuildVariant);
+      setFactory(next);
+      setTarget(itemId);
+      setChoices(recipes);
+      selectStage(primaryStage(input, next.plan));
+    } catch (e) {
+      setError('Gespeicherte Session-Unlocks: ' + message(e));
+    }
     try {
       const saved = localStorage.getItem(KEY);
       if (saved) setPreferences(restorePreferences(JSON.parse(saved)));
@@ -176,6 +249,61 @@ export function Workspace() {
     };
   }, []);
   useEffect(() => {
+    if (!ready) return;
+    const saved = saveUnlockProfile(
+      sessionUnlockStorage,
+      browserUnlockStorage,
+      roomContext,
+      sessionProfile,
+    );
+    setStorageNotice(
+      saved.session && saved.browser
+        ? ''
+        : 'Browser-Speicherung eingeschränkt. Die Unlocks gelten weiterhin für die laufende Session.',
+    );
+    if (
+      JSON.stringify(sessionProfile.technology) ===
+      JSON.stringify(factory.technology)
+    )
+      return;
+    sequence.current++;
+    setPending(false);
+    try {
+      const allowed = new Set(
+        feasibleRecipes(sessionProfile.technology, factory.input.imports).map(
+          (r) => r.id,
+        ),
+      );
+      const recipes = {
+        ...availableChoices(sessionProfile.technology, factory.input.imports),
+        ...Object.fromEntries(
+          Object.entries(factory.input.recipes).filter(([, id]) =>
+            allowed.has(id),
+          ),
+        ),
+      };
+      const next = evaluate(
+        { ...factory.input, recipes },
+        sessionProfile.technology,
+      );
+      setFactory(next);
+      setChoices(recipes);
+      setError('');
+    } catch (e) {
+      const defaults = availableChoices(
+        sessionProfile.technology,
+        factory.input.imports,
+      );
+      setChoices(defaults);
+      if (!defaults[target] && Object.keys(defaults)[0])
+        setTarget(Object.keys(defaults)[0]!);
+      setError(
+        'Session-Unlocks geändert. Der bisherige Plan ist damit nicht berechenbar: ' +
+          message(e),
+      );
+    }
+  }, [ready, sessionProfile]);
+  useEffect(() => {
     if (ready)
       try {
         localStorage.setItem(KEY, JSON.stringify(preferences));
@@ -187,12 +315,12 @@ export function Workspace() {
     if (profileOpen) dialog.current?.showModal();
   }, [profileOpen]);
   const candidates = useMemo(
-    () => feasibleRecipes(factory.technology, factory.input.imports),
-    [factory.technology, factory.input.imports],
+    () => feasibleRecipes(sessionProfile.technology, factory.input.imports),
+    [sessionProfile.technology, factory.input.imports],
   );
   const manufactured = useMemo(() => {
     const defaults = availableChoices(
-      factory.technology,
+      sessionProfile.technology,
       factory.input.imports,
     );
     return catalog.items.filter((item) => {
@@ -202,14 +330,14 @@ export function Workspace() {
           targets: [{ itemId: item.id, rate: '1' }],
           recipes: defaults,
           imports: factory.input.imports,
-          technology: factory.technology,
+          technology: sessionProfile.technology,
         });
         return true;
       } catch {
         return false;
       }
     });
-  }, [factory.technology, factory.input.imports]);
+  }, [sessionProfile.technology, factory.input.imports]);
   const supplyLayout = useMemo(
     () =>
       generateSupplyLayout(
@@ -243,7 +371,7 @@ export function Workspace() {
   }
   function apply(
     input: ProductionInput,
-    technology = factory.technology,
+    technology = sessionProfile.technology,
     rows = factory.rows,
     variant: BuildVariant = factory.variant,
   ) {
@@ -272,8 +400,31 @@ export function Workspace() {
       setError(message(e));
     }
   }
+  async function updateSessionProfile(
+    profile: UnlockProfile,
+    expectedRevision = sessionRoom.current.revision,
+  ) {
+    const app = application.current;
+    if (!app) throw new Error('Session ist noch nicht bereit.');
+    const result = await app.execute('apply_command', {
+      roomId: roomContext.roomId,
+      command: {
+        id: crypto.randomUUID(),
+        expectedRevision,
+        command: { type: 'set-unlocks', profile },
+      },
+    });
+    if (!result.ok)
+      throw new Error(
+        result.error?.code === 'revision-conflict'
+          ? 'Die Session wurde inzwischen geändert. Bitte öffne die Einstellungen erneut.'
+          : (result.error?.message ??
+            'Session-Unlocks konnten nicht gespeichert werden.'),
+      );
+  }
   async function importPlan(file: File) {
     const id = ++sequence.current;
+    const expectedRevision = sessionRoom.current.revision;
     setPending(true);
     try {
       if (file.size > 1_000_000)
@@ -284,7 +435,18 @@ export function Workspace() {
           `Plan- oder Katalogversion passt nicht. Erwartet wird die Datenbasis für Satisfactory ${catalog.provenance.manifest!.gameVersion}.`,
         );
       const input = document.production;
-      const technology = input.technology ?? factory.technology;
+      const technology =
+        input.technology ??
+        document.unlocks?.technology ??
+        sessionProfile.technology;
+      const importedProfile =
+        document.unlocks ??
+        validateUnlockProfile({ ...sessionProfile, hubTier: null, technology });
+      if (
+        JSON.stringify(importedProfile.technology) !==
+        JSON.stringify(technology)
+      )
+        throw new Error('Plan und Session-Unlocks passen nicht zusammen.');
       const next = evaluate(
         input,
         technology,
@@ -293,6 +455,7 @@ export function Workspace() {
         false,
       );
       if (id !== sequence.current) return;
+      await updateSessionProfile(importedProfile, expectedRevision);
       setFactory(next);
       setTarget(input.targets[0]!.itemId);
       setRate(input.targets[0]!.rate);
@@ -312,6 +475,7 @@ export function Workspace() {
     }
   }
   function exportPlan() {
+    if (!planMatchesSession) return;
     const url = URL.createObjectURL(
       new Blob(
         [
@@ -319,6 +483,7 @@ export function Workspace() {
             {
               schemaVersion: 1,
               catalogVersion: catalog.catalogVersion,
+              unlocks: sessionProfile,
               production: factory.input,
               layout: { rows: factory.rows, variant: factory.variant },
             },
@@ -346,16 +511,19 @@ export function Workspace() {
     (floor) => floor.itemId === stage.itemId,
   )!.machineGeometry;
   function openProfile() {
-    setProfileDraft(structuredClone(factory.technology));
+    profileRevision.current = sessionRoom.current.revision;
+    setProfileDraft(structuredClone(sessionProfile.technology));
     setSearch('');
-    setTier('custom');
+    setTier(sessionProfile.hubTier ?? 'custom');
+    setPhase(sessionProfile.spaceElevatorPhase);
+    setError('');
     setProfileOpen(true);
   }
   function closeProfile() {
     dialog.current?.close();
     setProfileOpen(false);
   }
-  function applyProfile() {
+  async function applyProfile() {
     try {
       const allowed = new Set(
         feasibleRecipes(profileDraft, factory.input.imports).map((r) => r.id),
@@ -373,6 +541,14 @@ export function Workspace() {
           ),
         ),
       };
+      const profile = validateUnlockProfile({
+        ...sessionProfile,
+        technology: profileDraft,
+        hubTier: tier === 'custom' ? null : tier,
+        spaceElevatorPhase: phase,
+      });
+      evaluate({ ...factory.input, recipes }, profileDraft);
+      await updateSessionProfile(profile, profileRevision.current);
       apply({ ...factory.input, recipes }, profileDraft);
       setChoices({
         ...recipes,
@@ -413,7 +589,11 @@ export function Workspace() {
           value={factory.rows}
           onChange={(e) => {
             try {
-              apply(factory.input, factory.technology, Number(e.target.value));
+              apply(
+                factory.input,
+                sessionProfile.technology,
+                Number(e.target.value),
+              );
             } catch (err) {
               setError(message(err));
             }
@@ -552,6 +732,7 @@ export function Workspace() {
               aria-label="Plan exportieren"
               title="Plan exportieren"
               onClick={exportPlan}
+              disabled={!planMatchesSession}
             >
               <Icon name="export" />
             </button>
@@ -561,6 +742,17 @@ export function Workspace() {
         {error && !profileOpen && (
           <div className="error-banner" role="alert">
             {error}
+          </div>
+        )}
+        {storageNotice && (
+          <div role="status" className="error-banner">
+            {storageNotice}
+          </div>
+        )}
+        {!planMatchesSession && !profileOpen && (
+          <div role="status" className="error-banner">
+            Der angezeigte Plan verwendet frühere Session-Unlocks. Wähle ein
+            freigeschaltetes Ziel und berechne ihn erneut.
           </div>
         )}
         <div className="workspace-body">
@@ -668,7 +860,7 @@ export function Workspace() {
                     try {
                       apply(
                         factory.input,
-                        factory.technology,
+                        sessionProfile.technology,
                         factory.rows,
                         variant,
                       );
@@ -823,12 +1015,42 @@ export function Workspace() {
                   const next = Number(e.target.value);
                   setTier(next);
                   setProfileDraft(technologyAtTier(next));
+                  setPhase((current) =>
+                    Math.max(
+                      current,
+                      createUnlockProfile(next).spaceElevatorPhase,
+                    ),
+                  );
                 }}
               >
                 <option value="custom">Individuell</option>
                 {Array.from({ length: 10 }, (_, n) => (
                   <option key={n} value={n}>
                     {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Space Elevator
+              <select
+                aria-label="Abgeschlossene Space-Elevator-Phase"
+                value={phase}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  setPhase(next);
+                  const maxTier = MAX_HUB_TIER_BY_PHASE[next]!;
+                  if (next < phase && (tier === 'custom' || tier > maxTier)) {
+                    setTier(maxTier);
+                    setProfileDraft(technologyAtTier(maxTier));
+                  }
+                }}
+              >
+                {[0, 1, 2, 3, 4, 5].map((n) => (
+                  <option key={n} value={n}>
+                    {n === 0
+                      ? 'Noch keine Phase'
+                      : 'Phase ' + n + ' abgeschlossen'}
                   </option>
                 ))}
               </select>
@@ -871,6 +1093,16 @@ export function Workspace() {
               </select>
             </label>
           </div>
+          <p className="profile-help">
+            Gilt für die gesamte Session. Alle Teilnehmer können die Unlocks
+            ändern. Neue Sessions starten mit deinen zuletzt im Browser
+            gespeicherten Einstellungen.
+          </p>
+          <p className="profile-help">
+            HUB-Tiers sind Vorlagen. Eine niedrigere Space-Elevator-Phase
+            begrenzt die Vorlage; einzelne Unlocks lassen sich anschließend
+            individuell anpassen.
+          </p>
           <h3>Maschinen</h3>
           <div className="machine-options">
             {catalog.machines.map((m) => (
@@ -924,7 +1156,7 @@ export function Workspace() {
           )}
           <div className="dialog-actions">
             <button onClick={closeProfile}>Abbrechen</button>
-            <button className="primary" onClick={applyProfile}>
+            <button className="primary" onClick={() => void applyProfile()}>
               Profil anwenden
             </button>
           </div>

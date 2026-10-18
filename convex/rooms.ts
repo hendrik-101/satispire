@@ -8,7 +8,12 @@ import {
   type GenericQueryCtx,
 } from 'convex/server';
 import { v } from 'convex/values';
-import schema from './schema';
+import schema, { unlockProfileValidator } from './schema';
+import {
+  createUnlockProfile,
+  validateUnlockProfile,
+  type UnlockProfile,
+} from '../src/domain/session-unlocks';
 import {
   applyRoomCommand,
   createRoom,
@@ -29,7 +34,13 @@ const authArgs = { roomId: v.string(), capability: v.string() };
 const invitationRole = v.union(v.literal('editor'), v.literal('viewer'));
 const internalCreateRef = makeFunctionReference<
   'mutation',
-  { roomId: string; participantId: string; name: string; digest: string },
+  {
+    roomId: string;
+    participantId: string;
+    name: string;
+    digest: string;
+    unlocks: UnlockProfile;
+  },
   null
 >('rooms:internalCreate');
 const internalInviteRef = makeFunctionReference<
@@ -99,7 +110,7 @@ async function verified(
 }
 
 export const create = actionGeneric({
-  args: { name: v.string() },
+  args: { name: v.string(), unlocks: v.optional(unlockProfileValidator) },
   handler: async (ctx, args): Promise<Membership> => {
     const roomId = crypto.randomUUID();
     const participantId = crypto.randomUUID();
@@ -109,6 +120,10 @@ export const create = actionGeneric({
       participantId,
       name: args.name,
       digest: await hashSecret(capability),
+      unlocks:
+        args.unlocks === undefined
+          ? createUnlockProfile()
+          : validateUnlockProfile(args.unlocks),
     });
     return { roomId, participantId, capability };
   },
@@ -119,12 +134,14 @@ export const internalCreate = internalMutationGeneric({
     participantId: v.string(),
     name: v.string(),
     digest: v.string(),
+    unlocks: unlockProfileValidator,
   },
   handler: async (ctx, args) => {
     const room = createRoom({
       roomId: args.roomId,
       ownerId: args.participantId,
       ownerName: args.name,
+      unlocks: args.unlocks,
     });
     await ctx.db.insert('rooms', { roomId: room.id, state: room });
     await ctx.db.insert('capabilities', {
@@ -220,6 +237,10 @@ export const command = mutationGeneric({
     id: v.string(),
     expectedRevision: v.number(),
     command: v.union(
+      v.object({
+        type: v.literal('set-unlocks'),
+        profile: unlockProfileValidator,
+      }),
       v.object({
         type: v.literal('set-target'),
         itemId: v.string(),
