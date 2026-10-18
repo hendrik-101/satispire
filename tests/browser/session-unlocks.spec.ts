@@ -23,6 +23,82 @@ async function installSessionTools(page: Page) {
   });
 }
 
+test('a delayed import cannot overwrite a newer shared phase with identical technology', async ({
+  page,
+}) => {
+  await installSessionTools(page);
+  await ready(page);
+  await page.evaluate(() => {
+    const original = File.prototype.text;
+    File.prototype.text = function () {
+      return original.call(this).then(
+        (text) =>
+          new Promise<string>((resolve) => {
+            Object.assign(window, { finishSlowImport: () => resolve(text) });
+          }),
+      );
+    };
+  });
+  const profile = createUnlockProfile(2);
+  await page.getByLabel('Plan-Datei').setInputFiles({
+    name: 'slow.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(
+      JSON.stringify({
+        schemaVersion: 1,
+        catalogVersion: profile.catalogVersion,
+        unlocks: profile,
+        production: {
+          targets: [{ itemId: 'Desc_IronPlate_C', rate: '60' }],
+          recipes: {
+            Desc_IronPlate_C: 'Recipe_IronPlate_C',
+            Desc_IronIngot_C: 'Recipe_IngotIron_C',
+          },
+          imports: ['Desc_OreIron_C'],
+          technology: profile.technology,
+        },
+      }),
+    ),
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          typeof (window as unknown as { finishSlowImport?: unknown })
+            .finishSlowImport,
+      ),
+    )
+    .toBe('function');
+  const result = await page.evaluate(async (profile) => {
+    const tools = (
+      window as unknown as { workspaceTools: Map<string, WebTool> }
+    ).workspaceTools;
+    return tools.get('apply_command')!.execute({
+      roomId: 'local',
+      command: {
+        id: 'phase-progress',
+        expectedRevision: 0,
+        command: {
+          type: 'set-unlocks',
+          profile: { ...profile, spaceElevatorPhase: 1 },
+        },
+      },
+    });
+  }, profile);
+  expect(result.ok).toBe(true);
+  await page.evaluate(() =>
+    (window as unknown as { finishSlowImport: () => void }).finishSlowImport(),
+  );
+  await expect(page.getByRole('alert')).toContainText('inzwischen geändert');
+  await expect(
+    page.getByRole('button', { name: 'Plan berechnen', exact: true }),
+  ).toBeEnabled();
+  await page.getByRole('button', { name: 'Technologie', exact: true }).click();
+  await expect(
+    page.getByLabel('Abgeschlossene Space-Elevator-Phase'),
+  ).toHaveValue('1');
+});
+
 test('shared locks mark the old plan and disable export until recalculation under current unlocks', async ({
   page,
 }) => {

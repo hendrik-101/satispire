@@ -424,6 +424,7 @@ export function Workspace() {
   }
   async function importPlan(file: File) {
     const id = ++sequence.current;
+    const expectedRevision = sessionRoom.current.revision;
     setPending(true);
     try {
       if (file.size > 1_000_000)
@@ -454,7 +455,7 @@ export function Workspace() {
         false,
       );
       if (id !== sequence.current) return;
-      await updateSessionProfile(importedProfile);
+      await updateSessionProfile(importedProfile, expectedRevision);
       setFactory(next);
       setTarget(input.targets[0]!.itemId);
       setRate(input.targets[0]!.rate);
