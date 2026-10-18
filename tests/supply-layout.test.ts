@@ -29,6 +29,49 @@ it('generates automatic and manual row variants with identical floor area', () =
   expect(manual.floors[0]!.physicalFootprint).toBeNull();
   expect(manual.floors[0]!.physicalPorts).toBeNull();
 });
+it('separates licensed 1.2 machine bounds, hard clearance and local ports from schematic placement', () => {
+  const layout = generateSupplyLayout(
+    vanillaCatalog,
+    solveProduction(vanillaCatalog, input),
+    technology,
+    0,
+  );
+  const constructor = layout.floors.find(
+    (f) => f.itemId === 'Desc_IronPlate_C',
+  )!;
+  expect(constructor.machineGeometry).toMatchObject({
+    units: 'm',
+    bounds: { size: { width: 7.574, depth: 9.632, height: 8.307 } },
+    clearance: { size: { width: 8, depth: 10, height: 6 } },
+    provenance: { license: 'MIT', gameVersion: '1.2', gameBuild: null },
+  });
+  expect(constructor.machineGeometry!.ports).toContainEqual({
+    id: 'Input0',
+    direction: 'in',
+    position: [0, -3, 1],
+    facing: [0, -1, 0],
+  });
+  expect(layout.units).toBe('logical');
+  expect(constructor.physicalFootprint).toBeNull();
+  expect(constructor.physicalPorts).toBeNull();
+});
+it('leaves unsupported machines and other catalog versions without invented geometry', async () => {
+  const { getMachineGeometry } = await import(
+    '../src/domain/machine-geometry.js'
+  );
+  expect(
+    getMachineGeometry(vanillaCatalog.catalogVersion, 'Desc_Blender_C'),
+  ).toBeNull();
+  expect(
+    getMachineGeometry(
+      'vanilla-1.0-tools-a1eb2fef-v1',
+      'Desc_ConstructorMk1_C',
+    ),
+  ).toBeNull();
+  expect(
+    getMachineGeometry(vanillaCatalog.catalogVersion, 'toString'),
+  ).toBeNull();
+});
 it('sizes supply lanes for current belts and orients logical output towards lifts', () => {
   const plan = solveProduction(vanillaCatalog, input);
   const low = generateSupplyLayout(

@@ -209,20 +209,22 @@ try {
   );
   assert.equal(config.Labels['org.opencontainers.image.revision'], revision);
   assert.equal(docker('exec', name, 'id', '-u'), '1000');
-  const notice = await readFile(
-    'docs/data/SatisfactoryTools-LICENSE.txt',
-    'utf8',
-  );
-  assert.equal(
-    docker(
-      'exec',
-      name,
-      'node',
-      '-e',
-      "process.stdout.write(require('node:fs').readFileSync('licenses/SatisfactoryTools-LICENSE.txt','utf8'))",
-    ),
-    notice.trim(),
-  );
+  for (const file of [
+    'ProgressionPlanner-LICENSE.txt',
+    'SatisfactoryAI-LICENSE.txt',
+  ]) {
+    const notice = await readFile(`docs/data/${file}`, 'utf8');
+    assert.equal(
+      docker(
+        'exec',
+        name,
+        'node',
+        '-e',
+        `process.stdout.write(require('node:fs').readFileSync('licenses/${file}','utf8'))`,
+      ),
+      notice.trim(),
+    );
+  }
   const ports = JSON.parse(
     docker('inspect', '--format', '{{json .NetworkSettings.Ports}}', name),
   );

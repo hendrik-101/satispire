@@ -1,90 +1,25 @@
-// Generated numeric snapshot. Source and license: docs/data/vanilla.md
+// Generated numeric 1.2 snapshot. Source, hashes and license: docs/data/vanilla.md
 import type { Catalog } from '../domain/catalog.js';
 export const vanillaSnapshot: Catalog = {
   schemaVersion: 1,
-  catalogVersion: 'vanilla-1.0-tools-a1eb2fef-v1',
+  catalogVersion: 'vanilla-1.2.4.0-mcdowell-a3313235-v1',
   provenance: {
     kind: 'unverified-game',
     source:
-      'Pinned SatisfactoryTools 1.0 numeric dataset; artwork and descriptions omitted',
+      'Pinned Satisfactory 1.2.4.0 numeric tables by Greg McDowell; artwork and descriptions omitted',
+    gameBuild: '502094',
     manifest: {
-      gameVersion: '1.0',
-      build: 'SatisfactoryTools-a1eb2fef',
+      gameVersion: '1.2.4.0',
+      build: '502094',
       sourceUrl:
-        'https://github.com/greeny/SatisfactoryTools/blob/a1eb2fef1d5293baa5cd33ae88d08032600c6996/data/data1.0.json',
+        'https://github.com/GMcDowellJr/satisfactory_progression_planner/tree/a3313235d94ac1ab2e0bc4626cdb5ee6dd1f4bef/planning_data/game/reference',
       license:
-        'MIT; greeny 2019; numerical data only; see docs/data/SatisfactoryTools-LICENSE.txt',
+        'MIT; Copyright (c) 2026 Greg McDowell and Aadit Sachdev; see docs/data/*-LICENSE.txt',
       contentSha256:
-        '4caf63ba1cfd495eb33534fd5d1ae92631e786e72ad833e39357cb5194faa35f',
+        '01abd310a126a42040efb73714c920dcc34abccdd4d8f0cb2ca4637be365d576',
     },
   },
   items: [
-    {
-      id: 'BP_EqDescZipLine_C',
-      name: 'Zipline',
-      raw: false,
-      transport: 'belt',
-    },
-    {
-      id: 'BP_EquipmentDescriptorGasmask_C',
-      name: 'Gas Mask',
-      raw: false,
-      transport: 'belt',
-    },
-    {
-      id: 'BP_EquipmentDescriptorHazmatSuit_C',
-      name: 'Hazmat Suit',
-      raw: false,
-      transport: 'belt',
-    },
-    {
-      id: 'BP_EquipmentDescriptorHoverPack_C',
-      name: 'Hoverpack',
-      raw: false,
-      transport: 'belt',
-    },
-    {
-      id: 'BP_EquipmentDescriptorJetPack_C',
-      name: 'Jetpack',
-      raw: false,
-      transport: 'belt',
-    },
-    {
-      id: 'BP_EquipmentDescriptorJumpingStilts_C',
-      name: 'Blade Runners',
-      raw: false,
-      transport: 'belt',
-    },
-    {
-      id: 'BP_EquipmentDescriptorNobeliskDetonator_C',
-      name: 'Nobelisk Detonator',
-      raw: false,
-      transport: 'belt',
-    },
-    {
-      id: 'BP_EquipmentDescriptorObjectScanner_C',
-      name: 'Object Scanner',
-      raw: false,
-      transport: 'belt',
-    },
-    {
-      id: 'BP_EquipmentDescriptorRifle_C',
-      name: 'Rifle',
-      raw: false,
-      transport: 'belt',
-    },
-    {
-      id: 'BP_EquipmentDescriptorShockShank_C',
-      name: 'Xeno-Zapper',
-      raw: false,
-      transport: 'belt',
-    },
-    {
-      id: 'BP_EquipmentDescriptorStunSpear_C',
-      name: 'Xeno-Basher',
-      raw: false,
-      transport: 'belt',
-    },
     {
       id: 'BP_ItemDescriptorPortableMiner_C',
       name: 'Portable Miner',
@@ -170,6 +105,12 @@ export const vanillaSnapshot: Catalog = {
       transport: 'belt',
     },
     {
+      id: 'Desc_CandyCane_C',
+      name: 'Candy Cane',
+      raw: false,
+      transport: 'belt',
+    },
+    {
       id: 'Desc_CartridgeChaos_C',
       name: 'Turbo Rifle Ammo',
       raw: false,
@@ -190,12 +131,6 @@ export const vanillaSnapshot: Catalog = {
     {
       id: 'Desc_Cement_C',
       name: 'Concrete',
-      raw: false,
-      transport: 'belt',
-    },
-    {
-      id: 'Desc_Chainsaw_C',
-      name: 'Chainsaw',
       raw: false,
       transport: 'belt',
     },
@@ -356,6 +291,24 @@ export const vanillaSnapshot: Catalog = {
       transport: 'belt',
     },
     {
+      id: 'Desc_Fireworks_Projectile_01_C',
+      name: 'Sweet Fireworks',
+      raw: false,
+      transport: 'belt',
+    },
+    {
+      id: 'Desc_Fireworks_Projectile_02_C',
+      name: 'Fancy Fireworks',
+      raw: false,
+      transport: 'belt',
+    },
+    {
+      id: 'Desc_Fireworks_Projectile_03_C',
+      name: 'Sparkly Fireworks',
+      raw: false,
+      transport: 'belt',
+    },
+    {
       id: 'Desc_FluidCanister_C',
       name: 'Empty Canister',
       raw: false,
@@ -380,20 +333,14 @@ export const vanillaSnapshot: Catalog = {
       transport: 'belt',
     },
     {
+      id: 'Desc_Gift_C',
+      name: 'FICSMAS Gift',
+      raw: false,
+      transport: 'belt',
+    },
+    {
       id: 'Desc_GoldIngot_C',
       name: 'Caterium Ingot',
-      raw: false,
-      transport: 'belt',
-    },
-    {
-      id: 'Desc_GolfCartGold_C',
-      name: 'Golden Factory Cart™',
-      raw: false,
-      transport: 'belt',
-    },
-    {
-      id: 'Desc_GolfCart_C',
-      name: 'Factory Cart™',
       raw: false,
       transport: 'belt',
     },
@@ -477,7 +424,7 @@ export const vanillaSnapshot: Catalog = {
     },
     {
       id: 'Desc_IronScrew_C',
-      name: 'Screw',
+      name: 'Screws',
       raw: false,
       transport: 'belt',
     },
@@ -794,12 +741,6 @@ export const vanillaSnapshot: Catalog = {
       transport: 'belt',
     },
     {
-      id: 'Desc_RebarGunProjectile_C',
-      name: 'Rebar Gun',
-      raw: false,
-      transport: 'belt',
-    },
-    {
       id: 'Desc_Rebar_Explosive_C',
       name: 'Explosive Rebar',
       raw: false,
@@ -814,12 +755,6 @@ export const vanillaSnapshot: Catalog = {
     {
       id: 'Desc_Rebar_Stunshot_C',
       name: 'Stun Rebar',
-      raw: false,
-      transport: 'belt',
-    },
-    {
-      id: 'Desc_ResourceSinkCoupon_C',
-      name: 'FICSIT Coupon',
       raw: false,
       transport: 'belt',
     },
@@ -874,6 +809,18 @@ export const vanillaSnapshot: Catalog = {
     {
       id: 'Desc_SingularityCell_C',
       name: 'Singularity Cell',
+      raw: false,
+      transport: 'belt',
+    },
+    {
+      id: 'Desc_Snow_C',
+      name: 'FICSMAS Actual Snow',
+      raw: false,
+      transport: 'belt',
+    },
+    {
+      id: 'Desc_SnowballProjectile_C',
+      name: 'Snowball',
       raw: false,
       transport: 'belt',
     },
@@ -1069,6 +1016,84 @@ export const vanillaSnapshot: Catalog = {
       raw: true,
       transport: 'belt',
     },
+    {
+      id: 'Desc_XmasBall1_C',
+      name: 'Red FICSMAS Ornament',
+      raw: false,
+      transport: 'belt',
+    },
+    {
+      id: 'Desc_XmasBall2_C',
+      name: 'Blue FICSMAS Ornament',
+      raw: false,
+      transport: 'belt',
+    },
+    {
+      id: 'Desc_XmasBall3_C',
+      name: 'Copper FICSMAS Ornament',
+      raw: false,
+      transport: 'belt',
+    },
+    {
+      id: 'Desc_XmasBall4_C',
+      name: 'Iron FICSMAS Ornament',
+      raw: false,
+      transport: 'belt',
+    },
+    {
+      id: 'Desc_XmasBallCluster_C',
+      name: 'FICSMAS Ornament Bundle',
+      raw: false,
+      transport: 'belt',
+    },
+    {
+      id: 'Desc_XmasBow_C',
+      name: 'FICSMAS Bow',
+      raw: false,
+      transport: 'belt',
+    },
+    {
+      id: 'Desc_XmasBranch_C',
+      name: 'FICSMAS Tree Branch',
+      raw: false,
+      transport: 'belt',
+    },
+    {
+      id: 'Desc_XmasDataCartridge1_C',
+      name: 'FICSMAS Data Cartridge Day 1',
+      raw: false,
+      transport: 'belt',
+    },
+    {
+      id: 'Desc_XmasDataCartridge2_C',
+      name: 'FICSMAS Data Cartridge Day 4',
+      raw: false,
+      transport: 'belt',
+    },
+    {
+      id: 'Desc_XmasDataCartridge3_C',
+      name: 'FICSMAS Data Cartridge Day 8',
+      raw: false,
+      transport: 'belt',
+    },
+    {
+      id: 'Desc_XmasDataCartridge4_C',
+      name: 'FICSMAS Data Cartridge Day 14',
+      raw: false,
+      transport: 'belt',
+    },
+    {
+      id: 'Desc_XmasStar_C',
+      name: 'FICSMAS Wonder Star',
+      raw: false,
+      transport: 'belt',
+    },
+    {
+      id: 'Desc_XmasWreath_C',
+      name: 'FICSMAS Wreath',
+      raw: false,
+      transport: 'belt',
+    },
   ],
   machines: [
     {
@@ -1164,20 +1189,20 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '24',
       inputs: [
         {
-          itemId: 'Desc_SAMFluctuator_C',
-          quantity: '5',
-        },
-        {
           itemId: 'Desc_CrystalShard_C',
           quantity: '3',
+        },
+        {
+          itemId: 'Desc_QuantumEnergy_C',
+          quantity: '24',
         },
         {
           itemId: 'Desc_QuantumOscillator_C',
           quantity: '3',
         },
         {
-          itemId: 'Desc_QuantumEnergy_C',
-          quantity: '24',
+          itemId: 'Desc_SAMFluctuator_C',
+          quantity: '5',
         },
       ],
       outputs: [
@@ -1282,11 +1307,11 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '60',
       inputs: [
         {
-          itemId: 'Desc_SteelPipe_C',
+          itemId: 'Desc_IronPlate_C',
           quantity: '4',
         },
         {
-          itemId: 'Desc_IronPlate_C',
+          itemId: 'Desc_SteelPipe_C',
           quantity: '4',
         },
       ],
@@ -1326,12 +1351,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '12',
       inputs: [
         {
-          itemId: 'Desc_Wire_C',
-          quantity: '9',
-        },
-        {
           itemId: 'Desc_Rubber_C',
           quantity: '6',
+        },
+        {
+          itemId: 'Desc_Wire_C',
+          quantity: '9',
         },
       ],
       outputs: [
@@ -1436,12 +1461,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '48',
       inputs: [
         {
-          itemId: 'Desc_Plastic_C',
-          quantity: '10',
-        },
-        {
           itemId: 'Desc_HighSpeedWire_C',
           quantity: '30',
+        },
+        {
+          itemId: 'Desc_Plastic_C',
+          quantity: '10',
         },
       ],
       outputs: [
@@ -1458,16 +1483,16 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '8',
       inputs: [
         {
-          itemId: 'Desc_Sulfur_C',
-          quantity: '6',
-        },
-        {
           itemId: 'Desc_AluminumPlate_C',
           quantity: '7',
         },
         {
           itemId: 'Desc_Plastic_C',
           quantity: '8',
+        },
+        {
+          itemId: 'Desc_Sulfur_C',
+          quantity: '6',
         },
         {
           itemId: 'Desc_Wire_C',
@@ -1524,12 +1549,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '8',
       inputs: [
         {
-          itemId: 'Desc_Wire_C',
-          quantity: '5',
-        },
-        {
           itemId: 'Desc_HeavyOilResidue_C',
           quantity: '2',
+        },
+        {
+          itemId: 'Desc_Wire_C',
+          quantity: '5',
         },
       ],
       outputs: [
@@ -1546,12 +1571,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '4',
       inputs: [
         {
-          itemId: 'Desc_IronPlate_C',
-          quantity: '2',
-        },
-        {
           itemId: 'Desc_CopperSheet_C',
           quantity: '1',
+        },
+        {
+          itemId: 'Desc_IronPlate_C',
+          quantity: '2',
         },
       ],
       outputs: [
@@ -1796,16 +1821,16 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '32',
       inputs: [
         {
+          itemId: 'Desc_CircuitBoardHighSpeed_C',
+          quantity: '1',
+        },
+        {
           itemId: 'Desc_QuartzCrystal_C',
           quantity: '10',
         },
         {
           itemId: 'Desc_Rubber_C',
           quantity: '7',
-        },
-        {
-          itemId: 'Desc_CircuitBoardHighSpeed_C',
-          quantity: '1',
         },
       ],
       outputs: [
@@ -1840,12 +1865,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '2',
       inputs: [
         {
-          itemId: 'Desc_TimeCrystal_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_DarkEnergy_C',
           quantity: '5',
+        },
+        {
+          itemId: 'Desc_TimeCrystal_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -2056,12 +2081,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '12',
       inputs: [
         {
-          itemId: 'Desc_Rubber_C',
-          quantity: '4',
-        },
-        {
           itemId: 'Desc_PetroleumCoke_C',
           quantity: '8',
+        },
+        {
+          itemId: 'Desc_Rubber_C',
+          quantity: '4',
         },
       ],
       outputs: [
@@ -2078,12 +2103,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '15',
       inputs: [
         {
-          itemId: 'Desc_Stator_C',
-          quantity: '2',
-        },
-        {
           itemId: 'Desc_HighSpeedConnector_C',
           quantity: '1',
+        },
+        {
+          itemId: 'Desc_Stator_C',
+          quantity: '2',
         },
       ],
       outputs: [
@@ -2100,12 +2125,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '15',
       inputs: [
         {
-          itemId: 'Desc_SteelPipe_C',
-          quantity: '6',
-        },
-        {
           itemId: 'Desc_Cement_C',
           quantity: '5',
+        },
+        {
+          itemId: 'Desc_SteelPipe_C',
+          quantity: '6',
         },
       ],
       outputs: [
@@ -2144,16 +2169,16 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '12',
       inputs: [
         {
-          itemId: 'Desc_OreUranium_C',
-          quantity: '5',
+          itemId: 'Desc_NitricAcid_C',
+          quantity: '3',
         },
         {
           itemId: 'Desc_NuclearWaste_C',
           quantity: '5',
         },
         {
-          itemId: 'Desc_NitricAcid_C',
-          quantity: '3',
+          itemId: 'Desc_OreUranium_C',
+          quantity: '5',
         },
         {
           itemId: 'Desc_SulfuricAcid_C',
@@ -2182,12 +2207,12 @@ export const vanillaSnapshot: Catalog = {
           quantity: '1',
         },
         {
-          itemId: 'Desc_SteelPlate_C',
-          quantity: '6',
-        },
-        {
           itemId: 'Desc_Rubber_C',
           quantity: '8',
+        },
+        {
+          itemId: 'Desc_SteelPlate_C',
+          quantity: '6',
         },
       ],
       outputs: [
@@ -2226,12 +2251,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '8',
       inputs: [
         {
-          itemId: 'Desc_Sulfur_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_CompactedCoal_C',
           quantity: '2',
+        },
+        {
+          itemId: 'Desc_Sulfur_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -2248,20 +2273,20 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '20',
       inputs: [
         {
-          itemId: 'Desc_ModularFrameHeavy_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_AluminumIngot_C',
           quantity: '50',
         },
         {
-          itemId: 'Desc_NitricAcid_C',
-          quantity: '8',
-        },
-        {
           itemId: 'Desc_LiquidFuel_C',
           quantity: '10',
+        },
+        {
+          itemId: 'Desc_ModularFrameHeavy_C',
+          quantity: '1',
+        },
+        {
+          itemId: 'Desc_NitricAcid_C',
+          quantity: '8',
         },
       ],
       outputs: [
@@ -2300,20 +2325,20 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '16',
       inputs: [
         {
-          itemId: 'Desc_ModularFrame_C',
-          quantity: '5',
+          itemId: 'Desc_IronScrew_C',
+          quantity: '104',
         },
         {
-          itemId: 'Desc_SteelPlateReinforced_C',
-          quantity: '3',
+          itemId: 'Desc_ModularFrame_C',
+          quantity: '5',
         },
         {
           itemId: 'Desc_Rubber_C',
           quantity: '20',
         },
         {
-          itemId: 'Desc_IronScrew_C',
-          quantity: '104',
+          itemId: 'Desc_SteelPlateReinforced_C',
+          quantity: '3',
         },
       ],
       outputs: [
@@ -2352,16 +2377,16 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '40',
       inputs: [
         {
+          itemId: 'Desc_CircuitBoard_C',
+          quantity: '2',
+        },
+        {
           itemId: 'Desc_HighSpeedWire_C',
           quantity: '60',
         },
         {
           itemId: 'Desc_Silica_C',
           quantity: '25',
-        },
-        {
-          itemId: 'Desc_CircuitBoard_C',
-          quantity: '2',
         },
       ],
       outputs: [
@@ -2378,16 +2403,16 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '32',
       inputs: [
         {
+          itemId: 'Desc_HighSpeedConnector_C',
+          quantity: '1',
+        },
+        {
           itemId: 'Desc_Stator_C',
           quantity: '2',
         },
         {
           itemId: 'Desc_Wire_C',
           quantity: '40',
-        },
-        {
-          itemId: 'Desc_HighSpeedConnector_C',
-          quantity: '1',
         },
       ],
       outputs: [
@@ -2404,12 +2429,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '12',
       inputs: [
         {
-          itemId: 'Desc_OreIron_C',
-          quantity: '8',
-        },
-        {
           itemId: 'Desc_OreCopper_C',
           quantity: '2',
+        },
+        {
+          itemId: 'Desc_OreIron_C',
+          quantity: '8',
         },
       ],
       outputs: [
@@ -2426,11 +2451,11 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '3',
       inputs: [
         {
-          itemId: 'Desc_IronIngot_C',
+          itemId: 'Desc_Coal_C',
           quantity: '2',
         },
         {
-          itemId: 'Desc_Coal_C',
+          itemId: 'Desc_IronIngot_C',
           quantity: '2',
         },
       ],
@@ -2448,12 +2473,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '24',
       inputs: [
         {
-          itemId: 'Desc_OreIron_C',
-          quantity: '2',
-        },
-        {
           itemId: 'Desc_CompactedCoal_C',
           quantity: '1',
+        },
+        {
+          itemId: 'Desc_OreIron_C',
+          quantity: '2',
         },
       ],
       outputs: [
@@ -2470,12 +2495,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '120',
       inputs: [
         {
-          itemId: 'Desc_NonFissibleUranium_C',
-          quantity: '150',
-        },
-        {
           itemId: 'Desc_AluminumCasing_C',
           quantity: '20',
+        },
+        {
+          itemId: 'Desc_NonFissibleUranium_C',
+          quantity: '150',
         },
       ],
       outputs: [
@@ -2492,12 +2517,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '6',
       inputs: [
         {
-          itemId: 'Desc_OreBauxite_C',
-          quantity: '15',
-        },
-        {
           itemId: 'Desc_Coal_C',
           quantity: '10',
+        },
+        {
+          itemId: 'Desc_OreBauxite_C',
+          quantity: '15',
         },
         {
           itemId: 'Desc_SulfuricAcid_C',
@@ -2526,22 +2551,22 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '3',
       inputs: [
         {
-          itemId: 'Desc_PackagedRocketFuel_C',
-          quantity: '12',
-        },
-        {
           itemId: 'Desc_DarkMatter_C',
           quantity: '4',
+        },
+        {
+          itemId: 'Desc_PackagedRocketFuel_C',
+          quantity: '12',
         },
       ],
       outputs: [
         {
-          itemId: 'Desc_IonizedFuel_C',
-          quantity: '10',
-        },
-        {
           itemId: 'Desc_CompactedCoal_C',
           quantity: '2',
+        },
+        {
+          itemId: 'Desc_IonizedFuel_C',
+          quantity: '10',
         },
       ],
     },
@@ -2569,7 +2594,7 @@ export const vanillaSnapshot: Catalog = {
     },
     {
       id: 'Recipe_Alternate_IronIngot_Leached_C',
-      name: 'Alternate: Leached Iron ingot',
+      name: 'Alternate: Leached Iron Ingot',
       machineId: 'Desc_OilRefinery_C',
       durationSeconds: '6',
       inputs: [
@@ -2596,20 +2621,20 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '64',
       inputs: [
         {
-          itemId: 'Desc_ModularFrame_C',
-          quantity: '8',
+          itemId: 'Desc_Cement_C',
+          quantity: '22',
         },
         {
-          itemId: 'Desc_SteelPlateReinforced_C',
-          quantity: '10',
+          itemId: 'Desc_ModularFrame_C',
+          quantity: '8',
         },
         {
           itemId: 'Desc_SteelPipe_C',
           quantity: '36',
         },
         {
-          itemId: 'Desc_Cement_C',
-          quantity: '22',
+          itemId: 'Desc_SteelPlateReinforced_C',
+          quantity: '10',
         },
       ],
       outputs: [
@@ -2648,16 +2673,16 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '48',
       inputs: [
         {
+          itemId: 'Desc_CrystalOscillator_C',
+          quantity: '1',
+        },
+        {
           itemId: 'Desc_Rotor_C',
           quantity: '3',
         },
         {
           itemId: 'Desc_Stator_C',
           quantity: '3',
-        },
-        {
-          itemId: 'Desc_CrystalOscillator_C',
-          quantity: '1',
         },
       ],
       outputs: [
@@ -2674,20 +2699,20 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '300',
       inputs: [
         {
-          itemId: 'Desc_UraniumCell_C',
-          quantity: '100',
+          itemId: 'Desc_CrystalOscillator_C',
+          quantity: '3',
         },
         {
           itemId: 'Desc_ElectromagneticControlRod_C',
           quantity: '10',
         },
         {
-          itemId: 'Desc_CrystalOscillator_C',
-          quantity: '3',
-        },
-        {
           itemId: 'Desc_Rotor_C',
           quantity: '10',
+        },
+        {
+          itemId: 'Desc_UraniumCell_C',
+          quantity: '100',
         },
       ],
       outputs: [
@@ -2704,11 +2729,11 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '20',
       inputs: [
         {
-          itemId: 'Desc_ModularFrameLightweight_C',
+          itemId: 'Desc_CoolingSystem_C',
           quantity: '2',
         },
         {
-          itemId: 'Desc_CoolingSystem_C',
+          itemId: 'Desc_ModularFrameLightweight_C',
           quantity: '2',
         },
       ],
@@ -2730,12 +2755,12 @@ export const vanillaSnapshot: Catalog = {
           quantity: '1',
         },
         {
-          itemId: 'Desc_Rotor_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_Plastic_C',
           quantity: '3',
+        },
+        {
+          itemId: 'Desc_Rotor_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -2752,11 +2777,11 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '12',
       inputs: [
         {
-          itemId: 'Desc_Rubber_C',
+          itemId: 'Desc_LiquidFuel_C',
           quantity: '6',
         },
         {
-          itemId: 'Desc_LiquidFuel_C',
+          itemId: 'Desc_Rubber_C',
           quantity: '6',
         },
       ],
@@ -2824,12 +2849,12 @@ export const vanillaSnapshot: Catalog = {
       ],
       outputs: [
         {
-          itemId: 'Desc_PolymerResin_C',
-          quantity: '13',
-        },
-        {
           itemId: 'Desc_HeavyOilResidue_C',
           quantity: '2',
+        },
+        {
+          itemId: 'Desc_PolymerResin_C',
+          quantity: '13',
         },
       ],
     },
@@ -2928,12 +2953,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '20',
       inputs: [
         {
-          itemId: 'Desc_RawQuartz_C',
-          quantity: '25',
-        },
-        {
           itemId: 'Desc_Coal_C',
           quantity: '12',
+        },
+        {
+          itemId: 'Desc_RawQuartz_C',
+          quantity: '25',
         },
       ],
       outputs: [
@@ -2950,22 +2975,22 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '12',
       inputs: [
         {
-          itemId: 'Desc_RawQuartz_C',
-          quantity: '24',
-        },
-        {
           itemId: 'Desc_NitricAcid_C',
           quantity: '2',
+        },
+        {
+          itemId: 'Desc_RawQuartz_C',
+          quantity: '24',
         },
       ],
       outputs: [
         {
-          itemId: 'Desc_QuartzCrystal_C',
-          quantity: '15',
-        },
-        {
           itemId: 'Desc_DissolvedSilica_C',
           quantity: '12',
+        },
+        {
+          itemId: 'Desc_QuartzCrystal_C',
+          quantity: '15',
         },
       ],
     },
@@ -2976,12 +3001,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '8',
       inputs: [
         {
-          itemId: 'Desc_GoldIngot_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_CopperIngot_C',
           quantity: '5',
+        },
+        {
+          itemId: 'Desc_GoldIngot_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -2998,16 +3023,16 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '40',
       inputs: [
         {
-          itemId: 'Desc_CrystalOscillator_C',
-          quantity: '1',
+          itemId: 'Desc_AluminumCasing_C',
+          quantity: '60',
         },
         {
           itemId: 'Desc_CircuitBoard_C',
           quantity: '10',
         },
         {
-          itemId: 'Desc_AluminumCasing_C',
-          quantity: '60',
+          itemId: 'Desc_CrystalOscillator_C',
+          quantity: '1',
         },
         {
           itemId: 'Desc_Rubber_C',
@@ -3054,11 +3079,11 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '12',
       inputs: [
         {
-          itemId: 'Desc_Plastic_C',
+          itemId: 'Desc_LiquidFuel_C',
           quantity: '6',
         },
         {
-          itemId: 'Desc_LiquidFuel_C',
+          itemId: 'Desc_Plastic_C',
           quantity: '6',
         },
       ],
@@ -3120,6 +3145,10 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '12/5',
       inputs: [
         {
+          itemId: 'Desc_Coal_C',
+          quantity: '2',
+        },
+        {
           itemId: 'Desc_LiquidFuel_C',
           quantity: '4',
         },
@@ -3131,19 +3160,15 @@ export const vanillaSnapshot: Catalog = {
           itemId: 'Desc_Sulfur_C',
           quantity: '4',
         },
-        {
-          itemId: 'Desc_Coal_C',
-          quantity: '2',
-        },
       ],
       outputs: [
         {
-          itemId: 'Desc_RocketFuel_C',
-          quantity: '6',
-        },
-        {
           itemId: 'Desc_CompactedCoal_C',
           quantity: '1',
+        },
+        {
+          itemId: 'Desc_RocketFuel_C',
+          quantity: '6',
         },
       ],
     },
@@ -3176,12 +3201,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '6',
       inputs: [
         {
-          itemId: 'Desc_Stone_C',
-          quantity: '10',
-        },
-        {
           itemId: 'Desc_Rubber_C',
           quantity: '2',
+        },
+        {
+          itemId: 'Desc_Stone_C',
+          quantity: '10',
         },
       ],
       outputs: [
@@ -3193,7 +3218,7 @@ export const vanillaSnapshot: Catalog = {
     },
     {
       id: 'Recipe_Alternate_Screw_2_C',
-      name: 'Alternate: Steel Screw',
+      name: 'Alternate: Steel Screws',
       machineId: 'Desc_ConstructorMk1_C',
       durationSeconds: '12',
       inputs: [
@@ -3211,7 +3236,7 @@ export const vanillaSnapshot: Catalog = {
     },
     {
       id: 'Recipe_Alternate_Screw_C',
-      name: 'Alternate: Cast Screw',
+      name: 'Alternate: Cast Screws',
       machineId: 'Desc_ConstructorMk1_C',
       durationSeconds: '24',
       inputs: [
@@ -3308,12 +3333,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '15',
       inputs: [
         {
-          itemId: 'Desc_SteelPipe_C',
-          quantity: '4',
-        },
-        {
           itemId: 'Desc_HighSpeedWire_C',
           quantity: '15',
+        },
+        {
+          itemId: 'Desc_SteelPipe_C',
+          quantity: '4',
         },
       ],
       outputs: [
@@ -3370,12 +3395,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '12',
       inputs: [
         {
-          itemId: 'Desc_SteelIngot_C',
-          quantity: '24',
-        },
-        {
           itemId: 'Desc_Cement_C',
           quantity: '16',
+        },
+        {
+          itemId: 'Desc_SteelIngot_C',
+          quantity: '24',
         },
       ],
       outputs: [
@@ -3450,12 +3475,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '6',
       inputs: [
         {
-          itemId: 'Desc_SteelIngot_C',
-          quantity: '5',
-        },
-        {
           itemId: 'Desc_Cement_C',
           quantity: '3',
+        },
+        {
+          itemId: 'Desc_SteelIngot_C',
+          quantity: '5',
         },
       ],
       outputs: [
@@ -3490,16 +3515,16 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '25',
       inputs: [
         {
+          itemId: 'Desc_Battery_C',
+          quantity: '10',
+        },
+        {
           itemId: 'Desc_Computer_C',
           quantity: '3',
         },
         {
           itemId: 'Desc_ElectromagneticControlRod_C',
           quantity: '1',
-        },
-        {
-          itemId: 'Desc_Battery_C',
-          quantity: '10',
         },
         {
           itemId: 'Desc_Wire_C',
@@ -3520,19 +3545,19 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '8',
       inputs: [
         {
-          itemId: 'Desc_LiquidFuel_C',
-          quantity: '2',
-        },
-        {
           itemId: 'Desc_HeavyOilResidue_C',
           quantity: '4',
         },
         {
-          itemId: 'Desc_Sulfur_C',
-          quantity: '3',
+          itemId: 'Desc_LiquidFuel_C',
+          quantity: '2',
         },
         {
           itemId: 'Desc_PetroleumCoke_C',
+          quantity: '3',
+        },
+        {
+          itemId: 'Desc_Sulfur_C',
           quantity: '3',
         },
       ],
@@ -3550,12 +3575,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '8',
       inputs: [
         {
-          itemId: 'Desc_HeavyOilResidue_C',
-          quantity: '5',
-        },
-        {
           itemId: 'Desc_CompactedCoal_C',
           quantity: '4',
+        },
+        {
+          itemId: 'Desc_HeavyOilResidue_C',
+          quantity: '5',
         },
       ],
       outputs: [
@@ -3572,16 +3597,16 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '64',
       inputs: [
         {
-          itemId: 'Desc_Motor_C',
-          quantity: '7',
+          itemId: 'Desc_ElectromagneticControlRod_C',
+          quantity: '5',
         },
         {
           itemId: 'Desc_ModularFrameLightweight_C',
           quantity: '9',
         },
         {
-          itemId: 'Desc_ElectromagneticControlRod_C',
-          quantity: '5',
+          itemId: 'Desc_Motor_C',
+          quantity: '7',
         },
         {
           itemId: 'Desc_Rotor_C',
@@ -3606,12 +3631,12 @@ export const vanillaSnapshot: Catalog = {
           quantity: '4',
         },
         {
-          itemId: 'Desc_PressureConversionCube_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_PackagedNitrogenGas_C',
           quantity: '24',
+        },
+        {
+          itemId: 'Desc_PressureConversionCube_C',
+          quantity: '1',
         },
         {
           itemId: 'Desc_Stator_C',
@@ -3632,12 +3657,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '16',
       inputs: [
         {
-          itemId: 'Desc_LiquidFuel_C',
-          quantity: '6',
-        },
-        {
           itemId: 'Desc_CompactedCoal_C',
           quantity: '4',
+        },
+        {
+          itemId: 'Desc_LiquidFuel_C',
+          quantity: '6',
         },
       ],
       outputs: [
@@ -3654,6 +3679,10 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '12',
       inputs: [
         {
+          itemId: 'Desc_HighSpeedWire_C',
+          quantity: '15',
+        },
+        {
           itemId: 'Desc_OreUranium_C',
           quantity: '5',
         },
@@ -3664,10 +3693,6 @@ export const vanillaSnapshot: Catalog = {
         {
           itemId: 'Desc_Sulfur_C',
           quantity: '5',
-        },
-        {
-          itemId: 'Desc_HighSpeedWire_C',
-          quantity: '15',
         },
       ],
       outputs: [
@@ -3834,16 +3859,16 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '3',
       inputs: [
         {
-          itemId: 'Desc_SulfuricAcid_C',
-          quantity: '5/2',
-        },
-        {
           itemId: 'Desc_AluminaSolution_C',
           quantity: '2',
         },
         {
           itemId: 'Desc_AluminumCasing_C',
           quantity: '1',
+        },
+        {
+          itemId: 'Desc_SulfuricAcid_C',
+          quantity: '5/2',
         },
       ],
       outputs: [
@@ -3864,12 +3889,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '6',
       inputs: [
         {
-          itemId: 'Desc_SAMIngot_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_OreGold_C',
           quantity: '15',
+        },
+        {
+          itemId: 'Desc_SAMIngot_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -3886,12 +3911,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '6',
       inputs: [
         {
-          itemId: 'Desc_SAMIngot_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_OreCopper_C',
           quantity: '18',
+        },
+        {
+          itemId: 'Desc_SAMIngot_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -4016,12 +4041,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '12',
       inputs: [
         {
-          itemId: 'Desc_CartridgeStandard_C',
-          quantity: '25',
-        },
-        {
           itemId: 'Desc_AluminumCasing_C',
           quantity: '3',
+        },
+        {
+          itemId: 'Desc_CartridgeStandard_C',
+          quantity: '25',
         },
         {
           itemId: 'Desc_LiquidTurboFuel_C',
@@ -4042,12 +4067,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '12',
       inputs: [
         {
-          itemId: 'Desc_CartridgeStandard_C',
-          quantity: '25',
-        },
-        {
           itemId: 'Desc_AluminumCasing_C',
           quantity: '3',
+        },
+        {
+          itemId: 'Desc_CartridgeStandard_C',
+          quantity: '25',
         },
         {
           itemId: 'Desc_TurboFuel_C',
@@ -4112,12 +4137,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '6',
       inputs: [
         {
-          itemId: 'Desc_SAMIngot_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_OreCopper_C',
           quantity: '15',
+        },
+        {
+          itemId: 'Desc_SAMIngot_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -4134,12 +4159,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '6',
       inputs: [
         {
-          itemId: 'Desc_SAMIngot_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_RawQuartz_C',
           quantity: '12',
+        },
+        {
+          itemId: 'Desc_SAMIngot_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -4178,12 +4203,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '6',
       inputs: [
         {
-          itemId: 'Desc_SAMIngot_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_OreIron_C',
           quantity: '18',
+        },
+        {
+          itemId: 'Desc_SAMIngot_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -4222,12 +4247,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '32',
       inputs: [
         {
-          itemId: 'Desc_Computer_C',
-          quantity: '4',
-        },
-        {
           itemId: 'Desc_CircuitBoardHighSpeed_C',
           quantity: '2',
+        },
+        {
+          itemId: 'Desc_Computer_C',
+          quantity: '4',
         },
         {
           itemId: 'Desc_HighSpeedConnector_C',
@@ -4252,12 +4277,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '24',
       inputs: [
         {
-          itemId: 'Desc_CircuitBoard_C',
-          quantity: '4',
-        },
-        {
           itemId: 'Desc_Cable_C',
           quantity: '8',
+        },
+        {
+          itemId: 'Desc_CircuitBoard_C',
+          quantity: '4',
         },
         {
           itemId: 'Desc_Plastic_C',
@@ -4300,16 +4325,16 @@ export const vanillaSnapshot: Catalog = {
           quantity: '2',
         },
         {
+          itemId: 'Desc_NitrogenGas_C',
+          quantity: '25',
+        },
+        {
           itemId: 'Desc_Rubber_C',
           quantity: '2',
         },
         {
           itemId: 'Desc_Water_C',
           quantity: '5',
-        },
-        {
-          itemId: 'Desc_NitrogenGas_C',
-          quantity: '25',
         },
       ],
       outputs: [
@@ -4362,12 +4387,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '6',
       inputs: [
         {
-          itemId: 'Desc_SAMIngot_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_RawQuartz_C',
           quantity: '10',
+        },
+        {
+          itemId: 'Desc_SAMIngot_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -4406,16 +4431,16 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '120',
       inputs: [
         {
-          itemId: 'Desc_QuartzCrystal_C',
-          quantity: '36',
-        },
-        {
           itemId: 'Desc_Cable_C',
           quantity: '28',
         },
         {
           itemId: 'Desc_IronPlateReinforced_C',
           quantity: '5',
+        },
+        {
+          itemId: 'Desc_QuartzCrystal_C',
+          quantity: '36',
         },
       ],
       outputs: [
@@ -4450,12 +4475,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '2',
       inputs: [
         {
-          itemId: 'Desc_Diamond_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_DarkEnergy_C',
           quantity: '5',
+        },
+        {
+          itemId: 'Desc_Diamond_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -4490,12 +4515,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '30',
       inputs: [
         {
-          itemId: 'Desc_Stator_C',
-          quantity: '3',
-        },
-        {
           itemId: 'Desc_CircuitBoardHighSpeed_C',
           quantity: '2',
+        },
+        {
+          itemId: 'Desc_Stator_C',
+          quantity: '3',
         },
       ],
       outputs: [
@@ -4512,12 +4537,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '10',
       inputs: [
         {
-          itemId: 'Desc_SteelPlate_C',
-          quantity: '3',
-        },
-        {
           itemId: 'Desc_Cement_C',
           quantity: '6',
+        },
+        {
+          itemId: 'Desc_SteelPlate_C',
+          quantity: '3',
         },
       ],
       outputs: [
@@ -4534,12 +4559,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '4',
       inputs: [
         {
-          itemId: 'Desc_Mycelia_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_GenericBiomass_C',
           quantity: '5',
+        },
+        {
+          itemId: 'Desc_Mycelia_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -4556,12 +4581,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '2',
       inputs: [
         {
-          itemId: 'Desc_SAMIngot_C',
-          quantity: '2',
-        },
-        {
           itemId: 'Desc_AluminumIngot_C',
           quantity: '4',
+        },
+        {
+          itemId: 'Desc_SAMIngot_C',
+          quantity: '2',
         },
       ],
       outputs: [
@@ -4578,12 +4603,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '4',
       inputs: [
         {
-          itemId: 'Desc_SAMIngot_C',
-          quantity: '3',
-        },
-        {
           itemId: 'Desc_GoldIngot_C',
           quantity: '4',
+        },
+        {
+          itemId: 'Desc_SAMIngot_C',
+          quantity: '3',
         },
       ],
       outputs: [
@@ -4600,12 +4625,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '6',
       inputs: [
         {
-          itemId: 'Desc_SAMIngot_C',
-          quantity: '4',
-        },
-        {
           itemId: 'Desc_IronIngot_C',
           quantity: '24',
+        },
+        {
+          itemId: 'Desc_SAMIngot_C',
+          quantity: '4',
         },
       ],
       outputs: [
@@ -4640,10 +4665,6 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '24',
       inputs: [
         {
-          itemId: 'Desc_Ficsonium_C',
-          quantity: '2',
-        },
-        {
           itemId: 'Desc_ElectromagneticControlRod_C',
           quantity: '2',
         },
@@ -4652,18 +4673,22 @@ export const vanillaSnapshot: Catalog = {
           quantity: '40',
         },
         {
+          itemId: 'Desc_Ficsonium_C',
+          quantity: '2',
+        },
+        {
           itemId: 'Desc_QuantumEnergy_C',
           quantity: '20',
         },
       ],
       outputs: [
         {
-          itemId: 'Desc_FicsoniumFuelRod_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_DarkEnergy_C',
           quantity: '20',
+        },
+        {
+          itemId: 'Desc_FicsoniumFuelRod_C',
+          quantity: '1',
         },
       ],
     },
@@ -4674,16 +4699,16 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '6',
       inputs: [
         {
+          itemId: 'Desc_DarkEnergy_C',
+          quantity: '20',
+        },
+        {
           itemId: 'Desc_PlutoniumWaste_C',
           quantity: '1',
         },
         {
           itemId: 'Desc_SingularityCell_C',
           quantity: '1',
-        },
-        {
-          itemId: 'Desc_DarkEnergy_C',
-          quantity: '20',
         },
       ],
       outputs: [
@@ -4700,12 +4725,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '8',
       inputs: [
         {
-          itemId: 'Desc_Fabric_C',
-          quantity: '2',
-        },
-        {
           itemId: 'Desc_Coal_C',
           quantity: '4',
+        },
+        {
+          itemId: 'Desc_Fabric_C',
+          quantity: '2',
         },
         {
           itemId: 'Desc_IronPlate_C',
@@ -4726,16 +4751,16 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '16',
       inputs: [
         {
+          itemId: 'Desc_AluminumCasing_C',
+          quantity: '1',
+        },
+        {
           itemId: 'Desc_Filter_C',
           quantity: '1',
         },
         {
           itemId: 'Desc_HighSpeedWire_C',
           quantity: '8',
-        },
-        {
-          itemId: 'Desc_AluminumCasing_C',
-          quantity: '1',
         },
       ],
       outputs: [
@@ -4770,11 +4795,11 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '3',
       inputs: [
         {
-          itemId: 'Desc_LiquidFuel_C',
+          itemId: 'Desc_FluidCanister_C',
           quantity: '2',
         },
         {
-          itemId: 'Desc_FluidCanister_C',
+          itemId: 'Desc_LiquidFuel_C',
           quantity: '2',
         },
       ],
@@ -4792,12 +4817,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '40',
       inputs: [
         {
-          itemId: 'Desc_ModularFrameHeavy_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_AluminumCasing_C',
           quantity: '50',
+        },
+        {
+          itemId: 'Desc_ModularFrameHeavy_C',
+          quantity: '1',
         },
         {
           itemId: 'Desc_NitrogenGas_C',
@@ -4902,16 +4927,16 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '16',
       inputs: [
         {
-          itemId: 'Desc_HighSpeedWire_C',
-          quantity: '56',
-        },
-        {
           itemId: 'Desc_Cable_C',
           quantity: '10',
         },
         {
           itemId: 'Desc_CircuitBoard_C',
           quantity: '1',
+        },
+        {
+          itemId: 'Desc_HighSpeedWire_C',
+          quantity: '56',
         },
       ],
       outputs: [
@@ -5022,11 +5047,11 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '4',
       inputs: [
         {
-          itemId: 'Desc_OreIron_C',
+          itemId: 'Desc_Coal_C',
           quantity: '3',
         },
         {
-          itemId: 'Desc_Coal_C',
+          itemId: 'Desc_OreIron_C',
           quantity: '3',
         },
       ],
@@ -5044,22 +5069,22 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '24',
       inputs: [
         {
-          itemId: 'Desc_RocketFuel_C',
-          quantity: '16',
-        },
-        {
           itemId: 'Desc_CrystalShard_C',
           quantity: '1',
+        },
+        {
+          itemId: 'Desc_RocketFuel_C',
+          quantity: '16',
         },
       ],
       outputs: [
         {
-          itemId: 'Desc_IonizedFuel_C',
-          quantity: '16',
-        },
-        {
           itemId: 'Desc_CompactedCoal_C',
           quantity: '2',
+        },
+        {
+          itemId: 'Desc_IonizedFuel_C',
+          quantity: '16',
         },
       ],
     },
@@ -5216,6 +5241,10 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '30',
       inputs: [
         {
+          itemId: 'Desc_IronScrew_C',
+          quantity: '120',
+        },
+        {
           itemId: 'Desc_ModularFrame_C',
           quantity: '5',
         },
@@ -5226,10 +5255,6 @@ export const vanillaSnapshot: Catalog = {
         {
           itemId: 'Desc_SteelPlateReinforced_C',
           quantity: '5',
-        },
-        {
-          itemId: 'Desc_IronScrew_C',
-          quantity: '120',
         },
       ],
       outputs: [
@@ -5320,16 +5345,16 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '6',
       inputs: [
         {
+          itemId: 'Desc_IronPlate_C',
+          quantity: '1',
+        },
+        {
           itemId: 'Desc_NitrogenGas_C',
           quantity: '12',
         },
         {
           itemId: 'Desc_Water_C',
           quantity: '3',
-        },
-        {
-          itemId: 'Desc_IronPlate_C',
-          quantity: '1',
         },
       ],
       outputs: [
@@ -5346,12 +5371,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '6',
       inputs: [
         {
-          itemId: 'Desc_SAMIngot_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_OreBauxite_C',
           quantity: '10',
+        },
+        {
+          itemId: 'Desc_SAMIngot_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -5368,12 +5393,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '6',
       inputs: [
         {
-          itemId: 'Desc_SAMIngot_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_OreGold_C',
           quantity: '12',
+        },
+        {
+          itemId: 'Desc_SAMIngot_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -5390,12 +5415,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '24',
       inputs: [
         {
-          itemId: 'Desc_NobeliskExplosive_C',
-          quantity: '3',
-        },
-        {
           itemId: 'Desc_GunpowderMK2_C',
           quantity: '4',
+        },
+        {
+          itemId: 'Desc_NobeliskExplosive_C',
+          quantity: '3',
         },
       ],
       outputs: [
@@ -5412,12 +5437,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '12',
       inputs: [
         {
-          itemId: 'Desc_NobeliskExplosive_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_GenericBiomass_C',
           quantity: '10',
+        },
+        {
+          itemId: 'Desc_NobeliskExplosive_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -5434,20 +5459,20 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '120',
       inputs: [
         {
-          itemId: 'Desc_NobeliskExplosive_C',
-          quantity: '5',
-        },
-        {
-          itemId: 'Desc_UraniumCell_C',
-          quantity: '20',
+          itemId: 'Desc_CircuitBoardHighSpeed_C',
+          quantity: '6',
         },
         {
           itemId: 'Desc_GunpowderMK2_C',
           quantity: '10',
         },
         {
-          itemId: 'Desc_CircuitBoardHighSpeed_C',
-          quantity: '6',
+          itemId: 'Desc_NobeliskExplosive_C',
+          quantity: '5',
+        },
+        {
+          itemId: 'Desc_UraniumCell_C',
+          quantity: '20',
         },
       ],
       outputs: [
@@ -5464,12 +5489,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '60',
       inputs: [
         {
-          itemId: 'Desc_NobeliskExplosive_C',
-          quantity: '5',
-        },
-        {
           itemId: 'Desc_CrystalOscillator_C',
           quantity: '1',
+        },
+        {
+          itemId: 'Desc_NobeliskExplosive_C',
+          quantity: '5',
         },
       ],
       outputs: [
@@ -5508,16 +5533,16 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '24',
       inputs: [
         {
+          itemId: 'Desc_NitricAcid_C',
+          quantity: '6',
+        },
+        {
           itemId: 'Desc_NuclearWaste_C',
           quantity: '15',
         },
         {
           itemId: 'Desc_Silica_C',
           quantity: '10',
-        },
-        {
-          itemId: 'Desc_NitricAcid_C',
-          quantity: '6',
         },
         {
           itemId: 'Desc_SulfuricAcid_C',
@@ -5542,16 +5567,16 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '150',
       inputs: [
         {
-          itemId: 'Desc_UraniumCell_C',
-          quantity: '50',
+          itemId: 'Desc_ElectromagneticControlRod_C',
+          quantity: '5',
         },
         {
           itemId: 'Desc_SteelPlateReinforced_C',
           quantity: '3',
         },
         {
-          itemId: 'Desc_ElectromagneticControlRod_C',
-          quantity: '5',
+          itemId: 'Desc_UraniumCell_C',
+          quantity: '50',
         },
       ],
       outputs: [
@@ -5590,11 +5615,11 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '3',
       inputs: [
         {
-          itemId: 'Desc_LiquidBiofuel_C',
+          itemId: 'Desc_FluidCanister_C',
           quantity: '2',
         },
         {
-          itemId: 'Desc_FluidCanister_C',
+          itemId: 'Desc_LiquidBiofuel_C',
           quantity: '2',
         },
       ],
@@ -5612,11 +5637,11 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '4',
       inputs: [
         {
-          itemId: 'Desc_LiquidOil_C',
+          itemId: 'Desc_FluidCanister_C',
           quantity: '2',
         },
         {
-          itemId: 'Desc_FluidCanister_C',
+          itemId: 'Desc_LiquidOil_C',
           quantity: '2',
         },
       ],
@@ -5634,12 +5659,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '3',
       inputs: [
         {
-          itemId: 'Desc_IonizedFuel_C',
-          quantity: '4',
-        },
-        {
           itemId: 'Desc_GasTank_C',
           quantity: '2',
+        },
+        {
+          itemId: 'Desc_IonizedFuel_C',
+          quantity: '4',
         },
       ],
       outputs: [
@@ -5656,11 +5681,11 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '2',
       inputs: [
         {
-          itemId: 'Desc_NitricAcid_C',
+          itemId: 'Desc_GasTank_C',
           quantity: '1',
         },
         {
-          itemId: 'Desc_GasTank_C',
+          itemId: 'Desc_NitricAcid_C',
           quantity: '1',
         },
       ],
@@ -5678,12 +5703,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '1',
       inputs: [
         {
-          itemId: 'Desc_NitrogenGas_C',
-          quantity: '4',
-        },
-        {
           itemId: 'Desc_GasTank_C',
           quantity: '1',
+        },
+        {
+          itemId: 'Desc_NitrogenGas_C',
+          quantity: '4',
         },
       ],
       outputs: [
@@ -5700,11 +5725,11 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '4',
       inputs: [
         {
-          itemId: 'Desc_HeavyOilResidue_C',
+          itemId: 'Desc_FluidCanister_C',
           quantity: '2',
         },
         {
-          itemId: 'Desc_FluidCanister_C',
+          itemId: 'Desc_HeavyOilResidue_C',
           quantity: '2',
         },
       ],
@@ -5722,12 +5747,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '1',
       inputs: [
         {
-          itemId: 'Desc_RocketFuel_C',
-          quantity: '2',
-        },
-        {
           itemId: 'Desc_GasTank_C',
           quantity: '1',
+        },
+        {
+          itemId: 'Desc_RocketFuel_C',
+          quantity: '2',
         },
       ],
       outputs: [
@@ -5744,11 +5769,11 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '3',
       inputs: [
         {
-          itemId: 'Desc_SulfuricAcid_C',
+          itemId: 'Desc_FluidCanister_C',
           quantity: '2',
         },
         {
-          itemId: 'Desc_FluidCanister_C',
+          itemId: 'Desc_SulfuricAcid_C',
           quantity: '2',
         },
       ],
@@ -5766,11 +5791,11 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '6',
       inputs: [
         {
-          itemId: 'Desc_LiquidTurboFuel_C',
+          itemId: 'Desc_FluidCanister_C',
           quantity: '2',
         },
         {
-          itemId: 'Desc_FluidCanister_C',
+          itemId: 'Desc_LiquidTurboFuel_C',
           quantity: '2',
         },
       ],
@@ -5788,11 +5813,11 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '2',
       inputs: [
         {
-          itemId: 'Desc_Water_C',
+          itemId: 'Desc_FluidCanister_C',
           quantity: '2',
         },
         {
-          itemId: 'Desc_FluidCanister_C',
+          itemId: 'Desc_Water_C',
           quantity: '2',
         },
       ],
@@ -5834,12 +5859,12 @@ export const vanillaSnapshot: Catalog = {
       ],
       outputs: [
         {
-          itemId: 'Desc_Plastic_C',
-          quantity: '2',
-        },
-        {
           itemId: 'Desc_HeavyOilResidue_C',
           quantity: '1',
+        },
+        {
+          itemId: 'Desc_Plastic_C',
+          quantity: '2',
         },
       ],
     },
@@ -5850,12 +5875,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '12',
       inputs: [
         {
-          itemId: 'Desc_PlutoniumPellet_C',
-          quantity: '2',
-        },
-        {
           itemId: 'Desc_Cement_C',
           quantity: '4',
+        },
+        {
+          itemId: 'Desc_PlutoniumPellet_C',
+          quantity: '2',
         },
       ],
       outputs: [
@@ -5872,20 +5897,20 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '240',
       inputs: [
         {
-          itemId: 'Desc_PlutoniumCell_C',
-          quantity: '30',
-        },
-        {
-          itemId: 'Desc_SteelPlate_C',
-          quantity: '18',
+          itemId: 'Desc_AluminumPlateReinforced_C',
+          quantity: '10',
         },
         {
           itemId: 'Desc_ElectromagneticControlRod_C',
           quantity: '6',
         },
         {
-          itemId: 'Desc_AluminumPlateReinforced_C',
-          quantity: '10',
+          itemId: 'Desc_PlutoniumCell_C',
+          quantity: '30',
+        },
+        {
+          itemId: 'Desc_SteelPlate_C',
+          quantity: '18',
         },
       ],
       outputs: [
@@ -6121,12 +6146,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '6',
       inputs: [
         {
-          itemId: 'Desc_SAMIngot_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_OreBauxite_C',
           quantity: '10',
+        },
+        {
+          itemId: 'Desc_SAMIngot_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -6143,12 +6168,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '6',
       inputs: [
         {
-          itemId: 'Desc_SAMIngot_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_Coal_C',
           quantity: '24',
+        },
+        {
+          itemId: 'Desc_SAMIngot_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -6187,12 +6212,12 @@ export const vanillaSnapshot: Catalog = {
           quantity: '32',
         },
         {
-          itemId: 'Desc_CrystalOscillator_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_Computer_C',
           quantity: '2',
+        },
+        {
+          itemId: 'Desc_CrystalOscillator_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -6209,11 +6234,11 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '12',
       inputs: [
         {
-          itemId: 'Desc_SpikedRebar_C',
+          itemId: 'Desc_GunpowderMK2_C',
           quantity: '2',
         },
         {
-          itemId: 'Desc_GunpowderMK2_C',
+          itemId: 'Desc_SpikedRebar_C',
           quantity: '2',
         },
         {
@@ -6235,12 +6260,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '12',
       inputs: [
         {
-          itemId: 'Desc_SpikedRebar_C',
-          quantity: '2',
-        },
-        {
           itemId: 'Desc_QuartzCrystal_C',
           quantity: '3',
+        },
+        {
+          itemId: 'Desc_SpikedRebar_C',
+          quantity: '2',
         },
       ],
       outputs: [
@@ -6257,12 +6282,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '6',
       inputs: [
         {
-          itemId: 'Desc_SpikedRebar_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_HighSpeedWire_C',
           quantity: '5',
+        },
+        {
+          itemId: 'Desc_SpikedRebar_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -6351,12 +6376,12 @@ export const vanillaSnapshot: Catalog = {
       ],
       outputs: [
         {
-          itemId: 'Desc_RocketFuel_C',
-          quantity: '10',
-        },
-        {
           itemId: 'Desc_CompactedCoal_C',
           quantity: '1',
+        },
+        {
+          itemId: 'Desc_RocketFuel_C',
+          quantity: '10',
         },
       ],
     },
@@ -6395,11 +6420,11 @@ export const vanillaSnapshot: Catalog = {
       ],
       outputs: [
         {
-          itemId: 'Desc_Rubber_C',
+          itemId: 'Desc_HeavyOilResidue_C',
           quantity: '2',
         },
         {
-          itemId: 'Desc_HeavyOilResidue_C',
+          itemId: 'Desc_Rubber_C',
           quantity: '2',
         },
       ],
@@ -6415,12 +6440,12 @@ export const vanillaSnapshot: Catalog = {
           quantity: '6',
         },
         {
-          itemId: 'Desc_Wire_C',
-          quantity: '5',
-        },
-        {
           itemId: 'Desc_SteelPipe_C',
           quantity: '3',
+        },
+        {
+          itemId: 'Desc_Wire_C',
+          quantity: '5',
         },
       ],
       outputs: [
@@ -6432,7 +6457,7 @@ export const vanillaSnapshot: Catalog = {
     },
     {
       id: 'Recipe_Screw_C',
-      name: 'Screw',
+      name: 'Screws',
       machineId: 'Desc_ConstructorMk1_C',
       durationSeconds: '6',
       inputs: [
@@ -6473,8 +6498,8 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '60',
       inputs: [
         {
-          itemId: 'Desc_SpaceElevatorPart_9_C',
-          quantity: '1',
+          itemId: 'Desc_Cement_C',
+          quantity: '200',
         },
         {
           itemId: 'Desc_DarkMatter_C',
@@ -6485,8 +6510,8 @@ export const vanillaSnapshot: Catalog = {
           quantity: '100',
         },
         {
-          itemId: 'Desc_Cement_C',
-          quantity: '200',
+          itemId: 'Desc_SpaceElevatorPart_9_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -6503,12 +6528,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '120',
       inputs: [
         {
-          itemId: 'Desc_SpaceElevatorPart_7_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_FicsiteMesh_C',
           quantity: '80',
+        },
+        {
+          itemId: 'Desc_SpaceElevatorPart_7_C',
+          quantity: '1',
         },
         {
           itemId: 'Desc_Water_C',
@@ -6529,20 +6554,20 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '60',
       inputs: [
         {
-          itemId: 'Desc_SpaceElevatorPart_8_C',
-          quantity: '1',
-        },
-        {
-          itemId: 'Desc_SingularityCell_C',
-          quantity: '5',
+          itemId: 'Desc_DarkMatter_C',
+          quantity: '40',
         },
         {
           itemId: 'Desc_QuantumOscillator_C',
           quantity: '2',
         },
         {
-          itemId: 'Desc_DarkMatter_C',
-          quantity: '40',
+          itemId: 'Desc_SingularityCell_C',
+          quantity: '5',
+        },
+        {
+          itemId: 'Desc_SpaceElevatorPart_8_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -6559,6 +6584,14 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '15',
       inputs: [
         {
+          itemId: 'Desc_QuantumEnergy_C',
+          quantity: '25',
+        },
+        {
+          itemId: 'Desc_QuantumOscillator_C',
+          quantity: '1',
+        },
+        {
           itemId: 'Desc_SpaceElevatorPart_6_C',
           quantity: '1',
         },
@@ -6566,23 +6599,15 @@ export const vanillaSnapshot: Catalog = {
           itemId: 'Desc_TemporalProcessor_C',
           quantity: '1',
         },
-        {
-          itemId: 'Desc_QuantumOscillator_C',
-          quantity: '1',
-        },
-        {
-          itemId: 'Desc_QuantumEnergy_C',
-          quantity: '25',
-        },
       ],
       outputs: [
         {
-          itemId: 'Desc_SpaceElevatorPart_12_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_DarkEnergy_C',
           quantity: '25',
+        },
+        {
+          itemId: 'Desc_SpaceElevatorPart_12_C',
+          quantity: '1',
         },
       ],
     },
@@ -6637,12 +6662,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '24',
       inputs: [
         {
-          itemId: 'Desc_Stator_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_Cable_C',
           quantity: '20',
+        },
+        {
+          itemId: 'Desc_Stator_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -6685,20 +6710,20 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '60',
       inputs: [
         {
-          itemId: 'Desc_SpaceElevatorPart_3_C',
+          itemId: 'Desc_CircuitBoard_C',
           quantity: '5',
         },
         {
-          itemId: 'Desc_CircuitBoard_C',
-          quantity: '5',
+          itemId: 'Desc_Computer_C',
+          quantity: '2',
         },
         {
           itemId: 'Desc_ModularFrameHeavy_C',
           quantity: '1',
         },
         {
-          itemId: 'Desc_Computer_C',
-          quantity: '2',
+          itemId: 'Desc_SpaceElevatorPart_3_C',
+          quantity: '5',
         },
       ],
       outputs: [
@@ -6715,12 +6740,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '120',
       inputs: [
         {
-          itemId: 'Desc_SpaceElevatorPart_2_C',
-          quantity: '5',
-        },
-        {
           itemId: 'Desc_ElectromagneticControlRod_C',
           quantity: '2',
+        },
+        {
+          itemId: 'Desc_SpaceElevatorPart_2_C',
+          quantity: '5',
         },
       ],
       outputs: [
@@ -6737,12 +6762,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '80',
       inputs: [
         {
-          itemId: 'Desc_SpaceElevatorPart_5_C',
-          quantity: '2',
-        },
-        {
           itemId: 'Desc_ComputerSuper_C',
           quantity: '1',
+        },
+        {
+          itemId: 'Desc_SpaceElevatorPart_5_C',
+          quantity: '2',
         },
       ],
       outputs: [
@@ -6759,20 +6784,20 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '120',
       inputs: [
         {
-          itemId: 'Desc_SpaceElevatorPart_4_C',
-          quantity: '5',
-        },
-        {
-          itemId: 'Desc_MotorLightweight_C',
-          quantity: '2',
-        },
-        {
           itemId: 'Desc_CoolingSystem_C',
           quantity: '6',
         },
         {
           itemId: 'Desc_ModularFrameFused_C',
           quantity: '2',
+        },
+        {
+          itemId: 'Desc_MotorLightweight_C',
+          quantity: '2',
+        },
+        {
+          itemId: 'Desc_SpaceElevatorPart_4_C',
+          quantity: '5',
         },
       ],
       outputs: [
@@ -6887,12 +6912,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '6',
       inputs: [
         {
-          itemId: 'Desc_SAMIngot_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_Coal_C',
           quantity: '20',
+        },
+        {
+          itemId: 'Desc_SAMIngot_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -6909,12 +6934,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '6',
       inputs: [
         {
-          itemId: 'Desc_SAMIngot_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_OreIron_C',
           quantity: '30',
+        },
+        {
+          itemId: 'Desc_SAMIngot_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -6953,16 +6978,16 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '12',
       inputs: [
         {
-          itemId: 'Desc_DarkMatter_C',
-          quantity: '6',
+          itemId: 'Desc_AluminumPlate_C',
+          quantity: '9',
         },
         {
           itemId: 'Desc_CrystalOscillator_C',
           quantity: '1',
         },
         {
-          itemId: 'Desc_AluminumPlate_C',
-          quantity: '9',
+          itemId: 'Desc_DarkMatter_C',
+          quantity: '6',
         },
         {
           itemId: 'Desc_QuantumEnergy_C',
@@ -6971,12 +6996,12 @@ export const vanillaSnapshot: Catalog = {
       ],
       outputs: [
         {
-          itemId: 'Desc_QuantumOscillator_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_DarkEnergy_C',
           quantity: '25',
+        },
+        {
+          itemId: 'Desc_QuantumOscillator_C',
+          quantity: '1',
         },
       ],
     },
@@ -6987,20 +7012,20 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '12',
       inputs: [
         {
-          itemId: 'Desc_TimeCrystal_C',
+          itemId: 'Desc_DarkMatter_C',
           quantity: '2',
         },
         {
-          itemId: 'Desc_DarkMatter_C',
-          quantity: '2',
+          itemId: 'Desc_QuantumEnergy_C',
+          quantity: '12',
         },
         {
           itemId: 'Desc_QuartzCrystal_C',
           quantity: '12',
         },
         {
-          itemId: 'Desc_QuantumEnergy_C',
-          quantity: '12',
+          itemId: 'Desc_TimeCrystal_C',
+          quantity: '2',
         },
       ],
       outputs: [
@@ -7021,10 +7046,6 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '20',
       inputs: [
         {
-          itemId: 'Desc_TimeCrystal_C',
-          quantity: '5',
-        },
-        {
           itemId: 'Desc_ComputerSuper_C',
           quantity: '1',
         },
@@ -7036,15 +7057,19 @@ export const vanillaSnapshot: Catalog = {
           itemId: 'Desc_QuantumEnergy_C',
           quantity: '25',
         },
+        {
+          itemId: 'Desc_TimeCrystal_C',
+          quantity: '5',
+        },
       ],
       outputs: [
         {
-          itemId: 'Desc_TemporalProcessor_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_DarkEnergy_C',
           quantity: '25',
+        },
+        {
+          itemId: 'Desc_TemporalProcessor_C',
+          quantity: '1',
         },
       ],
     },
@@ -7101,11 +7126,11 @@ export const vanillaSnapshot: Catalog = {
       ],
       outputs: [
         {
-          itemId: 'Desc_LiquidBiofuel_C',
+          itemId: 'Desc_FluidCanister_C',
           quantity: '2',
         },
         {
-          itemId: 'Desc_FluidCanister_C',
+          itemId: 'Desc_LiquidBiofuel_C',
           quantity: '2',
         },
       ],
@@ -7123,11 +7148,11 @@ export const vanillaSnapshot: Catalog = {
       ],
       outputs: [
         {
-          itemId: 'Desc_LiquidFuel_C',
+          itemId: 'Desc_FluidCanister_C',
           quantity: '2',
         },
         {
-          itemId: 'Desc_FluidCanister_C',
+          itemId: 'Desc_LiquidFuel_C',
           quantity: '2',
         },
       ],
@@ -7145,12 +7170,12 @@ export const vanillaSnapshot: Catalog = {
       ],
       outputs: [
         {
-          itemId: 'Desc_IonizedFuel_C',
-          quantity: '4',
-        },
-        {
           itemId: 'Desc_GasTank_C',
           quantity: '2',
+        },
+        {
+          itemId: 'Desc_IonizedFuel_C',
+          quantity: '4',
         },
       ],
     },
@@ -7167,11 +7192,11 @@ export const vanillaSnapshot: Catalog = {
       ],
       outputs: [
         {
-          itemId: 'Desc_NitricAcid_C',
+          itemId: 'Desc_GasTank_C',
           quantity: '1',
         },
         {
-          itemId: 'Desc_GasTank_C',
+          itemId: 'Desc_NitricAcid_C',
           quantity: '1',
         },
       ],
@@ -7189,12 +7214,12 @@ export const vanillaSnapshot: Catalog = {
       ],
       outputs: [
         {
-          itemId: 'Desc_NitrogenGas_C',
-          quantity: '4',
-        },
-        {
           itemId: 'Desc_GasTank_C',
           quantity: '1',
+        },
+        {
+          itemId: 'Desc_NitrogenGas_C',
+          quantity: '4',
         },
       ],
     },
@@ -7211,11 +7236,11 @@ export const vanillaSnapshot: Catalog = {
       ],
       outputs: [
         {
-          itemId: 'Desc_HeavyOilResidue_C',
+          itemId: 'Desc_FluidCanister_C',
           quantity: '2',
         },
         {
-          itemId: 'Desc_FluidCanister_C',
+          itemId: 'Desc_HeavyOilResidue_C',
           quantity: '2',
         },
       ],
@@ -7233,11 +7258,11 @@ export const vanillaSnapshot: Catalog = {
       ],
       outputs: [
         {
-          itemId: 'Desc_LiquidOil_C',
+          itemId: 'Desc_FluidCanister_C',
           quantity: '2',
         },
         {
-          itemId: 'Desc_FluidCanister_C',
+          itemId: 'Desc_LiquidOil_C',
           quantity: '2',
         },
       ],
@@ -7255,12 +7280,12 @@ export const vanillaSnapshot: Catalog = {
       ],
       outputs: [
         {
-          itemId: 'Desc_RocketFuel_C',
-          quantity: '2',
-        },
-        {
           itemId: 'Desc_GasTank_C',
           quantity: '1',
+        },
+        {
+          itemId: 'Desc_RocketFuel_C',
+          quantity: '2',
         },
       ],
     },
@@ -7277,11 +7302,11 @@ export const vanillaSnapshot: Catalog = {
       ],
       outputs: [
         {
-          itemId: 'Desc_SulfuricAcid_C',
+          itemId: 'Desc_FluidCanister_C',
           quantity: '1',
         },
         {
-          itemId: 'Desc_FluidCanister_C',
+          itemId: 'Desc_SulfuricAcid_C',
           quantity: '1',
         },
       ],
@@ -7299,11 +7324,11 @@ export const vanillaSnapshot: Catalog = {
       ],
       outputs: [
         {
-          itemId: 'Desc_LiquidTurboFuel_C',
+          itemId: 'Desc_FluidCanister_C',
           quantity: '2',
         },
         {
-          itemId: 'Desc_FluidCanister_C',
+          itemId: 'Desc_LiquidTurboFuel_C',
           quantity: '2',
         },
       ],
@@ -7321,11 +7346,11 @@ export const vanillaSnapshot: Catalog = {
       ],
       outputs: [
         {
-          itemId: 'Desc_Water_C',
+          itemId: 'Desc_FluidCanister_C',
           quantity: '2',
         },
         {
-          itemId: 'Desc_FluidCanister_C',
+          itemId: 'Desc_Water_C',
           quantity: '2',
         },
       ],
@@ -7337,12 +7362,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '12',
       inputs: [
         {
-          itemId: 'Desc_OreUranium_C',
-          quantity: '10',
-        },
-        {
           itemId: 'Desc_Cement_C',
           quantity: '3',
+        },
+        {
+          itemId: 'Desc_OreUranium_C',
+          quantity: '10',
         },
         {
           itemId: 'Desc_SulfuricAcid_C',
@@ -7351,12 +7376,12 @@ export const vanillaSnapshot: Catalog = {
       ],
       outputs: [
         {
-          itemId: 'Desc_UraniumCell_C',
-          quantity: '5',
-        },
-        {
           itemId: 'Desc_SulfuricAcid_C',
           quantity: '2',
+        },
+        {
+          itemId: 'Desc_UraniumCell_C',
+          quantity: '5',
         },
       ],
     },
@@ -7367,12 +7392,12 @@ export const vanillaSnapshot: Catalog = {
       durationSeconds: '6',
       inputs: [
         {
-          itemId: 'Desc_SAMIngot_C',
-          quantity: '1',
-        },
-        {
           itemId: 'Desc_OreBauxite_C',
           quantity: '48',
+        },
+        {
+          itemId: 'Desc_SAMIngot_C',
+          quantity: '1',
         },
       ],
       outputs: [
@@ -7409,7 +7434,7 @@ export const recipeUnlocks: Record<
   Recipe_AILimiter_C: {
     alternate: false,
     tier: null,
-    unlockIds: ['Research_Caterium_4_1_C'],
+    unlockIds: ['Research_Caterium_4_1_C', 'Schematic_7-4-1_C'],
   },
   Recipe_AlienDNACapsule_C: {
     alternate: false,
@@ -7489,12 +7514,18 @@ export const recipeUnlocks: Record<
   Recipe_Alternate_Coal_1_C: {
     alternate: true,
     tier: null,
-    unlockIds: ['Schematic_Alternate_Coal1_C'],
+    unlockIds: [
+      'Schematic_Alternate_Coal1_C',
+      'Schematic_Alternate_EnrichedCoal_C',
+    ],
   },
   Recipe_Alternate_Coal_2_C: {
     alternate: true,
     tier: null,
-    unlockIds: ['Schematic_Alternate_Coal2_C'],
+    unlockIds: [
+      'Schematic_Alternate_Coal2_C',
+      'Schematic_Alternate_EnrichedCoal_C',
+    ],
   },
   Recipe_Alternate_CoatedCable_C: {
     alternate: true,
@@ -7634,7 +7665,10 @@ export const recipeUnlocks: Record<
   Recipe_Alternate_EnrichedCoal_C: {
     alternate: true,
     tier: null,
-    unlockIds: ['Research_Sulfur_CompactedCoal_C'],
+    unlockIds: [
+      'Research_Sulfur_CompactedCoal_C',
+      'Schematic_Alternate_EnrichedCoal_C',
+    ],
   },
   Recipe_Alternate_FertileUranium_C: {
     alternate: true,
@@ -7869,7 +7903,7 @@ export const recipeUnlocks: Record<
   Recipe_Alternate_Silica_Distilled_C: {
     alternate: true,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_Alternate_Silica_Distilled_C'],
   },
   Recipe_Alternate_SloppyAlumina_C: {
     alternate: true,
@@ -7947,9 +7981,12 @@ export const recipeUnlocks: Record<
     unlockIds: ['Schematic_Alternate_TurboPressureMotor_C'],
   },
   Recipe_Alternate_Turbofuel_C: {
-    alternate: true,
+    alternate: false,
     tier: null,
-    unlockIds: ['Research_Sulfur_TurboFuel_C'],
+    unlockIds: [
+      'Research_Sulfur_TurboFuel_C',
+      'Schematic_Alternate_TurboFuel_C',
+    ],
   },
   Recipe_Alternate_UraniumCell_1_C: {
     alternate: true,
@@ -7999,12 +8036,12 @@ export const recipeUnlocks: Record<
   Recipe_Bauxite_Caterium_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_9-1-1_C'],
   },
   Recipe_Bauxite_Copper_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_9-1-1_C'],
   },
   Recipe_Biofuel_C: {
     alternate: false,
@@ -8044,7 +8081,7 @@ export const recipeUnlocks: Record<
   Recipe_CartridgeChaos_Packaged_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Research_Sulfur_5_2_Hidden_C'],
   },
   Recipe_CartridgeSmart_C: {
     alternate: false,
@@ -8054,17 +8091,17 @@ export const recipeUnlocks: Record<
   Recipe_Cartridge_C: {
     alternate: false,
     tier: null,
-    unlockIds: ['Research_Sulfur_4_1_C'],
+    unlockIds: ['Research_Sulfur_4_1_C', 'Research_Sulfur_4_2_1_C'],
   },
   Recipe_Caterium_Copper_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_9-1-1_C'],
   },
   Recipe_Caterium_Quartz_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_9-1-1_C'],
   },
   Recipe_CircuitBoard_C: {
     alternate: false,
@@ -8074,12 +8111,12 @@ export const recipeUnlocks: Record<
   Recipe_Coal_Iron_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_9-1-1_C'],
   },
   Recipe_Coal_Limestone_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_9-1-1_C'],
   },
   Recipe_ComputerSuper_C: {
     alternate: false,
@@ -8114,17 +8151,17 @@ export const recipeUnlocks: Record<
   Recipe_Copper_Quartz_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_9-1-1_C'],
   },
   Recipe_Copper_Sulfur_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_9-1-1_C'],
   },
   Recipe_CrystalOscillator_C: {
     alternate: false,
     tier: null,
-    unlockIds: ['Research_Quartz_2_C'],
+    unlockIds: ['Research_Quartz_2_C', 'Schematic_7-1-1_C'],
   },
   Recipe_DarkEnergy_C: {
     alternate: false,
@@ -8159,12 +8196,12 @@ export const recipeUnlocks: Record<
   Recipe_FicsiteIngot_AL_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_9-1-1_C'],
   },
   Recipe_FicsiteIngot_CAT_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_9-1-1_C'],
   },
   Recipe_FicsiteIngot_Iron_C: {
     alternate: false,
@@ -8234,7 +8271,7 @@ export const recipeUnlocks: Record<
   Recipe_HighSpeedConnector_C: {
     alternate: false,
     tier: null,
-    unlockIds: ['Research_Caterium_5_C'],
+    unlockIds: ['Research_Caterium_5_C', 'Schematic_7-4-1_C'],
   },
   Recipe_IngotAluminum_C: {
     alternate: false,
@@ -8244,7 +8281,7 @@ export const recipeUnlocks: Record<
   Recipe_IngotCaterium_C: {
     alternate: false,
     tier: null,
-    unlockIds: ['Research_Caterium_1_C'],
+    unlockIds: ['Research_Caterium_1_C', 'Schematic_5-5-1_C'],
   },
   Recipe_IngotCopper_C: {
     alternate: false,
@@ -8259,7 +8296,7 @@ export const recipeUnlocks: Record<
   Recipe_IngotSAM_C: {
     alternate: false,
     tier: 9,
-    unlockIds: ['Schematic_9-1_C', 'Research_Alien_ActiveSAM_C'],
+    unlockIds: ['Research_Alien_ActiveSAM_C', 'Schematic_9-1_C'],
   },
   Recipe_IngotSteel_C: {
     alternate: false,
@@ -8289,12 +8326,12 @@ export const recipeUnlocks: Record<
   Recipe_Iron_Limestone_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_9-1-1_C'],
   },
   Recipe_Limestone_Sulfur_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_9-1-1_C'],
   },
   Recipe_LiquidBiofuel_C: {
     alternate: false,
@@ -8334,12 +8371,12 @@ export const recipeUnlocks: Record<
   Recipe_Nitrogen_Bauxite_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_9-1-1_C'],
   },
   Recipe_Nitrogen_Caterium_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_9-1-1_C'],
   },
   Recipe_NobeliskCluster_C: {
     alternate: false,
@@ -8364,7 +8401,7 @@ export const recipeUnlocks: Record<
   Recipe_Nobelisk_C: {
     alternate: false,
     tier: null,
-    unlockIds: ['Research_Sulfur_3_1_C'],
+    unlockIds: ['Research_Sulfur_3_1_C', 'Research_Sulfur_3_2_1_C'],
   },
   Recipe_NonFissileUranium_C: {
     alternate: false,
@@ -8426,8 +8463,9 @@ export const recipeUnlocks: Record<
     tier: null,
     unlockIds: [
       'Research_Sulfur_TurboFuel_C',
-      'Schematic_Alternate_TurboHeavyFuel_C',
       'Schematic_Alternate_TurboBlendFuel_C',
+      'Schematic_Alternate_TurboFuel_C',
+      'Schematic_Alternate_TurboHeavyFuel_C',
     ],
   },
   Recipe_PackagedWater_C: {
@@ -8513,27 +8551,27 @@ export const recipeUnlocks: Record<
   Recipe_QuartzCrystal_C: {
     alternate: false,
     tier: null,
-    unlockIds: ['Research_Quartz_1_1_C'],
+    unlockIds: ['Research_Quartz_1_1_C', 'Schematic_7-1-1_C'],
   },
   Recipe_Quartz_Bauxite_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_9-1-1_C'],
   },
   Recipe_Quartz_Coal_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_9-1-1_C'],
   },
   Recipe_Quickwire_C: {
     alternate: false,
     tier: null,
-    unlockIds: ['Research_Caterium_2_C'],
+    unlockIds: ['Research_Caterium_2_C', 'Schematic_5-5-1_C'],
   },
   Recipe_RadioControlUnit_C: {
     alternate: false,
     tier: 7,
-    unlockIds: ['Schematic_7-5_C'],
+    unlockIds: ['Research_Quartz_3_3_C', 'Schematic_7-5_C'],
   },
   Recipe_Rebar_Explosive_C: {
     alternate: false,
@@ -8553,17 +8591,17 @@ export const recipeUnlocks: Record<
   Recipe_ResidualFuel_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_5-1-1_C'],
   },
   Recipe_ResidualPlastic_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_5-1-1_C'],
   },
   Recipe_ResidualRubber_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_5-1-1_C'],
   },
   Recipe_RocketFuel_C: {
     alternate: false,
@@ -8583,7 +8621,7 @@ export const recipeUnlocks: Record<
   Recipe_SAMFluctuator_C: {
     alternate: false,
     tier: 9,
-    unlockIds: ['Schematic_9-1_C', 'Research_Alien_SAMFluctuator_C'],
+    unlockIds: ['Research_Alien_SAMFluctuator_C', 'Schematic_9-1_C'],
   },
   Recipe_Screw_C: {
     alternate: false,
@@ -8593,7 +8631,7 @@ export const recipeUnlocks: Record<
   Recipe_Silica_C: {
     alternate: false,
     tier: null,
-    unlockIds: ['Research_Quartz_1_2_C'],
+    unlockIds: ['Research_Quartz_1_2_C', 'Schematic_7-1-1_C'],
   },
   Recipe_SingularityCell_C: {
     alternate: false,
@@ -8663,7 +8701,7 @@ export const recipeUnlocks: Record<
   Recipe_SpikedRebar_C: {
     alternate: false,
     tier: null,
-    unlockIds: ['Research_ACarapace_2_C'],
+    unlockIds: ['Research_ACarapace_2_1_C', 'Research_ACarapace_2_C'],
   },
   Recipe_Stator_C: {
     alternate: false,
@@ -8683,12 +8721,12 @@ export const recipeUnlocks: Record<
   Recipe_Sulfur_Coal_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_9-1-1_C'],
   },
   Recipe_Sulfur_Iron_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_9-1-1_C'],
   },
   Recipe_SulfuricAcid_C: {
     alternate: false,
@@ -8718,17 +8756,17 @@ export const recipeUnlocks: Record<
   Recipe_UnpackageAlumina_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_7-1-1_C'],
   },
   Recipe_UnpackageBioFuel_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_5-4-1_C'],
   },
   Recipe_UnpackageFuel_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_5-4-1_C'],
   },
   Recipe_UnpackageIonizedFuel_C: {
     alternate: false,
@@ -8738,22 +8776,22 @@ export const recipeUnlocks: Record<
   Recipe_UnpackageNitricAcid_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_8-5-1_C'],
   },
   Recipe_UnpackageNitrogen_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_8-2-1_C'],
   },
   Recipe_UnpackageOilResidue_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_5-4-1_C'],
   },
   Recipe_UnpackageOil_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_5-4-1_C'],
   },
   Recipe_UnpackageRocketFuel_C: {
     alternate: false,
@@ -8763,20 +8801,21 @@ export const recipeUnlocks: Record<
   Recipe_UnpackageSulfuricAcid_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_7-4-1_C'],
   },
   Recipe_UnpackageTurboFuel_C: {
     alternate: false,
     tier: null,
     unlockIds: [
-      'Schematic_Alternate_TurboHeavyFuel_C',
       'Schematic_Alternate_TurboBlendFuel_C',
+      'Schematic_Alternate_TurboFuel_C',
+      'Schematic_Alternate_TurboHeavyFuel_C',
     ],
   },
   Recipe_UnpackageWater_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_5-4-1_C'],
   },
   Recipe_UraniumCell_C: {
     alternate: false,
@@ -8786,7 +8825,7 @@ export const recipeUnlocks: Record<
   Recipe_Uranium_Bauxite_C: {
     alternate: false,
     tier: null,
-    unlockIds: [],
+    unlockIds: ['Schematic_9-1-1_C'],
   },
   Recipe_Wire_C: {
     alternate: false,
@@ -8807,3 +8846,7 @@ export const machineUnlocks: Record<string, number | null> = {
   Desc_QuantumEncoder_C: 9,
   Desc_SmelterMk1_C: 0,
 };
+export const transportUnlocks = {
+  belt: [0, 2, 4, 5, 7, 9],
+  pipe: [3, 6],
+} as const;

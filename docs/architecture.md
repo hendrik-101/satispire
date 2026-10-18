@@ -1,6 +1,6 @@
 # First planning slice
 
-The authorized direction is a pure TypeScript domain, TanStack Start for the web workspace, and Convex for transactional collaboration. The first executable slice is the planner CLI and shared commands. UI implementation waits for the approved ImageGen reference in issue #5; no reference is present in this checkout or issues 1–12. Convex hosting and credentials are not assumed.
+The authorized direction is a pure TypeScript domain, TanStack Start for the web workspace, and Convex for transactional collaboration. The planner CLI and shared commands were the first executable slice; the local web workspace is now implemented. The game target is Satisfactory 1.2, with the bundled production reference pinned to 1.2.4.0 / CL 502094. See the [version audit](qa/version-1.2-2026-10-18.md). Convex hosting and credentials are not assumed.
 
 Production uses normalized exact rational strings (integers, decimals, or fractions) and explicit recipe choices. The initial solver supports acyclic, single-output recipes, shared dependencies, multiple targets and explicitly imported raw inputs. Cycles and coproduct recipes return diagnostics; automatic recipe optimization, energy estimates, amplification and game modifiers are unsupported rather than silently approximated. Separate clocking functions accept explicit versioned limits and per-machine shard allocations; these are not yet effective game rules or integrated graph clocking. Whole-chain stage scaling and a minimal rational nondecreasing Perfect Ratio operation recalculate all supported targets. Machine counts round upward; utilization stays exact.
 
@@ -27,7 +27,7 @@ Anonymous membership and invite tokens are bearer capabilities. Production trans
 
 ## Coordinated data discovery
 
-The separate local audit identified Satisfactory 1.2.4.0, CL 502094, Steam build 24656030. Full catalog remains local with unresolved distribution rights. Geometry has no layout-ready buildables; foundation/ramp depth and build clearance are not a verified machine footprint or port map. The earlier cloud transfer failed. The PC follow-up read the original local importer/report package and verified its archive SHA256; original code and synthetic tests are integrated. Full private discovery data remains outside the checkout and is imported only locally. See local-workspace.md for the conversion boundaries.
+The earlier private local audit identified Satisfactory 1.2.4.0, CL 502094, Steam build 24656030; those private discovery exports remain outside the checkout. The bundled workflow now separately uses publicly available, MIT-licensed numeric 1.2.4.0 reference tables and five upstream-measured 1.2 machine geometries with distinct provenance. Original game dumps and assets are excluded. Physical canvas placement remains unimplemented; upstream machine-local measurements are not a buildable floorplan. The original local importer and synthetic tests remain available for private workflows. See [catalog provenance](data/vanilla.md) and [local workspace](local-workspace.md).
 
 ## Runtime prerequisites
 

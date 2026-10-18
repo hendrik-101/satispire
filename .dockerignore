@@ -16,7 +16,8 @@
 !scripts/write-build-info.mjs
 !docs/
 !docs/data/
-!docs/data/SatisfactoryTools-LICENSE.txt
+!docs/data/ProgressionPlanner-LICENSE.txt
+!docs/data/SatisfactoryAI-LICENSE.txt
 **/.env*
 **/.npmrc
 **/.git/**

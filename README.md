@@ -2,7 +2,7 @@
 
 Parametric production and multistory factory planning for Satisfactory. Independent fan project, not affiliated with Coffee Stain.
 
-This first executable slice provides an exact production solver, synthetic machineblock/floor generation, a JSON CLI, shared authorized commands, classic MCP and feature-detected WebMCP adapters. The user approved a floor-centered workspace with optional graph and panels. The TanStack Start workspace now provides a fixed Vanilla 1.0 planning workflow, optional panels and a schematic block canvas. See [local workspace](docs/local-workspace.md) and [catalog provenance and limits](docs/data/vanilla.md). Reference-image transfers still fail in this Cloud executor; the previous PC inspection is retained as historical evidence only. Convex transaction functions are present and tested with `convex-test`; no online backend is assumed or provisioned.
+This first executable slice provides an exact production solver, synthetic machineblock/floor generation, a JSON CLI, shared authorized commands, classic MCP and feature-detected WebMCP adapters. The user approved a floor-centered workspace with optional graph and panels. The TanStack Start workspace targets **Satisfactory 1.2**, using a pinned **1.2.4.0 / CL 502094** production snapshot, optional panels and a schematic block canvas. See [local workspace](docs/local-workspace.md) and [catalog provenance and limits](docs/data/vanilla.md). Convex transaction functions are present and tested with `convex-test`; no online backend is assumed or provisioned.
 
 ## Run
 
@@ -34,7 +34,7 @@ Rates are exact strings such as `20`, `0.1` or `1/3`. Explicit selected recipes 
 npm run plan -- --input my-plan.json --catalog my-normalized-catalog.json
 ```
 
-The versioned normalized contract and limitations are in [data-contract](docs/data-contract.md), [geometry-contract](docs/geometry-contract.md) and [clocking-contract](docs/clocking-contract.md). This slice accepts normalized user imports, not raw game Docs JSON. The own discovery normalizer and bounded local converter are integrated; see [local workspace](docs/local-workspace.md). Do not commit raw game data, icons, meshes or a full catalog with unresolved redistribution rights. The public UI uses the fixed numeric Vanilla snapshot; physical footprints/ports remain unknown and are not marked layout-ready.
+The versioned normalized contract and limitations are in [data-contract](docs/data-contract.md), [geometry-contract](docs/geometry-contract.md) and [clocking-contract](docs/clocking-contract.md). This slice accepts normalized user imports, not raw game Docs JSON. The own discovery normalizer and bounded local converter are integrated; see [local workspace](docs/local-workspace.md). Do not commit raw game data, icons, meshes or a full catalog with unresolved redistribution rights. The UI uses licensed 1.2 numeric sources, with explicit attribution and MIT notices. Five machines have separate source-local bounds/clearance/port metadata; canvas placement remains logical and is not marked physically layout-ready. See the [1.2 audit](docs/qa/version-1.2-2026-10-18.md).
 
 ## MCP and collaboration
 

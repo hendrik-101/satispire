@@ -33,6 +33,7 @@ import { Graph } from './Graph';
 import { Icon } from './Icon';
 import { ProductionView } from './ProductionView';
 import { MachineGlyph } from './MachineGlyph';
+import { SourceCredits } from './SourceCredits';
 import { createLocalApplication } from '../../src/application.js';
 import { createRoom } from '../../src/domain/rooms.js';
 import {
@@ -279,7 +280,9 @@ export function Workspace() {
         throw new Error('Plan überschreitet das Größenlimit.');
       const document = planFileSchema.parse(JSON.parse(await file.text()));
       if (document.catalogVersion !== catalog.catalogVersion)
-        throw new Error('Plan- oder Katalogversion passt nicht.');
+        throw new Error(
+          `Plan- oder Katalogversion passt nicht. Erwartet wird die Datenbasis für Satisfactory ${catalog.provenance.manifest!.gameVersion}.`,
+        );
       const input = document.production;
       const technology = input.technology ?? factory.technology;
       const next = evaluate(
@@ -339,6 +342,9 @@ export function Workspace() {
   const stage =
     factory.plan.nodes.find((n) => n.itemId === selected) ??
     factory.plan.nodes[0]!;
+  const machineGeometry = supplyLayout.floors.find(
+    (floor) => floor.itemId === stage.itemId,
+  )!.machineGeometry;
   function openProfile() {
     setProfileDraft(structuredClone(factory.technology));
     setSearch('');
@@ -448,7 +454,7 @@ export function Workspace() {
           <h1>Satispire</h1>
           <span className="project-name">Meine Fabrik</span>
           <span className="catalog-version" title={catalog.catalogVersion}>
-            Vanilla 1.0
+            Vanilla {catalog.provenance.manifest!.gameVersion}
           </span>
           <form
             className="planning-controls"
@@ -720,6 +726,26 @@ export function Workspace() {
                 <dt>Auslastung</dt>
                 <dd>{stage.utilization}</dd>
               </dl>
+              {machineGeometry &&
+                [
+                  { label: 'Maschinenmaße', size: machineGeometry.bounds.size },
+                  {
+                    label: 'Baufreiraum',
+                    size: machineGeometry.clearance.size,
+                  },
+                ].map(({ label, size }) => (
+                  <section key={label}>
+                    <h3>{label}</h3>
+                    <dl role="group" aria-label={label}>
+                      <dt>Breite</dt>
+                      <dd>{size.width.toLocaleString('de-DE')} m</dd>
+                      <dt>Tiefe</dt>
+                      <dd>{size.depth.toLocaleString('de-DE')} m</dd>
+                      <dt>Höhe</dt>
+                      <dd>{size.height.toLocaleString('de-DE')} m</dd>
+                    </dl>
+                  </section>
+                ))}
               <label>
                 Rezept
                 <select
@@ -765,6 +791,7 @@ export function Workspace() {
                   </li>
                 ))}
               </ul>
+              <SourceCredits />
             </aside>
           )}
         </div>

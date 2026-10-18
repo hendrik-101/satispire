@@ -59,7 +59,7 @@ The initial solver/geometry tools use a pinned original synthetic catalog. A roo
 
 ## Vanilla factory projection
 
-The local stdio process now uses the same bundled Vanilla 1.0 catalog as the UI. The preceding `example:` inputs document custom synthetic application instances and are not valid production IDs for this default process. Existing synthetic tools remain available for developer contracts; the CLI `--demo` remains an explicit synthetic test fixture.
+The local stdio process uses the same bundled Vanilla 1.2.4.0 / CL 502094 catalog as the UI. `plan_factory` includes per-floor `machineGeometry` metadata for the five machines covered by the licensed 1.2 measurement source, or null otherwise. These building-local metres do not change logical canvas units or floor `physicalPorts`. The preceding `example:` inputs document custom synthetic application instances and are not valid production IDs for this default process. Existing synthetic tools remain available for developer contracts; the CLI `--demo` remains an explicit synthetic test fixture.
 
 Both classic MCP and WebMCP expose `plan_factory` through the same application function. Its input is `{production, rows?}` with `rows:0` for automatic allocation. `production` uses the common targets/recipes/imports schema plus a required technology object `{availableMachines, unlockedRecipes, beltTier, pipeTier}`. It returns `{production,layout}`; the layout is a schematic in logical units with unknown physical footprints and ports. Active machine/recipe locks and transport limits are enforced before projection. Cross-room identity checks happen before argument parsing, and the tool never mutates room intent.
 
