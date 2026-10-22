@@ -7,6 +7,10 @@ async function ready(page: Page) {
     'data-ready',
     'true',
   );
+  // These canvas scenarios explicitly exercise the target's machines.
+  await page
+    .getByLabel('Stufe auswählen', { exact: true })
+    .selectOption('Desc_IronPlate_C');
 }
 test('mobile variant controls remain inside the floor for a Particle Accelerator', async ({
   page,
