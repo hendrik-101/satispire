@@ -1,9 +1,47 @@
 import { type Catalog } from '../../src/domain/catalog.js';
 import {
+  type ItemRate,
   type ProductionInput,
+  scaleProduction,
   solveProduction,
 } from '../../src/domain/production.js';
+import { Rational } from '../../src/domain/rational.js';
 import type { DiscoveryRecipeDetails } from '../../src/discovery.js';
+
+/** Normalizes UI rates and sizes the selected chain without changing the last valid input. */
+export function calculateProduction(
+  catalog: Catalog,
+  input: ProductionInput,
+  target: ItemRate,
+  anchor?: ItemRate,
+) {
+  const next: ProductionInput = {
+    ...input,
+    targets: [
+      {
+        itemId: target.itemId,
+        rate: Rational.parse(target.rate.trim().replace(',', '.')).toString(),
+      },
+      ...input.targets.slice(1).filter((t) => t.itemId !== target.itemId),
+    ],
+  };
+  let plan = solveProduction(catalog, next);
+  if (anchor) {
+    if (!plan.imports.some((entry) => entry.itemId === anchor.itemId))
+      throw new Error(
+        'Bitte einen Input der gewählten Produktionskette wählen.',
+      );
+    plan = scaleProduction(catalog, next, {
+      ...anchor,
+      rate: Rational.parse(anchor.rate.trim().replace(',', '.')).toString(),
+    });
+    next.targets = [
+      plan.targets.find((entry) => entry.itemId === target.itemId)!,
+      ...plan.targets.filter((entry) => entry.itemId !== target.itemId),
+    ];
+  }
+  return { input: next, plan };
+}
 
 export function defaultChoices(
   catalog: Catalog,

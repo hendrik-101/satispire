@@ -41,6 +41,7 @@ import { Icon } from './Icon';
 import { ProductionView } from './ProductionView';
 import { MachineGlyph } from './MachineGlyph';
 import { SourceCredits } from './SourceCredits';
+import { calculateProduction } from './model';
 import { createLocalApplication } from '../../src/application.js';
 import { createRoom } from '../../src/domain/rooms.js';
 import {
@@ -125,6 +126,9 @@ export function Workspace() {
   }));
   const [target, setTarget] = useState(firstInput.targets[0]!.itemId);
   const [rate, setRate] = useState('20');
+  const [sizingMode, setSizingMode] = useState<'target' | 'input'>('target');
+  const [inputItem, setInputItem] = useState('');
+  const [inputRate, setInputRate] = useState('180');
   const [choices, setChoices] = useState(firstInput.recipes);
   const [selected, setSelected] = useState(target);
   const [selectedMachine, setSelectedMachine] = useState(1);
@@ -338,6 +342,25 @@ export function Workspace() {
       }
     });
   }, [sessionProfile.technology, factory.input.imports]);
+  const sizingInputs = useMemo(() => {
+    try {
+      return calculateProduction(
+        catalog,
+        {
+          ...factory.input,
+          recipes: choices,
+          technology: sessionProfile.technology,
+        },
+        { itemId: target, rate: '1' },
+      ).plan.imports;
+    } catch {
+      return [];
+    }
+  }, [factory.input, choices, target, sessionProfile.technology]);
+  const sizingInput =
+    sizingInputs.find((entry) => entry.itemId === inputItem)?.itemId ??
+    sizingInputs[0]?.itemId ??
+    '';
   const supplyLayout = useMemo(
     () =>
       generateSupplyLayout(
@@ -388,14 +411,28 @@ export function Workspace() {
     sequence.current++;
     setPending(false);
     try {
-      apply({
-        ...factory.input,
-        targets: [
-          { itemId: target, rate },
-          ...factory.input.targets.slice(1).filter((t) => t.itemId !== target),
-        ],
-        recipes: choices,
-      });
+      const result = calculateProduction(
+        catalog,
+        {
+          ...factory.input,
+          recipes: choices,
+          technology: sessionProfile.technology,
+        },
+        {
+          itemId: target,
+          rate:
+            sizingMode === 'target'
+              ? rate
+              : factory.input.targets[0]!.itemId === target
+                ? factory.input.targets[0]!.rate
+                : '1',
+        },
+        sizingMode === 'input'
+          ? { itemId: sizingInput, rate: inputRate }
+          : undefined,
+      );
+      const next = apply(result.input);
+      setRate(next.input.targets[0]!.rate);
     } catch (e) {
       setError(message(e));
     }
@@ -459,6 +496,8 @@ export function Workspace() {
       setFactory(next);
       setTarget(input.targets[0]!.itemId);
       setRate(input.targets[0]!.rate);
+      setSizingMode('target');
+      setInputItem('');
       setChoices({
         ...availableChoices(technology, input.imports),
         // Only reachable overrides were validated by the solver during import.
@@ -638,6 +677,7 @@ export function Workspace() {
           </span>
           <form
             className="planning-controls"
+            data-sizing-mode={sizingMode}
             onSubmit={(e) => {
               e.preventDefault();
               calculate();
@@ -659,18 +699,63 @@ export function Workspace() {
                 </option>
               ))}
             </select>
-            <label className="sr-only" htmlFor="rate">
-              Zielrate pro Minute
+            <label className="sr-only" htmlFor="sizing-mode">
+              Berechnungsmodus
             </label>
-            <input
-              id="rate"
-              aria-label="Zielrate pro Minute"
-              value={rate}
-              onChange={(e) => setRate(e.target.value)}
-              inputMode="decimal"
+            <select
+              id="sizing-mode"
+              className="sizing-mode"
+              value={sizingMode}
+              onChange={(e) =>
+                setSizingMode(e.target.value as 'target' | 'input')
+              }
               disabled={pending}
-            />
-            <span className="rate-unit">/ min</span>
+            >
+              <option value="target">Nach Zielmenge</option>
+              <option value="input">Nach Input</option>
+            </select>
+            <div className="rate-controls">
+              {sizingMode === 'input' && (
+                <>
+                  <label className="sr-only" htmlFor="input-item">
+                    Verfügbarer Input
+                  </label>
+                  <select
+                    id="input-item"
+                    value={sizingInput}
+                    onChange={(e) => setInputItem(e.target.value)}
+                    disabled={pending || sizingInputs.length === 0}
+                  >
+                    {sizingInputs.length === 0 && (
+                      <option value="">Kein externer Input</option>
+                    )}
+                    {sizingInputs.map((entry) => (
+                      <option key={entry.itemId} value={entry.itemId}>
+                        {itemName(entry.itemId)}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
+              <label className="sr-only" htmlFor="rate">
+                {sizingMode === 'target'
+                  ? 'Zielrate pro Minute'
+                  : 'Inputrate pro Minute'}
+              </label>
+              <input
+                id="rate"
+                value={sizingMode === 'target' ? rate : inputRate}
+                onChange={(e) =>
+                  sizingMode === 'target'
+                    ? setRate(e.target.value)
+                    : setInputRate(e.target.value)
+                }
+                title="Dezimalzahl oder Bruch, z. B. 7,5 oder 15/2"
+                inputMode="decimal"
+                disabled={pending}
+              />
+              <span className="rate-unit">/ min</span>
+            </div>
             <button className="primary" type="submit" disabled={pending}>
               Plan berechnen
             </button>
