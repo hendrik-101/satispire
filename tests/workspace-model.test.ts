@@ -128,6 +128,27 @@ test('sizes imported duplicate targets once, keeping the selected primary first'
   expect(solveProduction(vanillaCatalog, result.input)).toEqual(result.plan);
 });
 
+test('preserves duplicate primary target demand when sizing an imported plan', () => {
+  const input = {
+    ...modularFrames,
+    targets: [
+      ...modularFrames.targets,
+      ...modularFrames.targets,
+      { itemId: 'Desc_IronRod_C', rate: '12' },
+    ],
+  };
+  const result = calculateProduction(vanillaCatalog, input, input.targets[0]!, {
+    itemId: 'Desc_OreIron_C',
+    rate: '120',
+  });
+  expect(result.input.targets).toEqual([
+    { itemId: 'Desc_ModularFrame_C', rate: '40/9' },
+    { itemId: 'Desc_IronRod_C', rate: '40/3' },
+  ]);
+  expect(solveProduction(vanillaCatalog, result.input)).toEqual(result.plan);
+  expect(input.targets).toHaveLength(3);
+});
+
 test('draws actual branches instead of connecting unrelated production stages', () => {
   const plan = solveProduction(syntheticCatalog, {
     targets: [

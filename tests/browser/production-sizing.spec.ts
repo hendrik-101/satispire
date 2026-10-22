@@ -1,5 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import {
+  availableChoices,
+  technologyAtTier,
+  vanillaCatalog,
+} from '../../src/domain/vanilla.js';
 
 async function ready(page: Page) {
   await page.goto(process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173');
@@ -116,4 +121,44 @@ test('updates input choices for a new target and stays usable on mobile', async 
     path: test.info().outputPath('input-sizing-mobile.png'),
     fullPage: true,
   });
+});
+
+test('input sizing retains duplicate primary demand from imported plans', async ({
+  page,
+}) => {
+  await ready(page);
+  await page.getByLabel('Plan-Datei').setInputFiles({
+    name: 'duplicate-primary.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(
+      JSON.stringify({
+        schemaVersion: 1,
+        catalogVersion: vanillaCatalog.catalogVersion,
+        production: {
+          targets: [
+            { itemId: 'Desc_ModularFrame_C', rate: '2' },
+            { itemId: 'Desc_ModularFrame_C', rate: '2' },
+            { itemId: 'Desc_IronRod_C', rate: '12' },
+          ],
+          recipes: availableChoices(technologyAtTier(2)),
+          imports: ['Desc_OreIron_C'],
+        },
+      }),
+    ),
+  });
+  await expect(page.getByLabel('Produktionsziel', { exact: true })).toHaveValue(
+    'Desc_ModularFrame_C',
+  );
+  await page.getByLabel('Berechnungsmodus').selectOption('input');
+  await page.getByLabel('Inputrate pro Minute').fill('120');
+  for (let calculation = 0; calculation < 2; calculation++) {
+    await page
+      .getByRole('button', { name: 'Plan berechnen', exact: true })
+      .click();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    expect(await exportedTargets(page)).toEqual([
+      { itemId: 'Desc_ModularFrame_C', rate: '40/9' },
+      { itemId: 'Desc_IronRod_C', rate: '40/3' },
+    ]);
+  }
 });

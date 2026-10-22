@@ -15,6 +15,8 @@ export function calculateProduction(
   target: ItemRate,
   anchor?: ItemRate,
 ) {
+  const preservePrimaryDemand =
+    anchor !== undefined && input.targets[0]?.itemId === target.itemId;
   const next: ProductionInput = {
     ...input,
     targets: [
@@ -22,7 +24,9 @@ export function calculateProduction(
         itemId: target.itemId,
         rate: Rational.parse(target.rate.trim().replace(',', '.')).toString(),
       },
-      ...input.targets.slice(1).filter((t) => t.itemId !== target.itemId),
+      ...input.targets
+        .slice(1)
+        .filter((t) => preservePrimaryDemand || t.itemId !== target.itemId),
     ],
   };
   let plan = solveProduction(catalog, next);
