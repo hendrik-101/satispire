@@ -8,6 +8,10 @@ async function ready(page: import('@playwright/test').Page) {
     'data-ready',
     'true',
   );
+  // These canvas scenarios explicitly exercise the target's machines.
+  await page
+    .getByLabel('Stufe auswählen', { exact: true })
+    .selectOption('Desc_IronPlate_C');
 }
 test('shows all required transport lines at 320 Iron Plates/min on Tier 2', async ({
   page,
@@ -25,7 +29,7 @@ test('shows all required transport lines at 320 Iron Plates/min on Tier 2', asyn
     fullPage: true,
   });
 });
-test('selects the new primary manufactured target and keeps inspector synchronized', async ({
+test('selects the first floor after target replacement and keeps inspector synchronized', async ({
   page,
 }) => {
   await ready(page);
@@ -34,17 +38,17 @@ test('selects the new primary manufactured target and keeps inspector synchroniz
     .getByRole('button', { name: 'Plan berechnen', exact: true })
     .click();
   await expect(page.getByLabel('Stufe auswählen', { exact: true })).toHaveValue(
-    'Desc_IronRod_C',
+    'Desc_IronIngot_C',
   );
   await expect(page.getByTestId('floor-scene')).toHaveAttribute(
     'aria-label',
-    'Blockschema Iron Rod',
+    'Blockschema Iron Ingot',
   );
   await page.getByRole('button', { name: 'Inspector', exact: true }).click();
   await expect(
     page
       .getByLabel('Stufeninspector')
-      .getByRole('heading', { name: 'Iron Rod', exact: true }),
+      .getByRole('heading', { name: 'Iron Ingot', exact: true }),
   ).toBeVisible();
 });
 test('restricted Iron Ore imports do not offer Steel Rod without Coal', async ({
