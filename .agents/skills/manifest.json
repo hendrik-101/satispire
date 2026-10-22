@@ -1,0 +1,145 @@
+{
+  "source": "https://github.com/mattpocock/skills",
+  "author": "Matt Pocock",
+  "license": "MIT",
+  "revision": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+  "installedAt": "2026-10-22",
+  "method": "Original files fetched through the GitHub connector; no global plugin installed.",
+  "requestedSkills": [
+    "domain-modeling",
+    "codebase-design",
+    "improve-codebase-architecture",
+    "prototype",
+    "setup-matt-pocock-skills"
+  ],
+  "supportingSkills": {
+    "grilling": "Required by improve-codebase-architecture."
+  },
+  "files": [
+    {
+      "path": ".agents/skills/LICENSE.matt-pocock",
+      "upstreamPath": "LICENSE",
+      "gitBlobSha": "f1dd2c09108dde1a5f56097cee8461b3ea834499"
+    },
+    {
+      "path": ".agents/skills/codebase-design/DEEPENING.md",
+      "upstreamPath": "skills/engineering/codebase-design/DEEPENING.md",
+      "gitBlobSha": "cd94075cfd754d147555c5d747a16431ed4c7dd8"
+    },
+    {
+      "path": ".agents/skills/codebase-design/DESIGN-IT-TWICE.md",
+      "upstreamPath": "skills/engineering/codebase-design/DESIGN-IT-TWICE.md",
+      "gitBlobSha": "d0990138c35c800bd821289a73115e52680c1620"
+    },
+    {
+      "path": ".agents/skills/codebase-design/SKILL.md",
+      "upstreamPath": "skills/engineering/codebase-design/SKILL.md",
+      "gitBlobSha": "3f63c8146dd2604b419c929e9876b90c30d410e9"
+    },
+    {
+      "path": ".agents/skills/codebase-design/agents/openai.yaml",
+      "upstreamPath": "skills/engineering/codebase-design/agents/openai.yaml",
+      "gitBlobSha": "3180715edb37f6e96bec42f92f00169faa8886ef"
+    },
+    {
+      "path": ".agents/skills/domain-modeling/ADR-FORMAT.md",
+      "upstreamPath": "skills/engineering/domain-modeling/ADR-FORMAT.md",
+      "gitBlobSha": "d7e61f30a9fd8ca70d9ee68f019c2a9ebf2d13f7"
+    },
+    {
+      "path": ".agents/skills/domain-modeling/GLOSSARY-FORMAT.md",
+      "upstreamPath": "skills/engineering/domain-modeling/GLOSSARY-FORMAT.md",
+      "gitBlobSha": "9c0b4c7a2e8507c23cbb5e0baa66d81699321cc6"
+    },
+    {
+      "path": ".agents/skills/domain-modeling/SKILL.md",
+      "upstreamPath": "skills/engineering/domain-modeling/SKILL.md",
+      "gitBlobSha": "a4438c6879c517d1a08e2b5fbca049b632688dfe"
+    },
+    {
+      "path": ".agents/skills/domain-modeling/agents/openai.yaml",
+      "upstreamPath": "skills/engineering/domain-modeling/agents/openai.yaml",
+      "gitBlobSha": "7f1522d2f11506ee205275ab7c282aa52366ecf6"
+    },
+    {
+      "path": ".agents/skills/improve-codebase-architecture/HTML-REPORT.md",
+      "upstreamPath": "skills/engineering/improve-codebase-architecture/HTML-REPORT.md",
+      "gitBlobSha": "e39e8255b8797cf8257d014fb6658fb533f3a399"
+    },
+    {
+      "path": ".agents/skills/improve-codebase-architecture/SKILL.md",
+      "upstreamPath": "skills/engineering/improve-codebase-architecture/SKILL.md",
+      "gitBlobSha": "44cc7d3136c44534d68ac523fa6cd37e759d2846"
+    },
+    {
+      "path": ".agents/skills/improve-codebase-architecture/agents/openai.yaml",
+      "upstreamPath": "skills/engineering/improve-codebase-architecture/agents/openai.yaml",
+      "gitBlobSha": "706fdca096da5937fe57875a9154017d50668c42"
+    },
+    {
+      "path": ".agents/skills/prototype/LOGIC.md",
+      "upstreamPath": "skills/engineering/prototype/LOGIC.md",
+      "gitBlobSha": "32be86a0a5d9928db84b3988e55f9debe476ab40"
+    },
+    {
+      "path": ".agents/skills/prototype/SKILL.md",
+      "upstreamPath": "skills/engineering/prototype/SKILL.md",
+      "gitBlobSha": "a0044501fe0d385b4d8575b610188ede9b236ccf"
+    },
+    {
+      "path": ".agents/skills/prototype/UI.md",
+      "upstreamPath": "skills/engineering/prototype/UI.md",
+      "gitBlobSha": "3977951663490882c2632b40695d9f59a2fe2408"
+    },
+    {
+      "path": ".agents/skills/prototype/agents/openai.yaml",
+      "upstreamPath": "skills/engineering/prototype/agents/openai.yaml",
+      "gitBlobSha": "1618b147965bc729b7bf3e8da5f130132067aadc"
+    },
+    {
+      "path": ".agents/skills/setup-matt-pocock-skills/SKILL.md",
+      "upstreamPath": "skills/engineering/setup-matt-pocock-skills/SKILL.md",
+      "gitBlobSha": "293c25b75590119794af03b037ba4288054a32b3"
+    },
+    {
+      "path": ".agents/skills/setup-matt-pocock-skills/agents/openai.yaml",
+      "upstreamPath": "skills/engineering/setup-matt-pocock-skills/agents/openai.yaml",
+      "gitBlobSha": "65a0da8128c98051183235e490767a8065310868"
+    },
+    {
+      "path": ".agents/skills/setup-matt-pocock-skills/domain.md",
+      "upstreamPath": "skills/engineering/setup-matt-pocock-skills/domain.md",
+      "gitBlobSha": "4032de016c1e91119d33d477633e2b8f265f4195"
+    },
+    {
+      "path": ".agents/skills/setup-matt-pocock-skills/issue-tracker-github.md",
+      "upstreamPath": "skills/engineering/setup-matt-pocock-skills/issue-tracker-github.md",
+      "gitBlobSha": "a63510f74038300d8da354553f9d31d1bd954d94"
+    },
+    {
+      "path": ".agents/skills/setup-matt-pocock-skills/issue-tracker-gitlab.md",
+      "upstreamPath": "skills/engineering/setup-matt-pocock-skills/issue-tracker-gitlab.md",
+      "gitBlobSha": "81499dca459e8097d560b641f8ba7c2e1c7c9da4"
+    },
+    {
+      "path": ".agents/skills/setup-matt-pocock-skills/issue-tracker-local.md",
+      "upstreamPath": "skills/engineering/setup-matt-pocock-skills/issue-tracker-local.md",
+      "gitBlobSha": "0209a19af92c9c485cf3acc3d9e253171517ea17"
+    },
+    {
+      "path": ".agents/skills/setup-matt-pocock-skills/triage-labels.md",
+      "upstreamPath": "skills/engineering/setup-matt-pocock-skills/triage-labels.md",
+      "gitBlobSha": "5276464244857a3cc29890ff4a978a197b21f3fc"
+    },
+    {
+      "path": ".agents/skills/grilling/SKILL.md",
+      "upstreamPath": "skills/productivity/grilling/SKILL.md",
+      "gitBlobSha": "df69d9936880cd3314c28858c6c52f48db23b856"
+    },
+    {
+      "path": ".agents/skills/grilling/agents/openai.yaml",
+      "upstreamPath": "skills/productivity/grilling/agents/openai.yaml",
+      "gitBlobSha": "ddbdb96139c0c1dfe6bca698f39d0465674b8a39"
+    }
+  ]
+}
