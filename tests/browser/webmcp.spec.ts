@@ -220,6 +220,9 @@ test('host registration failure preserves the actual UI planning workflow', asyn
     'data-ready',
     'true',
   );
+  await page
+    .getByLabel('Stufe auswählen', { exact: true })
+    .selectOption('Desc_IronPlate_C');
   await page.getByLabel('Zielrate pro Minute').fill('40');
   await page
     .getByRole('button', { name: 'Plan berechnen', exact: true })

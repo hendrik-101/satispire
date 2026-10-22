@@ -113,6 +113,10 @@ async function ready(page: import('@playwright/test').Page) {
     'data-ready',
     'true',
   );
+  // These canvas scenarios explicitly exercise the target's machines.
+  await page
+    .getByLabel('Stufe auswählen', { exact: true })
+    .selectOption('Desc_IronPlate_C');
 }
 test('mobile camera reveals keyboard-selected machines and recovers after zoom and pan', async ({
   page,
@@ -344,6 +348,9 @@ test('changing an imported primary target replaces matching secondary targets', 
       { itemId: 'Desc_IronRod_C', rate: '10' },
       { itemId: 'Desc_IronScrew_C', rate: '40' },
     ]);
+    await expect(
+      page.getByLabel('Stufe auswählen', { exact: true }),
+    ).toHaveValue('Desc_IronIngot_C');
     await expect(page.getByLabel('Etagenansicht')).toContainText('20 / min');
   }
   const screenshot = test.info().outputPath('imported-target-replacement.png');
@@ -376,9 +383,10 @@ test('panel toggles preserve draft and zoom; narrow keyboard and reduced motion'
   await page.keyboard.press('Control+A');
   await page.keyboard.type('30');
   await page.keyboard.press('Enter');
-  await expect(
-    page.getByText('30 / min', { exact: true }).first(),
-  ).toBeVisible();
+  await expect(page.getByLabel('Stufe auswählen', { exact: true })).toHaveValue(
+    'Desc_IronIngot_C',
+  );
+  await expect(page.getByLabel('Etagenansicht')).toContainText('45 / min');
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -601,6 +609,9 @@ test('unlocked silicon alternate exposes a supported circuit board chain', async
     .getByRole('button', { name: 'Plan berechnen', exact: true })
     .click();
   await expect(page.getByRole('alert')).toHaveCount(0);
+  await page
+    .getByLabel('Stufe auswählen', { exact: true })
+    .selectOption('Desc_CircuitBoard_C');
   await expect(
     page.getByText('15/2 / min', { exact: true }).first(),
   ).toBeVisible();

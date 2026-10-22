@@ -20,7 +20,14 @@ export function supplySceneMetrics(layout: Layout, floor: Floor) {
   const input = floor.connections.input;
   const labels = floor.inputs.map((f, i) => {
     const text = `${f.lines}× ${itemName(f.itemId)}`;
-    const width = 4 + text.length * 1.05;
+    // Labels use monospace; reserve a full em for Unicode fallback glyphs.
+    const width =
+      4 +
+      Array.from(text).reduce(
+        (sum, character) =>
+          sum + (character.codePointAt(0)! > 0xff ? 1.7 : 1.05),
+        0,
+      );
     return {
       text,
       width,

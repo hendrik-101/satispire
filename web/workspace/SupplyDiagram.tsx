@@ -97,6 +97,7 @@ export function SupplyDiagram({
             x={labels[i]!.x + 3.7}
             y={labels[i]!.y}
             fontSize="1.7"
+            fontFamily="monospace"
             fill="#f1f4f6"
           >
             {labels[i]!.text}
@@ -209,6 +210,7 @@ export function SupplyDiagram({
                     )}
                     <rect
                       className="supply-junction"
+                      data-resource-id={f.itemId}
                       x={inputAt(m, i) - 0.5}
                       y={iy - i * 1.2 - 0.5}
                       width="1"
@@ -229,6 +231,7 @@ export function SupplyDiagram({
                 )}
                 <rect
                   className="supply-junction"
+                  data-resource-id={floor.itemId}
                   x={m.x + shift + 3.4}
                   y={oy - 0.6}
                   width="1.2"

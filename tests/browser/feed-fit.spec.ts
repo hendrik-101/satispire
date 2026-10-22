@@ -39,49 +39,73 @@ const plan = solveProduction(catalog, {
   imports: raw.map((i) => i.id),
   technology,
 });
-for (const side of ['west', 'east', 'north', 'south'] as const)
-  test(`fits all 64 ${side} feed manifolds and labels`, async ({ page }) => {
-    const markup = renderToStaticMarkup(
-      createElement(FloorView, {
-        catalog,
-        plan,
-        technology,
-        selected: 'product',
-        zoom: 1,
-        rows: 1,
-        variant: {
-          ...defaultBuildVariant,
-          pattern: 'fixed',
-          inputSide: side,
-          outputSide: side,
-        },
-        changeVariant: () => {},
-      }),
-    );
-    await page.setContent(
-      `<style>.drawing{height:600px}svg.floor-scene{height:600px;width:100%}</style>${markup}`,
-    );
-    const scene = page.getByTestId('floor-scene');
-    await expect(scene.locator('[data-feed]')).toHaveCount(64);
-    const fitted = await scene.evaluate((svg) => {
-      const box = svg.getBoundingClientRect();
-      return Array.from(
-        svg.querySelectorAll(
-          '[data-feed], [data-aggregate], [data-output-attachment], [data-target-delivery]',
-        ),
-      ).every((el) => {
-        const r = el.getBoundingClientRect();
-        return (
-          r.left >= box.left - 1 &&
-          r.right <= box.right + 1 &&
-          r.top >= box.top - 1 &&
-          r.bottom <= box.bottom + 1
-        );
+const longId = 'W'.repeat(200);
+const longCatalog: Catalog = {
+  ...catalog,
+  items: [...catalog.items, { id: longId, name: longId, raw: true }],
+  recipes: catalog.recipes.map((recipe) => ({
+    ...recipe,
+    inputs: [{ itemId: longId, quantity: '1' }],
+  })),
+};
+const longPlan = solveProduction(longCatalog, {
+  targets: [{ itemId: 'product', rate: '1' }],
+  recipes: { product: 'recipe' },
+  imports: [longId],
+  technology,
+});
+for (const example of [
+  { name: '64 feeds', catalog, plan, count: 64 },
+  {
+    name: 'a long wide-glyph resource label',
+    catalog: longCatalog,
+    plan: longPlan,
+    count: 1,
+  },
+])
+  for (const side of ['west', 'east', 'north', 'south'] as const)
+    test(`fits ${example.name} on the ${side} side`, async ({ page }) => {
+      const markup = renderToStaticMarkup(
+        createElement(FloorView, {
+          catalog: example.catalog,
+          plan: example.plan,
+          technology,
+          selected: 'product',
+          zoom: 1,
+          rows: 1,
+          variant: {
+            ...defaultBuildVariant,
+            pattern: 'fixed',
+            inputSide: side,
+            outputSide: side,
+          },
+          changeVariant: () => {},
+        }),
+      );
+      await page.setContent(
+        `<style>.drawing{height:600px}svg.floor-scene{height:600px;width:100%}</style>${markup}`,
+      );
+      const scene = page.getByTestId('floor-scene');
+      await expect(scene.locator('[data-feed]')).toHaveCount(example.count);
+      const fitted = await scene.evaluate((svg) => {
+        const box = svg.getBoundingClientRect();
+        return Array.from(
+          svg.querySelectorAll(
+            '[data-feed], [data-aggregate], [data-output-attachment], [data-target-delivery]',
+          ),
+        ).every((el) => {
+          const r = el.getBoundingClientRect();
+          return (
+            r.left >= box.left - 1 &&
+            r.right <= box.right + 1 &&
+            r.top >= box.top - 1 &&
+            r.bottom <= box.bottom + 1
+          );
+        });
+      });
+      expect(fitted).toBe(true);
+      await page.screenshot({
+        path: test.info().outputPath(`64-feeds-${side}.png`),
+        fullPage: true,
       });
     });
-    expect(fitted).toBe(true);
-    await page.screenshot({
-      path: test.info().outputPath(`64-feeds-${side}.png`),
-      fullPage: true,
-    });
-  });

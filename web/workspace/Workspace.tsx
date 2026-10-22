@@ -1,5 +1,6 @@
 import {
   defaultBuildVariant,
+  deriveBuildVariants,
   type BuildVariant,
 } from '../../src/domain/build-variants.js';
 import { planFileSchema } from '../../src/plan-file.js';
@@ -57,6 +58,9 @@ const firstInput: ProductionInput = {
   imports: catalog.items.filter((i) => i.raw).map((i) => i.id),
   technology: firstTechnology,
 };
+function firstStage(plan: ReturnType<typeof solveProduction>) {
+  return deriveBuildVariants(plan).floors[0]!.itemId;
+}
 function primaryStage(
   input: ProductionInput,
   plan: ReturnType<typeof solveProduction>,
@@ -130,7 +134,7 @@ export function Workspace() {
   const [inputItem, setInputItem] = useState('');
   const [inputRate, setInputRate] = useState('180');
   const [choices, setChoices] = useState(firstInput.recipes);
-  const [selected, setSelected] = useState(target);
+  const [selected, setSelected] = useState(() => firstStage(factory.plan));
   const [selectedMachine, setSelectedMachine] = useState(1);
   function selectStage(itemId: string) {
     setSelected(itemId);
@@ -228,7 +232,7 @@ export function Workspace() {
       setFactory(next);
       setTarget(itemId);
       setChoices(recipes);
-      selectStage(primaryStage(input, next.plan));
+      selectStage(firstStage(next.plan));
     } catch (e) {
       setError('Gespeicherte Session-Unlocks: ' + message(e));
     }
@@ -404,7 +408,7 @@ export function Workspace() {
     setFactory(next);
     setError('');
     if (!next.plan.nodes.some((n) => n.itemId === selected))
-      selectStage(primaryStage(next.input, next.plan));
+      selectStage(firstStage(next.plan));
     return next;
   }
   function calculate() {
