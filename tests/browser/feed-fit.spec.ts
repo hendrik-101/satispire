@@ -39,7 +39,7 @@ const plan = solveProduction(catalog, {
   imports: raw.map((i) => i.id),
   technology,
 });
-for (const side of ['west', 'east'] as const)
+for (const side of ['west', 'east', 'north', 'south'] as const)
   test(`fits all 64 ${side} feed manifolds and labels`, async ({ page }) => {
     const markup = renderToStaticMarkup(
       createElement(FloorView, {
@@ -67,7 +67,7 @@ for (const side of ['west', 'east'] as const)
       const box = svg.getBoundingClientRect();
       return Array.from(
         svg.querySelectorAll(
-          '[data-feed], [data-output-attachment], [data-target-delivery]',
+          '[data-feed], [data-aggregate], [data-output-attachment], [data-target-delivery]',
         ),
       ).every((el) => {
         const r = el.getBoundingClientRect();

@@ -1,6 +1,8 @@
 import { supplySceneMetrics } from './supply-scene.js';
 import type { generateSupplyLayout } from '../../src/domain/supply-layout.js';
 import { itemName } from '../../src/domain/vanilla.js';
+import { resourceColor } from './resource-colors.js';
+import { ResourceIcon } from './ResourceIcon.js';
 type Layout = ReturnType<typeof generateSupplyLayout>;
 type Floor = Layout['floors'][number];
 type Point = { x: number; y: number };
@@ -14,14 +16,22 @@ export function SupplyDiagram({
   floor: Floor;
   marker: string;
 }) {
-  const { shift, feeds, maxY, firstY, outputRail, feeders, labels } =
-    supplySceneMetrics(layout, floor);
+  const {
+    shift,
+    feeds,
+    maxY,
+    firstY,
+    outputRail,
+    feeders,
+    labels,
+    outputIcon,
+  } = supplySceneMetrics(layout, floor);
   const port = (p: Point) => ({ x: p.x + shift, y: p.y + shift });
   const input = port(floor.connections.input),
     output = port(floor.connections.output);
-  const path = (points: Point[], out = false, key?: string) => (
+  const path = (points: Point[], out = true, itemId = floor.itemId) => (
     <g
-      key={key}
+      data-resource-id={itemId}
       className={`supply-belt supply-belt-${out ? 'output' : 'input'}`}
     >
       <path
@@ -35,10 +45,10 @@ export function SupplyDiagram({
         className="supply-belt-edge"
         d={points.map((p, i) => `${i ? 'L' : 'M'} ${p.x} ${p.y}`).join(' ')}
         fill="none"
-        stroke={out ? '#eea15d' : '#65b9e5'}
+        stroke={resourceColor(itemId)}
         strokeWidth="0.3"
         strokeLinejoin="round"
-        markerEnd={`url(#${marker}-${out ? 'out' : 'in'})`}
+        markerEnd={`url(#${marker}-${resourceColor(itemId).slice(1)})`}
       />
     </g>
   );
@@ -69,12 +79,26 @@ export function SupplyDiagram({
           data-side={floor.inputSide}
           aria-label={itemName(feed.itemId)}
         >
-          {path([
-            input,
-            { x: feeder(i), y: input.y },
-            { x: feeder(i), y: firstY - i * 1.2 },
-          ])}
-          <text x={labels[i]!.x} y={labels[i]!.y} fontSize="1.7" fill="#65b9e5">
+          {path(
+            [
+              input,
+              { x: feeder(i), y: input.y },
+              { x: feeder(i), y: firstY - i * 1.2 },
+            ],
+            false,
+            feed.itemId,
+          )}
+          <ResourceIcon
+            itemId={feed.itemId}
+            x={labels[i]!.x}
+            y={labels[i]!.y - 2.2}
+          />
+          <text
+            x={labels[i]!.x + 3.7}
+            y={labels[i]!.y}
+            fontSize="1.7"
+            fill="#f1f4f6"
+          >
             {labels[i]!.text}
           </text>
           {floor.rowCounts.length > 1 &&
@@ -94,6 +118,8 @@ export function SupplyDiagram({
                       y: firstY + (floor.rowCounts.length - 1) * 16 - i * 1.2,
                     },
                   ],
+              false,
+              feed.itemId,
             )}
         </g>
       ))}
@@ -135,18 +161,22 @@ export function SupplyDiagram({
           <g key={row} data-row={row}>
             {floor.inputs.map((f, i) => (
               <g key={f.itemId} data-input-row={row}>
-                {path([
-                  { x: feeder(i), y: iy - i * 1.2 },
-                  {
-                    x: inputAt(
-                      floor.inputSide === 'east'
-                        ? first
-                        : machines[machines.length - 1]!,
-                      i,
-                    ),
-                    y: iy - i * 1.2,
-                  },
-                ])}
+                {path(
+                  [
+                    { x: feeder(i), y: iy - i * 1.2 },
+                    {
+                      x: inputAt(
+                        floor.inputSide === 'east'
+                          ? first
+                          : machines[machines.length - 1]!,
+                        i,
+                      ),
+                      y: iy - i * 1.2,
+                    },
+                  ],
+                  false,
+                  f.itemId,
+                )}
               </g>
             ))}
             {path(
@@ -169,10 +199,14 @@ export function SupplyDiagram({
               <g key={m.id}>
                 {floor.inputs.map((f, i) => (
                   <g key={f.itemId}>
-                    {path([
-                      { x: inputAt(m, i), y: iy - i * 1.2 },
-                      { x: inputAt(m, i), y: m.y + shift - 1 },
-                    ])}
+                    {path(
+                      [
+                        { x: inputAt(m, i), y: iy - i * 1.2 },
+                        { x: inputAt(m, i), y: m.y + shift - 1 },
+                      ],
+                      false,
+                      f.itemId,
+                    )}
                     <rect
                       className="supply-junction"
                       x={inputAt(m, i) - 0.5}
@@ -180,7 +214,7 @@ export function SupplyDiagram({
                       width="1"
                       height="1"
                       rx="0.2"
-                      fill="#4a819e"
+                      fill={resourceColor(f.itemId)}
                       stroke="#26343c"
                       strokeWidth="0.15"
                     />
@@ -200,7 +234,7 @@ export function SupplyDiagram({
                   width="1.2"
                   height="1.2"
                   rx="0.2"
-                  fill="#b47b49"
+                  fill={resourceColor(floor.itemId)}
                   stroke="#26343c"
                   strokeWidth="0.15"
                 />
@@ -224,7 +258,7 @@ export function SupplyDiagram({
               cx={p.x}
               cy={p.y}
               r="0.8"
-              fill={out ? '#eea15d' : '#65b9e5'}
+              fill={out ? resourceColor(floor.itemId) : '#b4bec7'}
             />
             <text
               x={p.x + (side === 'west' ? -1.5 : side === 'east' ? 1.5 : 0)}
@@ -233,10 +267,17 @@ export function SupplyDiagram({
                 side === 'west' ? 'end' : side === 'east' ? 'start' : 'middle'
               }
               fontSize="1.7"
-              fill={out ? '#eea15d' : '#65b9e5'}
+              fill="#f1f4f6"
             >
               {out ? `${floor.output.lines}× OUT` : 'IN'}
             </text>
+            {out && (
+              <ResourceIcon
+                itemId={floor.itemId}
+                x={outputIcon.x}
+                y={outputIcon.y - 2.2}
+              />
+            )}
           </g>
         ))}
       {floor.targetOutput &&
@@ -249,7 +290,12 @@ export function SupplyDiagram({
               aria-label={`Zielausgang ${itemName(floor.itemId)}`}
             >
               {path([output, target], true)}
-              <circle cx={target.x} cy={target.y} r="0.7" fill="#eea15d" />
+              <circle
+                cx={target.x}
+                cy={target.y}
+                r="0.7"
+                fill={resourceColor(floor.itemId)}
+              />
               <text
                 x={
                   target.x +
@@ -275,7 +321,7 @@ export function SupplyDiagram({
                       : 'middle'
                 }
                 fontSize="1.6"
-                fill="#eea15d"
+                fill="#f1f4f6"
               >
                 ZIEL
               </text>
@@ -303,7 +349,7 @@ export function SupplyDiagram({
             data-side-changes={t.sideChanges}
             aria-label="Symbolischer Etagenübergang"
           >
-            {(source || destination) && path(points, source)}
+            {(source || destination) && path(points, source, t.fromItemId)}
             <rect
               x={p.x - 2}
               y={p.y - 3}

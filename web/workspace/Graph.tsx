@@ -204,6 +204,8 @@ export function Graph({
                       <MachineGlyph
                         machineId={node.machineId}
                         feeds={node.inputs.length}
+                        inputItems={node.inputs.map((input) => input.itemId)}
+                        outputItem={node.itemId}
                         selected={selected === id}
                       />
                     </span>
