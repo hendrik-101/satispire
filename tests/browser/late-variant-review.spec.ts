@@ -94,18 +94,20 @@ for (const side of ['north-output', 'south-input'] as const) {
           .map((p) => {
             const start = p.getPointAtLength(0),
               end = p.getPointAtLength(p.getTotalLength());
+            const reference = p.getAttribute('marker-end')!;
+            const marker = document.getElementById(reference.slice(5, -1));
             return {
               dx: end.x - start.x,
               dy: end.y - start.y,
-              marker: p.getAttribute('marker-end'),
+              color: p.getAttribute('stroke'),
+              markerColor: marker?.querySelector('path')?.getAttribute('fill'),
             };
           })
           .filter((p) => Math.abs(p.dx) < 0.001 && Math.abs(p.dy) > 20);
       }, side === 'north-output');
     expect(directions).toHaveLength(1);
-    expect(directions[0]!.marker).toContain(
-      side === 'north-output' ? '-out)' : '-in)',
-    );
+    expect(directions[0]!.color).toBeTruthy();
+    expect(directions[0]!.markerColor).toBe(directions[0]!.color);
     expect(directions[0]!.dy).toBeLessThan(0);
     await page.locator('.variant-control summary').click();
     await page.screenshot({

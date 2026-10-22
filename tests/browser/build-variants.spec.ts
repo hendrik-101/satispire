@@ -152,7 +152,11 @@ test('every machine joins its full row manifolds and aggregate line counts stay 
     ];
     const junctions = Array.from(
       svg.querySelectorAll<SVGRectElement>('[data-row="0"] .supply-junction'),
-    ).filter((r) => r.getAttribute('fill') === '#4a819e');
+    ).filter(
+      (r) =>
+        r.getAttribute('data-resource-id') ===
+        rail.parentElement!.getAttribute('data-resource-id'),
+    );
     return (
       junctions.length > 1 &&
       junctions.every(

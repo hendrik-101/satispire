@@ -9,6 +9,7 @@ import type { TechnologyProfile } from '../../src/domain/technology.js';
 import { generateSupplyLayout } from '../../src/domain/supply-layout.js';
 import { itemName } from '../../src/domain/vanilla.js';
 import { MachineGlyph } from './MachineGlyph.js';
+import { resourcePalette } from './resource-colors.js';
 
 export function FloorView({
   catalog,
@@ -163,10 +164,10 @@ export function FloorView({
           }}
         >
           <defs>
-            {['in', 'out'].map((kind) => (
+            {resourcePalette.map((color) => (
               <marker
-                key={kind}
-                id={`${marker}-${kind}`}
+                key={color}
+                id={`${marker}-${color.slice(1)}`}
                 viewBox="0 0 10 10"
                 refX="8"
                 refY="5"
@@ -174,10 +175,7 @@ export function FloorView({
                 markerHeight="5"
                 orient="auto"
               >
-                <path
-                  d="M0 1L9 5L0 9Z"
-                  fill={kind === 'in' ? '#65b9e5' : '#eea15d'}
-                />
+                <path d="M0 1L9 5L0 9Z" fill={color} />
               </marker>
             ))}
           </defs>
@@ -229,6 +227,8 @@ export function FloorView({
                 <MachineGlyph
                   machineId={floor.machineId}
                   feeds={Math.min(4, feeds)}
+                  inputItems={floor.inputs.map((input) => input.itemId)}
+                  outputItem={floor.itemId}
                   selected={machine === m.id}
                   number={m.id}
                 />

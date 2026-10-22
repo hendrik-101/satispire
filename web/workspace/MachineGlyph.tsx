@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { resourceColor } from './resource-colors.js';
 
 /** Original industrial symbols. Ports and proportions are schematic. */
 export function MachineGlyph({
@@ -6,11 +7,15 @@ export function MachineGlyph({
   selected = false,
   number,
   feeds = 1,
+  inputItems = [],
+  outputItem,
 }: {
   machineId: string;
   selected?: boolean;
   number?: number;
   feeds?: number;
+  inputItems?: readonly string[];
+  outputItem?: string;
 }) {
   const surface = useId().replace(/:/g, '');
   const family = machineId.toLowerCase();
@@ -255,7 +260,10 @@ export function MachineGlyph({
             width={width}
             height="12"
             rx="1"
-            fill="#65b9e5"
+            data-resource-id={inputItems[feed]}
+            fill={
+              inputItems[feed] ? resourceColor(inputItems[feed]) : '#b4bec7'
+            }
             stroke="#26353e"
             strokeWidth="2"
           />
@@ -268,7 +276,8 @@ export function MachineGlyph({
         width="16"
         height="12"
         rx="1"
-        fill="#eea15d"
+        data-resource-id={outputItem}
+        fill={outputItem ? resourceColor(outputItem) : '#b4bec7'}
         stroke="#26353e"
         strokeWidth="2"
       />

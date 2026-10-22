@@ -988,6 +988,8 @@ export function Workspace() {
                   <MachineGlyph
                     machineId={stage.machineId}
                     feeds={stage.inputs.length}
+                    inputItems={stage.inputs.map((input) => input.itemId)}
+                    outputItem={stage.itemId}
                     selected
                   />
                 </svg>
