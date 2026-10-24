@@ -46,4 +46,4 @@ Convex functions implement anonymous capabilities, invitations, roles and transa
 
 [Architecture and scope](docs/architecture.md) describe the staged implementation. [Personal view preferences](docs/view-preferences.md) define presets, responsive panel presentation and temporary camera following separately from shared factory data. [Contributing](CONTRIBUTING.md) describes the Draft review policy. This slice is not a claim that issues #1–#12 or the full web MVP are complete. Merge and deployment are separate coordinated decisions.
 
-The [HTTP/container test runtime and Netcup handoff](docs/deployment.md) provides production start, immutable revision/health checks, an isolated test Compose contract and verified squash integration recipe. Live rollout remains a separate decision.
+The [HTTP/container test runtime and deployment guide](docs/deployment.md) provides production start, immutable revision/health checks, an isolated test Compose contract and verified squash integration recipe. Live rollout remains a separate decision.

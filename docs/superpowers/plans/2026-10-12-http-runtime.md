@@ -31,7 +31,7 @@ Interfaces: APP_REVISION build argument -> fixed /version.json revision; port 30
 
 - [x] Implement isolated image/health probe and required-variable Compose contract.
 - [x] Prove actual local non-root/read-only container health, assets/planning, identity and shutdown; record any environment blockers honestly.
-- [x] Document Netcup owner acceptance/rollback and scout-proven squash net-patch recipe.
+- [x] Document deployment operator acceptance/rollback and scout-proven squash net-patch recipe.
 - [ ] Publish separate Draft PR on PR15; run current-head CI and external normal/Security reviews/fixes. Do not merge/deploy.
 
 Ruling: existing user instructions explicitly authorize Cloud implementation and a small runtime/deployment artifact, with sole writer and isolated Draft PR. Continue inline without renewing design/plan execution approval; live integration/deployment remains withheld.
