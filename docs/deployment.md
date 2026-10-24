@@ -1,4 +1,4 @@
-# Satispire test runtime and Netcup handoff
+# Satispire test runtime and deployment guide
 
 This delivery runs the existing client-local workspace. It does not deploy Convex, online rooms or a remote MCP server. Classic MCP stays stdio; WebMCP stays feature-detected in the browser. Plans remain client-side and exportable. No VPS/DNS/tunnel/credential changes or registry push are performed by these files. Runtime PR16 was squash-merged as 5302272 after successful gates; publication changes remain a separate follow-up.
 
@@ -53,11 +53,11 @@ The artifact overlay enforces `pull_policy: never`; it never asks a registry for
 
 GHCR is an optional later transport. Before adding a push, obtain explicit approval to give a **main-only publication job** `packages: write` and verify its `GITHUB_TOKEN` can write the Satispire package namespace, together with the infrastructure owner's read access. Existing app/tool access and `contents: read` do not establish those package rights. No new PAT is required by the proposed GitHub-token route. Publish only the accepted main image, record its registry digest and verify its configuration/OCI revision against this manifest; then use the base registry Compose path. Those rights, package mapping and publication authorization remain unverified and are not activated here.
 
-## Netcup application contract
+## Application deployment contract
 
-The existing [Pizza interface](https://github.com/hendrik-101/netcup-vps-docker/blob/master/stacks/pizza/README.md) already uses exact image/revision inputs, Compose readiness, loopback, an external `cloudflared-web` network and previous-image rollback. Satispire supplies `deploy/compose.test.yml` (plus `deploy/compose.artifact.yml` for verified loaded archives) for the same ownership boundary. It is an application template, not a silently installed infrastructure playbook.
+Satispire supplies `deploy/compose.test.yml` (plus `deploy/compose.artifact.yml` for verified loaded archives) with exact image/revision inputs, Compose readiness, loopback, an operator-selected external tunnel network and previous-image rollback. It is an application template, not a silently installed infrastructure playbook.
 
-The Netcup owner must wire a narrowly scoped Satispire playbook/controller to these inputs:
+The deployment operator must wire a narrowly scoped Satispire playbook/controller to these inputs:
 
 - `satispire_revision`: accepted 40-character lowercase source SHA.
 - Registry transport `satispire_image`: published `ghcr.io/hendrik-101/satispire@sha256:<64 lowercase hex>` digest for that SHA; verify image label and HTTP identity agree. Reject mutable tags or unverified revision mappings.

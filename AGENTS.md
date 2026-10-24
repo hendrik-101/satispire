@@ -2,6 +2,10 @@
 
 Read `CONTRIBUTING.md` before changing code; it defines checks, attribution, Draft reviews, and integration requirements. Read `docs/architecture.md` for scope and `docs/design-contract.md` for UI work.
 
+## Delivery
+
+For repository changes, commit and push the work and create or update a Draft pull request by default, unless the user explicitly asks otherwise. Include the PR link in the final response. Do not stop after local edits or successful checks. Merge and deployment still require separate authorization.
+
 ## Agent skills
 
 ### Issue tracker
