@@ -435,7 +435,18 @@ export function Workspace() {
           recipes: choices,
           technology: sessionProfile.technology,
         },
-        [{ itemId: target, rate }, ...additionalTargets],
+        [
+          {
+            itemId: target,
+            rate:
+              sizingMode === 'target'
+                ? rate
+                : factory.input.targets[0]!.itemId === target
+                  ? factory.input.targets[0]!.rate
+                  : '1',
+          },
+          ...additionalTargets,
+        ],
         sizingMode === 'input'
           ? { itemId: sizingInput, rate: inputRate }
           : undefined,

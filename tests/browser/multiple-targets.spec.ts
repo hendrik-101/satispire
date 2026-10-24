@@ -89,3 +89,21 @@ test('adds, edits, removes and round-trips multiple production goals', async ({
     ),
   ).toBe(true);
 });
+
+test('input sizing ignores an invalid hidden primary output rate', async ({
+  page,
+}) => {
+  await page.goto(url);
+  await expect(page.locator('main')).toHaveAttribute('data-ready', 'true');
+  await page.getByLabel('Zielrate pro Minute', { exact: true }).fill('');
+  await page.getByLabel('Berechnungsmodus').selectOption('input');
+  await page.getByLabel('Inputrate pro Minute').fill('180');
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await page.getByLabel('Berechnungsmodus').selectOption('target');
+  await expect(
+    page.getByLabel('Zielrate pro Minute', { exact: true }),
+  ).toHaveValue('120');
+});
