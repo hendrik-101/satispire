@@ -14,6 +14,7 @@ import { loadUnlockProfile, saveUnlockProfile } from './unlock-storage';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   solveProduction,
+  INPUT_ENTRY_LIMIT,
   type ProductionInput,
 } from '../../src/domain/production.js';
 import {
@@ -130,6 +131,9 @@ export function Workspace() {
   }));
   const [target, setTarget] = useState(firstInput.targets[0]!.itemId);
   const [rate, setRate] = useState('20');
+  const [additionalTargets, setAdditionalTargets] = useState<
+    ProductionInput['targets']
+  >([]);
   const [sizingMode, setSizingMode] = useState<'target' | 'input'>('target');
   const [inputItem, setInputItem] = useState('');
   const [inputRate, setInputRate] = useState('180');
@@ -355,12 +359,21 @@ export function Workspace() {
           recipes: choices,
           technology: sessionProfile.technology,
         },
-        { itemId: target, rate: '1' },
+        [
+          { itemId: target, rate: '1' },
+          ...additionalTargets.map((entry) => ({ ...entry, rate: '1' })),
+        ],
       ).plan.imports;
     } catch {
       return [];
     }
-  }, [factory.input, choices, target, sessionProfile.technology]);
+  }, [
+    factory.input,
+    choices,
+    target,
+    additionalTargets,
+    sessionProfile.technology,
+  ]);
   const sizingInput =
     sizingInputs.find((entry) => entry.itemId === inputItem)?.itemId ??
     sizingInputs[0]?.itemId ??
@@ -422,21 +435,25 @@ export function Workspace() {
           recipes: choices,
           technology: sessionProfile.technology,
         },
-        {
-          itemId: target,
-          rate:
-            sizingMode === 'target'
-              ? rate
-              : factory.input.targets[0]!.itemId === target
-                ? factory.input.targets[0]!.rate
-                : '1',
-        },
+        [
+          {
+            itemId: target,
+            rate:
+              sizingMode === 'target'
+                ? rate
+                : factory.input.targets[0]!.itemId === target
+                  ? factory.input.targets[0]!.rate
+                  : '1',
+          },
+          ...additionalTargets,
+        ],
         sizingMode === 'input'
           ? { itemId: sizingInput, rate: inputRate }
           : undefined,
       );
       const next = apply(result.input);
       setRate(next.input.targets[0]!.rate);
+      setAdditionalTargets(next.input.targets.slice(1));
     } catch (e) {
       setError(message(e));
     }
@@ -500,6 +517,7 @@ export function Workspace() {
       setFactory(next);
       setTarget(input.targets[0]!.itemId);
       setRate(input.targets[0]!.rate);
+      setAdditionalTargets(input.targets.slice(1));
       setSizingMode('target');
       setInputItem('');
       setChoices({
@@ -694,7 +712,12 @@ export function Workspace() {
               id="target"
               aria-label="Produktionsziel"
               value={target}
-              onChange={(e) => setTarget(e.target.value)}
+              onChange={(e) => {
+                setTarget(e.target.value);
+                setAdditionalTargets((entries) =>
+                  entries.filter((entry) => entry.itemId !== e.target.value),
+                );
+              }}
               disabled={pending}
             >
               {manufactured.map((i) => (
@@ -760,6 +783,101 @@ export function Workspace() {
               />
               <span className="rate-unit">/ min</span>
             </div>
+            <details className="target-editor">
+              <summary>Ziele ({additionalTargets.length + 1})</summary>
+              <div className="target-editor-panel">
+                <strong>Weitere Ziele · Menge / min</strong>
+                {additionalTargets.map((entry, index) => (
+                  <div className="target-row" key={index}>
+                    <select
+                      aria-label={`Produktionsziel ${index + 2}`}
+                      value={entry.itemId}
+                      disabled={pending}
+                      onChange={(e) =>
+                        setAdditionalTargets((entries) =>
+                          entries.map((value, i) =>
+                            i === index
+                              ? { ...value, itemId: e.target.value }
+                              : value,
+                          ),
+                        )
+                      }
+                    >
+                      {!manufactured.some(
+                        (item) => item.id === entry.itemId,
+                      ) && (
+                        <option value={entry.itemId}>
+                          {itemName(entry.itemId)}
+                        </option>
+                      )}
+                      {manufactured.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      aria-label={`Zielrate pro Minute ${index + 2}`}
+                      value={entry.rate}
+                      inputMode="decimal"
+                      title="Menge pro Minute; Dezimalzahl oder Bruch"
+                      disabled={pending}
+                      onChange={(e) =>
+                        setAdditionalTargets((entries) =>
+                          entries.map((value, i) =>
+                            i === index
+                              ? { ...value, rate: e.target.value }
+                              : value,
+                          ),
+                        )
+                      }
+                    />
+                    <button
+                      type="button"
+                      aria-label={`Ziel ${index + 2} entfernen`}
+                      disabled={pending}
+                      onClick={() =>
+                        setAdditionalTargets((entries) =>
+                          entries.filter((_, i) => i !== index),
+                        )
+                      }
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  disabled={
+                    pending ||
+                    additionalTargets.length >= INPUT_ENTRY_LIMIT - 1 ||
+                    !manufactured.some(
+                      (item) =>
+                        item.id !== target &&
+                        !additionalTargets.some(
+                          (entry) => entry.itemId === item.id,
+                        ),
+                    )
+                  }
+                  onClick={() => {
+                    const item = manufactured.find(
+                      (item) =>
+                        item.id !== target &&
+                        !additionalTargets.some(
+                          (entry) => entry.itemId === item.id,
+                        ),
+                    );
+                    if (item)
+                      setAdditionalTargets((entries) => [
+                        ...entries,
+                        { itemId: item.id, rate: '20' },
+                      ]);
+                  }}
+                >
+                  Ziel hinzufügen
+                </button>
+              </div>
+            </details>
             <button className="primary" type="submit" disabled={pending}>
               Plan berechnen
             </button>

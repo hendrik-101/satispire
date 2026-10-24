@@ -9,7 +9,7 @@ export function createMcpServer(execute: ToolExecutor): McpServer {
       .object({
         roomId: z.string().min(1).max(128),
         ...(definition.argument
-          ? { [definition.argument]: z.record(z.unknown()) }
+          ? { [definition.argument]: z.record(z.string(), z.unknown()) }
           : {}),
       })
       .strict();
