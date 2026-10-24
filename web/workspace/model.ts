@@ -12,22 +12,32 @@ import type { DiscoveryRecipeDetails } from '../../src/discovery.js';
 export function calculateProduction(
   catalog: Catalog,
   input: ProductionInput,
-  target: ItemRate,
+  target: ItemRate | ItemRate[],
   anchor?: ItemRate,
 ) {
+  const primary = Array.isArray(target) ? target[0] : target;
   const preservePrimaryDemand =
-    anchor !== undefined && input.targets[0]?.itemId === target.itemId;
+    !Array.isArray(target) &&
+    anchor !== undefined &&
+    input.targets[0]?.itemId === target.itemId;
   const next: ProductionInput = {
     ...input,
-    targets: [
-      {
-        itemId: target.itemId,
-        rate: Rational.parse(target.rate.trim().replace(',', '.')).toString(),
-      },
-      ...input.targets
-        .slice(1)
-        .filter((t) => preservePrimaryDemand || t.itemId !== target.itemId),
-    ],
+    targets: Array.isArray(target)
+      ? target.map((entry) => ({
+          ...entry,
+          rate: Rational.parse(entry.rate.trim().replace(',', '.')).toString(),
+        }))
+      : [
+          {
+            itemId: target.itemId,
+            rate: Rational.parse(
+              target.rate.trim().replace(',', '.'),
+            ).toString(),
+          },
+          ...input.targets
+            .slice(1)
+            .filter((t) => preservePrimaryDemand || t.itemId !== target.itemId),
+        ],
   };
   let plan = solveProduction(catalog, next);
   if (anchor) {
@@ -39,10 +49,14 @@ export function calculateProduction(
       ...anchor,
       rate: Rational.parse(anchor.rate.trim().replace(',', '.')).toString(),
     });
-    next.targets = [
-      plan.targets.find((entry) => entry.itemId === target.itemId)!,
-      ...plan.targets.filter((entry) => entry.itemId !== target.itemId),
-    ];
+    next.targets = Array.isArray(target)
+      ? [...new Set(target.map((entry) => entry.itemId))].map(
+          (itemId) => plan.targets.find((entry) => entry.itemId === itemId)!,
+        )
+      : [
+          plan.targets.find((entry) => entry.itemId === primary!.itemId)!,
+          ...plan.targets.filter((entry) => entry.itemId !== primary!.itemId),
+        ];
   }
   return { input: next, plan };
 }

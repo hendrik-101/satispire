@@ -180,3 +180,41 @@ test('chooses an available initial target when the preferred recipe was excluded
   expect(input.targets).toEqual([{ itemId: 'example:ingot', rate: '20' }]);
   expect(solveProduction(catalog, input).nodes).toHaveLength(1);
 });
+
+test('calculates the steel outputs together with decimal rates and shared demand', () => {
+  const technology = technologyAtTier(4);
+  const targets = [
+    { itemId: 'Desc_SteelPipe_C', rate: '20' },
+    { itemId: 'Desc_SteelPlate_C', rate: '16,5' },
+    { itemId: 'Desc_SteelPlateReinforced_C', rate: '12' },
+  ];
+  const input = {
+    targets: modularFrames.targets,
+    technology,
+    recipes: availableChoices(technology),
+    imports: vanillaCatalog.items.filter((i) => i.raw).map((i) => i.id),
+  };
+  const result = calculateProduction(vanillaCatalog, input, targets);
+  expect(result.input.targets).toEqual([
+    targets[0],
+    { ...targets[1], rate: '33/2' },
+    targets[2],
+  ]);
+  expect(
+    result.plan.nodes.find((n) => n.itemId === 'Desc_SteelPlate_C')?.rate,
+  ).toBe('105/2');
+  expect(
+    result.plan.nodes.filter((n) => n.itemId === 'Desc_SteelIngot_C'),
+  ).toHaveLength(1);
+  const scaled = calculateProduction(
+    vanillaCatalog,
+    result.input,
+    result.input.targets,
+    {
+      itemId: result.plan.imports[0]!.itemId,
+      rate: String(Number(result.plan.imports[0]!.rate) * 2),
+    },
+  );
+  expect(scaled.input.targets.map((t) => t.rate)).toEqual(['40', '33', '24']);
+  expect(input.targets).toEqual(modularFrames.targets);
+});

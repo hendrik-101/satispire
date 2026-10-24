@@ -327,11 +327,13 @@ test('changing an imported primary target replaces matching secondary targets', 
       }),
     ),
   });
-  await expect(page.getByLabel('Produktionsziel')).toHaveValue(
+  await expect(page.getByLabel('Produktionsziel', { exact: true })).toHaveValue(
     'Desc_IronPlate_C',
   );
-  await page.getByLabel('Produktionsziel').selectOption('Desc_IronRod_C');
-  await page.getByLabel('Zielrate pro Minute').fill('10');
+  await page
+    .getByLabel('Produktionsziel', { exact: true })
+    .selectOption('Desc_IronRod_C');
+  await page.getByLabel('Zielrate pro Minute', { exact: true }).fill('10');
   for (let calculation = 0; calculation < 2; calculation++) {
     await page
       .getByRole('button', { name: 'Plan berechnen', exact: true })

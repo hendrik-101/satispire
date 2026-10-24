@@ -1088,3 +1088,76 @@ input[type='checkbox'] {
     position: static;
   }
 }
+
+.target-editor {
+  position: relative;
+}
+.target-editor summary {
+  cursor: pointer;
+  white-space: nowrap;
+  padding: 8px;
+}
+.target-editor-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 40;
+  width: 400px;
+  max-width: calc(100vw - 32px);
+  max-height: 55vh;
+  overflow: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #21272c;
+  border: 1px solid #39434c;
+  border-radius: 4px;
+}
+.target-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 78px 32px;
+  align-items: center;
+  gap: 8px;
+}
+.planning-controls .target-row select,
+.planning-controls .target-row input {
+  width: 100%;
+  min-width: 0;
+}
+.target-row button {
+  padding: 6px;
+}
+@media (max-width: 640px) {
+  .app-header {
+    position: relative;
+  }
+  .target-editor {
+    position: static;
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .target-editor summary {
+    font-size: 12px;
+    padding: 2px 0;
+  }
+  .planning-controls .rate-controls {
+    grid-column: 1;
+  }
+  .planning-controls[data-sizing-mode='input'] .rate-controls {
+    grid-column: 1 / -1;
+  }
+  .planning-controls[data-sizing-mode='input'] .target-editor {
+    grid-column: 1;
+    grid-row: 3;
+  }
+  .planning-controls[data-sizing-mode='input'] .primary {
+    grid-column: 2 / 4;
+  }
+  .target-editor-panel {
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+  }
+}
