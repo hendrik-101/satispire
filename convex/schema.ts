@@ -64,6 +64,50 @@ const state = v.object({
   ),
 });
 export default defineSchema({
+  sessionAdmission: defineTable({
+    key: v.string(),
+    windowStart: v.number(),
+    attempts: v.number(),
+    durableCount: v.number(),
+  }).index('by_key', ['key']),
+  sessions: defineTable({
+    sessionId: v.string(),
+    revision: v.number(),
+    plan: v.any(),
+    members: v.number(),
+    receipts: v.array(
+      v.object({
+        id: v.string(),
+        participantId: v.string(),
+        fingerprint: v.string(),
+        revision: v.number(),
+      }),
+    ),
+  }).index('by_session', ['sessionId']),
+  sessionMembers: defineTable({
+    digest: v.string(),
+    sessionId: v.string(),
+    participantId: v.string(),
+    name: v.string(),
+    color: v.string(),
+  }).index('by_digest', ['digest']),
+  sessionPresence: defineTable({
+    sessionId: v.string(),
+    participantId: v.string(),
+    clientId: v.string(),
+    name: v.string(),
+    color: v.string(),
+    view,
+    floor: v.string(),
+    cursor,
+    updatedAt: v.number(),
+  })
+    .index('by_session', ['sessionId'])
+    .index('by_session_participant_client', [
+      'sessionId',
+      'participantId',
+      'clientId',
+    ]),
   rooms: defineTable({ roomId: v.string(), state }).index('by_room', [
     'roomId',
   ]),

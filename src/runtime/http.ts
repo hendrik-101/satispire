@@ -1,3 +1,4 @@
+import { frameAncestors } from './framing.js';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -82,13 +83,20 @@ export async function startHttpRuntime(options: {
         );
       }
       // A native Request avoids adapter-specific cloning behavior in the SSR handler.
-      return entry!.fetch!(
+      const rendered = await entry!.fetch!(
         new Request(request.url, {
           method: request.method,
           headers: request.headers,
           signal: request.signal,
         }),
       );
+      const renderedHeaders = new Headers(rendered.headers);
+      renderedHeaders.set('Content-Security-Policy', frameAncestors);
+      return new Response(rendered.body, {
+        status: rendered.status,
+        statusText: rendered.statusText,
+        headers: renderedHeaders,
+      });
     },
   });
   await server.ready();
