@@ -8,7 +8,7 @@ import {
   type GenericMutationCtx,
   type DataModelFromSchemaDefinition,
 } from 'convex/server';
-import { v } from 'convex/values';
+import { v, ConvexError } from 'convex/values';
 import schema from './schema';
 import { hashSecret, randomSecret, verified } from './rooms';
 import { authorizeRoom, RoomError, type RoomState } from '../src/domain/rooms';
@@ -22,6 +22,24 @@ import {
 } from '../src/domain/shared-plan';
 import type { Membership, HistoryEntry } from '../src/room-api';
 
+/** Public codes survive production error redaction; never return raw input or tokens. */
+function publicFailure(error: unknown): ConvexError<{ code: string }> {
+  if (error instanceof ConvexError)
+    return error as ConvexError<{ code: string }>;
+  if (error instanceof RoomError) return new ConvexError({ code: error.code });
+  const allowed = [
+    'undo-conflict',
+    'plan-too-large',
+    'invalid-plan',
+    'plan-not-initialized',
+    'invalid-page-size',
+    'plan-already-initialized',
+  ];
+  const message = error instanceof Error ? error.message : '';
+  return new ConvexError({
+    code: allowed.includes(message) ? message : 'room-error',
+  });
+}
 type Ctx = GenericMutationCtx<DataModelFromSchemaDefinition<typeof schema>>;
 const authArgs = { roomId: v.string(), capability: v.string() };
 const editArgs = { ...authArgs, id: v.string(), expectedRevision: v.number() };
@@ -49,61 +67,81 @@ const redeemRef = makeFunctionReference<
 function boundedPlan(raw: unknown) {
   if (new TextEncoder().encode(JSON.stringify(raw)).length > 180_000)
     throw new Error('plan-too-large');
-  return validateSharedPlan(raw);
+  try {
+    return validateSharedPlan(raw);
+  } catch {
+    throw new Error('invalid-plan');
+  }
 }
 export const create = actionGeneric({
   args: { name: v.string(), plan: v.any() },
   handler: async (ctx, args): Promise<Membership & { shareSecret: string }> => {
-    const plan = boundedPlan(args.plan);
-    const owner = await ctx.runAction(createRoomRef, {
-      name: args.name,
-      unlocks: plan.unlocks,
-    });
-    const shareSecret = randomSecret();
-    await ctx.runMutation(initializeRef, {
-      roomId: owner.roomId,
-      capability: owner.capability,
-      plan: JSON.stringify(plan),
-      digest: await hashSecret(shareSecret),
-    });
-    return { ...owner, shareSecret };
+    try {
+      const plan = boundedPlan(args.plan);
+      const owner = await ctx.runAction(createRoomRef, {
+        name: args.name,
+        unlocks: plan.unlocks,
+      });
+      const shareSecret = randomSecret();
+      await ctx.runMutation(initializeRef, {
+        roomId: owner.roomId,
+        capability: owner.capability,
+        plan: JSON.stringify(plan),
+        digest: await hashSecret(shareSecret),
+      });
+      return { ...owner, shareSecret };
+    } catch (error) {
+      throw publicFailure(error);
+    }
   },
 });
 export const initialize = internalMutationGeneric({
   args: { ...authArgs, plan: v.string(), digest: v.string() },
   handler: async (ctx, args) => {
-    const { room, context } = await verified(ctx, args.roomId, args.capability);
-    authorizeRoom(room.state, context, 'owner');
-    const exists = await ctx.db
-      .query('plans')
-      .withIndex('by_room', (q) => q.eq('roomId', args.roomId))
-      .unique();
-    if (exists) throw new Error('plan-already-initialized');
-    const plan = boundedPlan(JSON.parse(args.plan));
-    await ctx.db.insert('plans', {
-      roomId: args.roomId,
-      plan: JSON.stringify(plan),
-    });
-    await ctx.db.insert('roomLinks', {
-      roomId: args.roomId,
-      digest: args.digest,
-    });
-    return null;
+    try {
+      const { room, context } = await verified(
+        ctx,
+        args.roomId,
+        args.capability,
+      );
+      authorizeRoom(room.state, context, 'owner');
+      const exists = await ctx.db
+        .query('plans')
+        .withIndex('by_room', (q) => q.eq('roomId', args.roomId))
+        .unique();
+      if (exists) throw new Error('plan-already-initialized');
+      const plan = boundedPlan(JSON.parse(args.plan));
+      await ctx.db.insert('plans', {
+        roomId: args.roomId,
+        plan: JSON.stringify(plan),
+      });
+      await ctx.db.insert('roomLinks', {
+        roomId: args.roomId,
+        digest: args.digest,
+      });
+      return null;
+    } catch (error) {
+      throw publicFailure(error);
+    }
   },
 });
 export const join = actionGeneric({
   args: { roomId: v.string(), shareSecret: v.string(), name: v.string() },
   handler: async (ctx, args): Promise<Membership> => {
-    const capability = randomSecret(),
-      participantId = crypto.randomUUID();
-    await ctx.runMutation(redeemRef, {
-      roomId: args.roomId,
-      digest: await hashSecret(args.shareSecret),
-      name: args.name,
-      participantId,
-      capabilityDigest: await hashSecret(capability),
-    });
-    return { roomId: args.roomId, participantId, capability };
+    try {
+      const capability = randomSecret(),
+        participantId = crypto.randomUUID();
+      await ctx.runMutation(redeemRef, {
+        roomId: args.roomId,
+        digest: await hashSecret(args.shareSecret),
+        name: args.name,
+        participantId,
+        capabilityDigest: await hashSecret(capability),
+      });
+      return { roomId: args.roomId, participantId, capability };
+    } catch (error) {
+      throw publicFailure(error);
+    }
   },
 });
 export const redeem = internalMutationGeneric({
@@ -115,58 +153,71 @@ export const redeem = internalMutationGeneric({
     capabilityDigest: v.string(),
   },
   handler: async (ctx, args) => {
-    const link = await ctx.db
-      .query('roomLinks')
-      .withIndex('by_room', (q) => q.eq('roomId', args.roomId))
-      .unique();
-    if (!link || link.digest !== args.digest) throw new RoomError('forbidden');
-    if (!args.name.trim() || args.name.trim().length > 80)
-      throw new RoomError('invalid-participant');
-    const room = await ctx.db
-      .query('rooms')
-      .withIndex('by_room', (q) => q.eq('roomId', args.roomId))
-      .unique();
-    if (!room) throw new RoomError('forbidden');
-    const state = room.state as RoomState;
-    const owner = Object.values(state.participants).find(
-      (p) => p.role === 'owner',
-    )!;
-    state.participants[args.participantId] = {
-      ...structuredClone(owner),
-      id: args.participantId,
-      name: args.name.trim(),
-      role: 'editor',
-      presence: {
-        view: 'layout',
-        floor: 0,
-        cursor: null,
-        following: false,
-        previous: null,
-      },
-    };
-    await ctx.db.patch(room._id, { state });
-    await ctx.db.insert('capabilities', {
-      digest: args.capabilityDigest,
-      roomId: args.roomId,
-      participantId: args.participantId,
-    });
-    return null;
+    try {
+      const link = await ctx.db
+        .query('roomLinks')
+        .withIndex('by_room', (q) => q.eq('roomId', args.roomId))
+        .unique();
+      if (!link || link.digest !== args.digest)
+        throw new RoomError('forbidden');
+      if (!args.name.trim() || args.name.trim().length > 80)
+        throw new RoomError('invalid-participant');
+      const room = await ctx.db
+        .query('rooms')
+        .withIndex('by_room', (q) => q.eq('roomId', args.roomId))
+        .unique();
+      if (!room) throw new RoomError('forbidden');
+      const state = room.state as RoomState;
+      const owner = Object.values(state.participants).find(
+        (p) => p.role === 'owner',
+      )!;
+      state.participants[args.participantId] = {
+        ...structuredClone(owner),
+        id: args.participantId,
+        name: args.name.trim(),
+        role: 'editor',
+        presence: {
+          view: 'layout',
+          floor: 0,
+          cursor: null,
+          following: false,
+          previous: null,
+        },
+      };
+      await ctx.db.patch(room._id, { state });
+      await ctx.db.insert('capabilities', {
+        digest: args.capabilityDigest,
+        roomId: args.roomId,
+        participantId: args.participantId,
+      });
+      return null;
+    } catch (error) {
+      throw publicFailure(error);
+    }
   },
 });
 export const view = queryGeneric({
   args: authArgs,
   handler: async (ctx, args) => {
-    const { room, context } = await verified(ctx, args.roomId, args.capability);
-    authorizeRoom(room.state, context);
-    const record = await ctx.db
-      .query('plans')
-      .withIndex('by_room', (q) => q.eq('roomId', args.roomId))
-      .unique();
-    if (!record) throw new Error('plan-not-initialized');
-    return {
-      plan: JSON.parse(record.plan) as SharedPlan,
-      revision: room.state.revision,
-    };
+    try {
+      const { room, context } = await verified(
+        ctx,
+        args.roomId,
+        args.capability,
+      );
+      authorizeRoom(room.state, context);
+      const record = await ctx.db
+        .query('plans')
+        .withIndex('by_room', (q) => q.eq('roomId', args.roomId))
+        .unique();
+      if (!record) throw new Error('plan-not-initialized');
+      return {
+        plan: JSON.parse(record.plan) as SharedPlan,
+        revision: room.state.revision,
+      };
+    } catch (error) {
+      throw publicFailure(error);
+    }
   },
 });
 const fieldNames: Record<PlanChange['field'], string> = {
@@ -235,7 +286,7 @@ async function commit(
     const entry = id ? await ctx.db.get('planHistory', id) : null;
     if (!entry || entry.roomId !== args.roomId)
       throw new RoomError('forbidden');
-    after = reversePlan(before, entry.changes);
+    after = boundedPlan(reversePlan(before, entry.changes));
   } else after = boundedPlan(payload.plan);
   const changes = diffPlan(before, after);
   const revision = room.state.revision + (changes.length ? 1 : 0);
@@ -268,38 +319,52 @@ async function commit(
 }
 export const edit = mutationGeneric({
   args: { ...editArgs, plan: v.any() },
-  handler: (ctx, args) => commit(ctx, args, { plan: args.plan }),
+  handler: (ctx, args) =>
+    commit(ctx, args, { plan: args.plan }).catch((error) => {
+      throw publicFailure(error);
+    }),
 });
 export const undo = mutationGeneric({
   args: { ...editArgs, entryId: v.string() },
-  handler: (ctx, args) => commit(ctx, args, { entryId: args.entryId }),
+  handler: (ctx, args) =>
+    commit(ctx, args, { entryId: args.entryId }).catch((error) => {
+      throw publicFailure(error);
+    }),
 });
 export const history = queryGeneric({
   args: { ...authArgs, paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
-    const { room, context } = await verified(ctx, args.roomId, args.capability);
-    authorizeRoom(room.state, context);
-    if (args.paginationOpts.numItems < 1 || args.paginationOpts.numItems > 50)
-      throw new Error('invalid-page-size');
-    const result = await ctx.db
-      .query('planHistory')
-      .withIndex('by_room_revision', (q) => q.eq('roomId', args.roomId))
-      .order('desc')
-      .paginate(args.paginationOpts);
-    return {
-      ...result,
-      page: result.page.map(
-        (entry): HistoryEntry => ({
-          id: entry._id,
-          revision: entry.revision,
-          participantId: entry.participantId,
-          author: entry.author,
-          timestamp: entry.timestamp,
-          summary: entry.summary,
-          changes: entry.changes,
-          undoOf: entry.undoOf,
-        }),
-      ),
-    };
+    try {
+      const { room, context } = await verified(
+        ctx,
+        args.roomId,
+        args.capability,
+      );
+      authorizeRoom(room.state, context);
+      if (args.paginationOpts.numItems < 1 || args.paginationOpts.numItems > 50)
+        throw new Error('invalid-page-size');
+      const result = await ctx.db
+        .query('planHistory')
+        .withIndex('by_room_revision', (q) => q.eq('roomId', args.roomId))
+        .order('desc')
+        .paginate(args.paginationOpts);
+      return {
+        ...result,
+        page: result.page.map(
+          (entry): HistoryEntry => ({
+            id: entry._id,
+            revision: entry.revision,
+            participantId: entry.participantId,
+            author: entry.author,
+            timestamp: entry.timestamp,
+            summary: entry.summary,
+            changes: entry.changes,
+            undoOf: entry.undoOf,
+          }),
+        ),
+      };
+    } catch (error) {
+      throw publicFailure(error);
+    }
   },
 });

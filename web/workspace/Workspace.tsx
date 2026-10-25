@@ -379,6 +379,7 @@ export function Workspace({ shared }: { shared?: SharedWorkspace } = {}) {
   useEffect(() => {
     if (shared && ready) {
       sequence.current++;
+      setPending(false);
       hydrateShared(shared.plan);
     }
   }, [shared?.plan]);

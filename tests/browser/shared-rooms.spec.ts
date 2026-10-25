@@ -96,6 +96,15 @@ test('creates the canonical shared room, synchronizes two browsers and undoes th
     'true',
   );
   expect(fixture.state().members).toBe(2);
+  await page.screenshot({ path: test.info().outputPath('room-desktop.png') });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(
+    page.getByRole('button', { name: 'Teilen', exact: true }),
+  ).toBeInViewport();
+  await expect(
+    page.getByRole('link', { name: 'Räume', exact: true }),
+  ).toBeInViewport({ ratio: 1 });
+  await page.screenshot({ path: test.info().outputPath('room-mobile.png') });
   await second.close();
 });
 
@@ -216,4 +225,98 @@ test('a draft based on an older revision cannot overwrite a collaborator edit', 
   await expect(
     page.getByLabel('Zielrate pro Minute', { exact: true }),
   ).toHaveValue('40');
+});
+
+test('cancels a delayed import cleanly when another participant changes the room', async ({
+  page,
+}) => {
+  const fixture = roomWireFixture();
+  await fixture.install(page);
+  await page.goto(
+    base + '/room/' + fixture.roomId + '#key=' + fixture.shareSecret,
+  );
+  await expect(page.locator('main.workspace')).toHaveAttribute(
+    'data-ready',
+    'true',
+  );
+  await page.evaluate(() => {
+    const original = File.prototype.text;
+    File.prototype.text = function () {
+      return original.call(this).then(
+        (text) =>
+          new Promise<string>((resolve) => {
+            Object.assign(window, { finishRoomImport: () => resolve(text) });
+          }),
+      );
+    };
+  });
+  await page.getByLabel('Plan-Datei').setInputFiles({
+    name: 'plan.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(fixture.state().plan)),
+  });
+  await page.waitForFunction(() => 'finishRoomImport' in window);
+  const next = fixture.state().plan;
+  next.production.targets[0]!.rate = '40';
+  fixture.remoteEdit(next);
+  await expect(page.locator('main.workspace')).toContainText('60 / min');
+  await page.evaluate(() => {
+    (window as unknown as { finishRoomImport: () => void }).finishRoomImport();
+  });
+  await expect(
+    page.getByRole('button', { name: 'Plan berechnen', exact: true }),
+  ).toBeEnabled();
+  await expect(page.getByLabel('Plan-Datei')).toBeEnabled();
+  expect(fixture.state().plan.production.targets[0]!.rate).toBe('40');
+});
+
+test('preserves creator membership on initial navigation when browser storage is blocked', async ({
+  page,
+}) => {
+  const fixture = roomWireFixture();
+  await fixture.install(page);
+  await page.addInitScript(() =>
+    Object.defineProperty(window, 'localStorage', {
+      get() {
+        throw Error('blocked');
+      },
+    }),
+  );
+  await page.goto(base);
+  await page.getByRole('button', { name: 'Neuen Raum starten' }).click();
+  await expect(page.locator('main.workspace')).toHaveAttribute(
+    'data-ready',
+    'true',
+  );
+  await expect(page).toHaveURL(
+    base + '/room/' + fixture.roomId + '#key=' + fixture.shareSecret,
+  );
+  expect(fixture.state().members).toBe(1);
+});
+
+test('recovers valid room links from corrupt membership using structured redacted errors', async ({
+  page,
+}) => {
+  const fixture = roomWireFixture();
+  await fixture.install(page);
+  await page.addInitScript(
+    ({ roomId }) =>
+      localStorage.setItem(
+        'satispire.membership.v1:' + roomId,
+        JSON.stringify({
+          roomId,
+          participantId: 'old',
+          capability: 'd'.repeat(64),
+        }),
+      ),
+    { roomId: fixture.roomId },
+  );
+  await page.goto(
+    base + '/room/' + fixture.roomId + '#key=' + fixture.shareSecret,
+  );
+  await expect(page.locator('main.workspace')).toHaveAttribute(
+    'data-ready',
+    'true',
+  );
+  expect(fixture.state().members).toBe(1);
 });

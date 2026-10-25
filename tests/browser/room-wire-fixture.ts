@@ -34,6 +34,7 @@ export function roomWireFixture() {
     return b.toString('base64');
   };
   function result(query: Query) {
+    if (query.args[0]?.capability === 'd'.repeat(64)) throw Error('forbidden');
     if (query.udfPath === 'plans:view') return { plan, revision };
     if (query.udfPath === 'plans:history') {
       const opts = query.args[0]!.paginationOpts as {
@@ -56,13 +57,26 @@ export function roomWireFixture() {
         type: 'Transition',
         startVersion: wire.version,
         endVersion: next,
-        modifications: [...wire.queries.values()].map((q) => ({
-          type: 'QueryUpdated',
-          queryId: q.queryId,
-          value: result(q),
-          logLines: [],
-          journal: null,
-        })),
+        modifications: [...wire.queries.values()].map((q) => {
+          try {
+            return {
+              type: 'QueryUpdated',
+              queryId: q.queryId,
+              value: result(q),
+              logLines: [],
+              journal: null,
+            };
+          } catch {
+            return {
+              type: 'QueryFailed',
+              queryId: q.queryId,
+              errorMessage: 'Server Error',
+              errorData: { code: 'forbidden' },
+              logLines: [],
+              journal: null,
+            };
+          }
+        }),
       }),
     );
     wire.version = next;
@@ -171,7 +185,8 @@ export function roomWireFixture() {
                   type: 'MutationResponse',
                   requestId: message.requestId,
                   success: false,
-                  result: (error as Error).message,
+                  result: 'Server Error',
+                  errorData: { code: (error as Error).message },
                   logLines: [],
                 }),
               );

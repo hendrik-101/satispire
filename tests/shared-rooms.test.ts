@@ -268,3 +268,19 @@ it('denies a stale membership capability after the participant is removed', asyn
     }),
   ).rejects.toThrow('forbidden');
 });
+it('returns stable public error codes independently of Convex exception text', async () => {
+  const { t, owner } = await setup();
+  await expect(
+    t.query(roomApi.view, { roomId: owner.roomId, capability: 'd'.repeat(64) }),
+  ).rejects.toMatchObject({ data: { code: 'forbidden' } });
+  const p = initialSharedPlan();
+  p.layout.rows = 2;
+  await expect(
+    t.mutation(roomApi.edit, {
+      ...auth(owner),
+      id: 'stale',
+      expectedRevision: 5,
+      plan: p,
+    }),
+  ).rejects.toMatchObject({ data: { code: 'revision-conflict' } });
+});

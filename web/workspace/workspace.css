@@ -107,6 +107,9 @@ button[aria-pressed='true'] {
 }
 .header-actions {
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  max-width: 100%;
   gap: 4px;
   margin-left: auto;
 }

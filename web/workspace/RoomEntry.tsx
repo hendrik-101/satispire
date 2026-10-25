@@ -1,3 +1,4 @@
+import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   getRoomClient,
@@ -20,6 +21,7 @@ import { loadUnlockProfile } from './unlock-storage';
 import { availableChoices } from '../../src/domain/vanilla';
 
 export function RoomEntry() {
+  const navigate = useNavigate();
   const dialog = useRef<HTMLDialogElement>(null);
   const [rooms, setRooms] = useState<RecentRoom[]>([]),
     [error, setError] = useState(''),
@@ -88,9 +90,11 @@ export function RoomEntry() {
         label: outputLabel(plan),
         visitedAt: Date.now(),
       });
-      window.location.assign(
-        roomUrl(window.location.origin, member.roomId, member.shareSecret),
-      );
+      await navigate({
+        to: '/room/$roomId',
+        params: { roomId: member.roomId },
+        hash: 'key=' + member.shareSecret,
+      });
     } catch (e) {
       setError(roomError(e));
       setPending(false);

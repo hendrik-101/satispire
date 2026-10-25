@@ -1,3 +1,4 @@
+import { ConvexError } from 'convex/values';
 import { ConvexClient } from 'convex/browser';
 import { roomApi, type Membership, type RoomPlan } from '../../src/room-api';
 import {
@@ -32,13 +33,29 @@ async function prepare() {
   if (!url) throw new Error('Online-Räume sind derzeit nicht verfügbar.');
   return (client ??= new ConvexClient(url, { logger: false }));
 }
+export function roomErrorCode(error: unknown): string {
+  if (
+    error instanceof ConvexError &&
+    error.data &&
+    typeof error.data === 'object' &&
+    'code' in error.data &&
+    typeof error.data.code === 'string'
+  )
+    return error.data.code;
+  return '';
+}
 export function roomError(error: unknown) {
+  const code = roomErrorCode(error);
   const detail = error instanceof Error ? error.message : '';
-  if (detail.includes('undo-conflict'))
+  if (code === 'invalid-plan')
+    return 'Der Plan ist für diesen Raum nicht gültig. Bitte prüfe Ziele, Rezepte und Freischaltungen.';
+  if (code === 'plan-too-large')
+    return 'Der Plan überschreitet das Größenlimit des Raums.';
+  if (code === 'undo-conflict')
     return 'Diese Änderung kann wegen späterer Änderungen nicht rückgängig gemacht werden.';
-  if (detail.includes('revision-conflict'))
+  if (code === 'revision-conflict')
     return 'Der Raum wurde inzwischen geändert. Dein Entwurf bleibt erhalten. Bitte prüfe den aktuellen Stand und versuche es erneut.';
-  if (detail.includes('forbidden'))
+  if (code === 'forbidden')
     return 'Kein Zugriff auf diesen Raum. Bitte prüfe den Raum-Link.';
   if (detail.includes('Online-Räume')) return detail;
   return 'Der Raum konnte nicht aktualisiert werden. Bitte prüfe die Verbindung und versuche es erneut.';
@@ -64,8 +81,7 @@ export async function openRoom(
         }),
       };
     } catch (error) {
-      if (!(error instanceof Error) || !error.message.includes('forbidden'))
-        throw error;
+      if (roomErrorCode(error) !== 'forbidden') throw error;
     }
   }
   const member = await c.action(roomApi.join, {
