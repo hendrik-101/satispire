@@ -158,6 +158,7 @@ function retry(
 export async function handleSessionRequest(
   request: Request,
   db: SessionDatabase,
+  actorKey?: string,
 ): Promise<Response> {
   try {
     if (request.method !== 'POST')
@@ -175,17 +176,26 @@ export async function handleSessionRequest(
     if (!operation) fail(404, 'not-found');
     const a = await body(request);
     if (operation === 'create') {
+      if (!actorKey || actorKey.length > 200) fail(503, 'caller-unavailable');
+      const actor = await digest(actorKey);
       const now = Date.now();
       await db
         .prepare(
-          'INSERT OR IGNORE INTO site_session_admission(id,window_start,attempts) VALUES (1,0,0)',
+          'DELETE FROM site_session_caller_admission WHERE window_start<=?',
         )
+        .bind(now - 300000)
+        .run();
+      await db
+        .prepare(
+          'INSERT OR IGNORE INTO site_session_caller_admission(actor_key,window_start,attempts) VALUES (?,?,0)',
+        )
+        .bind(actor, now)
         .run();
       const charged = await db
         .prepare(
-          'UPDATE site_session_admission SET attempts=CASE WHEN window_start<=? THEN 1 ELSE attempts+1 END, window_start=CASE WHEN window_start<=? THEN ? ELSE window_start END WHERE id=1 AND (window_start<=? OR attempts<5)',
+          'UPDATE site_session_caller_admission SET attempts=CASE WHEN window_start<=? THEN 1 ELSE attempts+1 END, window_start=CASE WHEN window_start<=? THEN ? ELSE window_start END WHERE actor_key=? AND (window_start<=? OR attempts<5)',
         )
-        .bind(now - 60000, now - 60000, now, now - 60000)
+        .bind(now - 60000, now - 60000, now, actor, now - 60000)
         .run();
       if (!charged.meta.changes) fail(429, 'rate-limited');
       const count = await db

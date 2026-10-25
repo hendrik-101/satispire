@@ -57,3 +57,38 @@ it('serves an immutable exported workspace and advertises the hosted session tra
     ).status,
   ).toBe(405);
 });
+
+it('requires edge-provided caller identity for new sessions and ignores body/forwarded-for spoofing', async () => {
+  const worker = createSitesWorker({});
+  const env = {
+    DB: {
+      prepare() {
+        throw new Error('Identity must be checked before database access');
+      },
+    },
+  };
+  for (const headers of [
+    { 'Content-Type': 'application/json' },
+    {
+      'Content-Type': 'application/json',
+      'X-Forwarded-For': 'attacker-chosen',
+    },
+  ]) {
+    const response = await worker.fetch(
+      new Request('https://site.example/api/sessions/create', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          name: 'Guest',
+          plan: {},
+          actorKey: 'attacker-chosen',
+        }),
+      }),
+      env,
+    );
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      error: { code: 'caller-unavailable' },
+    });
+  }
+});

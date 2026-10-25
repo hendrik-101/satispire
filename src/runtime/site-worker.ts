@@ -23,7 +23,9 @@ export function createSitesWorker(assets: Readonly<Record<string, SiteAsset>>) {
             { error: { code: 'storage-unavailable' } },
             { status: 503, headers },
           );
-        return handleSessionRequest(request, env.DB);
+        // Cloudflare supplies this header at the Worker edge; request JSON never chooses the caller.
+        const caller = request.headers.get('CF-Connecting-IP');
+        return handleSessionRequest(request, env.DB, caller || undefined);
       }
       if (request.method !== 'GET' && request.method !== 'HEAD')
         return new Response('Method Not Allowed', {

@@ -68,7 +68,9 @@ const auth = (m: SessionMembership) => ({
 describe('durable anonymous sessions', () => {
   it('persists complete plans, joins and atomically protects revisions and retries', async () => {
     const t = convexTest(schema, modules);
-    const a = await t.action(refs.create, { name: ' Alice ', plan });
+    const a = await t
+      .withIdentity({ tokenIdentifier: 'https://issuer.test|alice' })
+      .action(refs.create, { name: ' Alice ', plan });
     expect(a.sessionId).toMatch(/^[a-f0-9]{64}$/);
     const b = await t.action(refs.join, {
       sessionId: a.sessionId,
@@ -87,14 +89,18 @@ describe('durable anonymous sessions', () => {
     await expect(
       t.mutation(refs.commit, { ...change, id: 'stale' }),
     ).rejects.toThrow(/revision-conflict/);
-    const other = await t.action(refs.create, { name: 'Other', plan });
+    const other = await t
+      .withIdentity({ tokenIdentifier: 'https://issuer.test|alice' })
+      .action(refs.create, { name: 'Other', plan });
     await expect(
       t.query(refs.read, { ...auth(a), capability: other.capability }),
     ).rejects.toThrow(/forbidden/);
   });
   it('validates plans and isolates scoped ephemeral cursors without editing plans', async () => {
     const t = convexTest(schema, modules);
-    const a = await t.action(refs.create, { name: 'Alice', plan });
+    const a = await t
+      .withIdentity({ tokenIdentifier: 'https://issuer.test|alice' })
+      .action(refs.create, { name: 'Alice', plan });
     const b = await t.action(refs.join, {
       sessionId: a.sessionId,
       name: 'Bob',
@@ -133,7 +139,9 @@ describe('durable anonymous sessions', () => {
   });
   it('bounds retained retries and stores only hashed private credentials', async () => {
     const t = convexTest(schema, modules);
-    const a = await t.action(refs.create, { name: 'Alice', plan });
+    const a = await t
+      .withIdentity({ tokenIdentifier: 'https://issuer.test|alice' })
+      .action(refs.create, { name: 'Alice', plan });
     await t.run(async (ctx) => {
       const member = await ctx.db.query('sessionMembers').first();
       expect(member?.digest).toMatch(/^[a-f0-9]{64}$/);
@@ -173,27 +181,35 @@ describe('durable anonymous sessions', () => {
     await expect(
       t.action(refs.join, { sessionId: '0'.repeat(64), name: 'Bob' }),
     ).rejects.toThrow(/forbidden/);
-    await expect(t.action(refs.create, { name: ' ', plan })).rejects.toThrow(
-      /invalid-participant/,
-    );
     await expect(
-      t.action(refs.create, {
-        name: 'Alice',
-        plan: { ...plan, production: { ...plan.production, recipes: {} } },
-      }),
+      t
+        .withIdentity({ tokenIdentifier: 'https://issuer.test|alice' })
+        .action(refs.create, { name: ' ', plan }),
+    ).rejects.toThrow(/invalid-participant/);
+    await expect(
+      t
+        .withIdentity({ tokenIdentifier: 'https://issuer.test|alice' })
+        .action(refs.create, {
+          name: 'Alice',
+          plan: { ...plan, production: { ...plan.production, recipes: {} } },
+        }),
     ).rejects.toThrow();
     await expect(
-      t.action(refs.create, {
-        name: 'Alice',
-        plan: { ...plan, extra: 'x'.repeat(262144) },
-      }),
+      t
+        .withIdentity({ tokenIdentifier: 'https://issuer.test|alice' })
+        .action(refs.create, {
+          name: 'Alice',
+          plan: { ...plan, extra: 'x'.repeat(262144) },
+        }),
     ).rejects.toThrow(/plan-too-large/);
   });
   it('scheduled expiry removes abandoned cursor rows', async () => {
     vi.useFakeTimers();
     try {
       const t = convexTest(schema, modules);
-      const a = await t.action(refs.create, { name: 'Alice', plan });
+      const a = await t
+        .withIdentity({ tokenIdentifier: 'https://issuer.test|alice' })
+        .action(refs.create, { name: 'Alice', plan });
       await t.mutation(refs.presence, {
         ...auth(a),
         clientId: 'tab',
@@ -204,6 +220,9 @@ describe('durable anonymous sessions', () => {
       await t.finishAllScheduledFunctions(() => vi.runAllTimers());
       await t.run(async (ctx) => {
         expect(await ctx.db.query('sessionPresence').collect()).toEqual([]);
+        expect(
+          (await ctx.db.query('sessionAdmission').collect()).map((r) => r.key),
+        ).toEqual(['global']);
       });
     } finally {
       vi.useRealTimers();
@@ -213,7 +232,9 @@ describe('durable anonymous sessions', () => {
     vi.useFakeTimers();
     try {
       const t = convexTest(schema, modules);
-      const a = await t.action(refs.create, { name: 'Alice', plan });
+      const a = await t
+        .withIdentity({ tokenIdentifier: 'https://issuer.test|alice' })
+        .action(refs.create, { name: 'Alice', plan });
       const presence = {
         ...auth(a),
         clientId: 'tab',
@@ -227,7 +248,7 @@ describe('durable anonymous sessions', () => {
       await t.run(async (ctx) => {
         expect(
           await ctx.db.system.query('_scheduled_functions').collect(),
-        ).toHaveLength(1);
+        ).toHaveLength(2);
       });
       await vi.advanceTimersByTimeAsync(5000);
       await t.finishInProgressScheduledFunctions();
@@ -245,7 +266,9 @@ describe('durable anonymous sessions', () => {
   it('validates unlock semantics while preserving an outdated valid calculated plan', async () => {
     const t = convexTest(schema, modules);
     const profile = createUnlockProfile(9);
-    const a = await t.action(refs.create, { name: 'Alice', plan });
+    const a = await t
+      .withIdentity({ tokenIdentifier: 'https://issuer.test|alice' })
+      .action(refs.create, { name: 'Alice', plan });
     const malformed = [
       { ...profile, spaceElevatorPhase: 0 },
       { ...profile, catalogVersion: 'other' },
@@ -262,7 +285,9 @@ describe('durable anonymous sessions', () => {
     for (const unlocks of malformed) {
       const bad = { ...plan, unlocks };
       await expect(
-        t.action(refs.create, { name: 'Bob', plan: bad }),
+        t
+          .withIdentity({ tokenIdentifier: 'https://issuer.test|alice' })
+          .action(refs.create, { name: 'Bob', plan: bad }),
       ).rejects.toThrow();
       await expect(
         t.mutation(refs.commit, {
@@ -288,8 +313,12 @@ describe('durable anonymous sessions', () => {
   });
   it('denies cross-session writes and presence access and bounds active tabs', async () => {
     const t = convexTest(schema, modules);
-    const a = await t.action(refs.create, { name: 'Alice', plan });
-    const b = await t.action(refs.create, { name: 'Bob', plan });
+    const a = await t
+      .withIdentity({ tokenIdentifier: 'https://issuer.test|alice' })
+      .action(refs.create, { name: 'Alice', plan });
+    const b = await t
+      .withIdentity({ tokenIdentifier: 'https://issuer.test|alice' })
+      .action(refs.create, { name: 'Bob', plan });
     const wrong = { sessionId: a.sessionId, capability: b.capability };
     const location = { view: 'layout' as const, floor: 'iron' };
     await expect(
@@ -343,45 +372,102 @@ describe('durable anonymous sessions', () => {
   });
   it('charges failed creates and rejects admission without affecting existing members', async () => {
     const t = convexTest(schema, modules);
-    const a = await t.action(refs.create, { name: 'Alice', plan });
+    const a = await t
+      .withIdentity({ tokenIdentifier: 'https://issuer.test|alice' })
+      .action(refs.create, { name: 'Alice', plan });
     for (let i = 0; i < 4; i++)
       await expect(
-        t.action(refs.create, { name: 'Bad', plan: {} }),
+        t
+          .withIdentity({ tokenIdentifier: 'https://issuer.test|alice' })
+          .action(refs.create, { name: 'Bad', plan: {} }),
       ).rejects.toThrow();
     await expect(
-      t.action(refs.create, { name: 'Limited', plan }),
+      t
+        .withIdentity({ tokenIdentifier: 'https://issuer.test|alice' })
+        .action(refs.create, { name: 'Limited', plan }),
     ).rejects.toThrow(/rate-limited/);
     expect((await t.query(refs.read, auth(a))).revision).toBe(0);
     await t.action(refs.join, { sessionId: a.sessionId, name: 'Bob' });
     await t.run(async (ctx) => {
-      const row = await ctx.db.query('sessionAdmission').first();
+      const rows = await ctx.db.query('sessionAdmission').collect();
+      const row = rows.find((r) => r.key.startsWith('actor:'));
       await ctx.db.patch(row!._id, { windowStart: Date.now() - 60001 });
     });
-    await t.action(refs.create, { name: 'After window', plan });
+    await t
+      .withIdentity({ tokenIdentifier: 'https://issuer.test|alice' })
+      .action(refs.create, { name: 'After window', plan });
     await t.run(async (ctx) => {
-      const row = await ctx.db.query('sessionAdmission').first();
+      const row = await ctx.db
+        .query('sessionAdmission')
+        .withIndex('by_key', (q) => q.eq('key', 'global'))
+        .unique();
       await ctx.db.patch(row!._id, { durableCount: 512 });
     });
-    await expect(t.action(refs.create, { name: 'Full', plan })).rejects.toThrow(
-      /session-limit/,
-    );
+    await expect(
+      t
+        .withIdentity({ tokenIdentifier: 'https://issuer.test|alice' })
+        .action(refs.create, { name: 'Full', plan }),
+    ).rejects.toThrow(/session-limit/);
   });
   it('serializes the durable quota across concurrent creations', async () => {
     const t = convexTest(schema, modules);
-    await t.action(refs.create, { name: 'Existing', plan });
+    await t
+      .withIdentity({ tokenIdentifier: 'https://issuer.test|alice' })
+      .action(refs.create, { name: 'Existing', plan });
     await t.run(async (ctx) => {
-      const row = await ctx.db.query('sessionAdmission').first();
+      const row = await ctx.db
+        .query('sessionAdmission')
+        .withIndex('by_key', (q) => q.eq('key', 'global'))
+        .unique();
       await ctx.db.patch(row!._id, { durableCount: 511 });
     });
     const results = await Promise.allSettled([
-      t.action(refs.create, { name: 'A', plan }),
-      t.action(refs.create, { name: 'B', plan }),
+      t
+        .withIdentity({ tokenIdentifier: 'https://issuer.test|alice' })
+        .action(refs.create, { name: 'A', plan }),
+      t
+        .withIdentity({ tokenIdentifier: 'https://issuer.test|alice' })
+        .action(refs.create, { name: 'B', plan }),
     ]);
     expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
     await t.run(async (ctx) => {
       expect(
-        (await ctx.db.query('sessionAdmission').first())?.durableCount,
+        (
+          await ctx.db
+            .query('sessionAdmission')
+            .withIndex('by_key', (q) => q.eq('key', 'global'))
+            .unique()
+        )?.durableCount,
       ).toBe(512);
+    });
+  });
+  it('requires verified creation identity and separates caller budgets', async () => {
+    const t = convexTest(schema, modules);
+    await expect(
+      t.action(refs.create, { name: 'Anonymous', plan }),
+    ).rejects.toThrow(/creation-gate-required/);
+    await t.run(async (ctx) => {
+      expect(await ctx.db.query('sessionAdmission').collect()).toEqual([]);
+    });
+    const alice = t.withIdentity({ tokenIdentifier: 'issuer|alice' });
+    for (let i = 0; i < 5; i++)
+      await expect(
+        alice.action(refs.create, { name: 'Invalid', plan: {} }),
+      ).rejects.toThrow();
+    await expect(
+      alice.action(refs.create, { name: 'Limited', plan }),
+    ).rejects.toThrow(/rate-limited/);
+    const bob = await t
+      .withIdentity({ tokenIdentifier: 'issuer|bob' })
+      .action(refs.create, { name: 'Bob', plan });
+    expect((await t.query(refs.read, auth(bob))).revision).toBe(0);
+    await t.action(refs.join, {
+      sessionId: bob.sessionId,
+      name: 'Anonymous invite holder',
+    });
+    await t.run(async (ctx) => {
+      const rows = await ctx.db.query('sessionAdmission').collect();
+      expect(JSON.stringify(rows)).not.toContain('issuer|');
     });
   });
 });

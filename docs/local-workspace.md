@@ -33,7 +33,7 @@ The root page restores the latest session in this browser or creates a random se
 
 Without a hosted session API or `VITE_CONVEX_URL`, the header says **Lokal** and saves to browser localStorage keyed by session. Unknown local links display an error instead of silently creating unrelated content. These links work only in the browser that stores that session. Blocked storage is reported and the current view remains usable; it cannot promise recovery after reload.
 
-To enable collaboration, deploy `convex/` to a dedicated hosted or self-hosted Convex backend using its configured deploy credentials, then supply its **public client URL** to Vite:
+The published ChatGPT Site uses its managed D1/HTTP adapter and supports anonymous session creation. The optional Convex backend requires trusted authenticated identity for creation; existing link/capability-based joins remain anonymous-compatible. An operator must integrate the identity provider for new Convex sessions or provision a session through an authenticated client first. Merely setting a client URL does not provision identity. To connect the browser to an existing dedicated Convex backend, supply its **public client URL** to Vite:
 
 ```sh
 VITE_CONVEX_URL=https://your-convex-client-endpoint npm run dev
@@ -47,7 +47,7 @@ An online URL is a reusable, unlisted invitation. Anyone possessing it may join,
 
 The status distinguishes pending writes, confirmed saves, connection loss, storage failures and conflicts. Concurrent stale writes are rejected; the unsaved local result stays visible with a conflict message until reload. Pending online saves trigger the browser's leave-page confirmation. The Site HTTP transport automatically retries temporary connection/server failures with the same command ID, revision and plan, so a lost acknowledgement cannot double-apply a change. A remote update refreshes the calculated result while preserving an uncommitted local form draft.
 
-Cursors are separate from plan updates. They appear only on the same floor/item or production view, respect independent pan/zoom, clear on pointer leave or hidden tabs, and expire after 15 seconds without heartbeat. No presenter/camera following is introduced. The server retains 128 retry receipts per session, permits 128 browser memberships and eight simultaneous cursor clients per membership. New-session creation is limited to five attempts per minute and 512 durable sessions per deployment; existing sessions remain accessible at those limits. Saved plans are not automatically deleted. This is separate from the older rooms API's uncapped participant model.
+Cursors are separate from plan updates. They appear only on the same floor/item or production view, respect independent pan/zoom, clear on pointer leave or hidden tabs, and expire after 15 seconds without heartbeat. No presenter/camera following is introduced. The server retains 128 retry receipts per session, permits 128 browser memberships and eight simultaneous cursor clients per membership. New-session creation is limited to five attempts per minute per trusted caller and 512 durable sessions per deployment; existing sessions remain accessible at those limits. Saved plans are not automatically deleted. This is separate from the older rooms API's uncapped participant model.
 
 Online browser acceptance uses a real running Convex backend (not a browser mock):
 

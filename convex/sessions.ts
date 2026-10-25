@@ -52,17 +52,39 @@ async function verified(
 }
 const chargeRef = makeFunctionReference<
   'mutation',
-  Record<string, never>,
+  { actorKey: string },
   string | null
 >('sessions:chargeCreation');
+const expireActorRef = makeFunctionReference<'mutation'>(
+  'sessions:expireActor',
+);
+export const expireActor = internalMutationGeneric({
+  args: { key: v.string() },
+  handler: async (ctx, a) => {
+    if (!/^actor:[a-f0-9]{64}$/.test(a.key))
+      throw new Error('invalid-admission-key');
+    const row = await ctx.db
+      .query('sessionAdmission')
+      .withIndex('by_key', (q) => q.eq('key', a.key))
+      .unique();
+    if (row) {
+      const remaining = row.windowStart + 300000 - Date.now();
+      if (remaining <= 0) await ctx.db.delete(row._id);
+      else await ctx.scheduler.runAfter(remaining, expireActorRef, a);
+    }
+    return null;
+  },
+});
 export const chargeCreation = internalMutationGeneric({
-  args: {},
-  handler: async (ctx) => {
-    let row = await ctx.db
+  args: { actorKey: v.string() },
+  handler: async (ctx, a) => {
+    if (!/^[a-f0-9]{64}$/.test(a.actorKey))
+      throw new Error('invalid-admission-key');
+    let global = await ctx.db
       .query('sessionAdmission')
       .withIndex('by_key', (q) => q.eq('key', 'global'))
       .unique();
-    if (!row) {
+    if (!global) {
       const count = (await ctx.db.query('sessions').take(513)).length;
       const id = await ctx.db.insert('sessionAdmission', {
         key: 'global',
@@ -70,17 +92,32 @@ export const chargeCreation = internalMutationGeneric({
         attempts: 0,
         durableCount: count,
       });
-      row = await ctx.db.get(id);
+      global = await ctx.db.get(id);
     }
-    if (!row) throw new Error('internal-error');
+    if (!global) throw new Error('internal-error');
+    const key = 'actor:' + a.actorKey;
+    const row = await ctx.db
+      .query('sessionAdmission')
+      .withIndex('by_key', (q) => q.eq('key', key))
+      .unique();
     const now = Date.now();
-    const fresh = row.windowStart <= now - 60000;
-    if (!fresh && row.attempts >= 5) return 'rate-limited';
-    await ctx.db.patch(row._id, {
-      attempts: fresh ? 1 : row.attempts + 1,
-      windowStart: fresh ? now : row.windowStart,
-    });
-    return row.durableCount >= 512 ? 'session-limit' : null;
+    const fresh = !row || row.windowStart <= now - 60000;
+    if (row && !fresh && row.attempts >= 5) return 'rate-limited';
+    if (row)
+      await ctx.db.patch(row._id, {
+        attempts: fresh ? 1 : row.attempts + 1,
+        windowStart: fresh ? now : row.windowStart,
+      });
+    else {
+      await ctx.db.insert('sessionAdmission', {
+        key,
+        attempts: 1,
+        windowStart: now,
+        durableCount: 0,
+      });
+      await ctx.scheduler.runAfter(300000, expireActorRef, { key });
+    }
+    return global.durableCount >= 512 ? 'session-limit' : null;
   },
 });
 const registerRef = makeFunctionReference<'mutation'>('sessions:register');
@@ -102,7 +139,18 @@ async function membership(
 export const create = actionGeneric({
   args: { plan: v.any(), name: v.string() },
   handler: async (ctx, args) => {
-    const error = await ctx.runMutation(chargeRef, {});
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error('creation-gate-required');
+    const actorKey = Array.from(
+      new Uint8Array(
+        await crypto.subtle.digest(
+          'SHA-256',
+          new TextEncoder().encode(identity.tokenIdentifier),
+        ),
+      ),
+      (b) => b.toString(16).padStart(2, '0'),
+    ).join('');
+    const error = await ctx.runMutation(chargeRef, { actorKey });
     if (error) throw new Error(error);
     return membership(ctx, args);
   },

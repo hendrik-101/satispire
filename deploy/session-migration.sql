@@ -33,3 +33,10 @@ CREATE TABLE site_session_admission (
  window_start INTEGER NOT NULL,
  attempts INTEGER NOT NULL
 );
+
+CREATE TABLE site_session_caller_admission (
+ actor_key TEXT PRIMARY KEY,
+ window_start INTEGER NOT NULL,
+ attempts INTEGER NOT NULL
+);
+CREATE INDEX site_caller_admission_expiry ON site_session_caller_admission(window_start);

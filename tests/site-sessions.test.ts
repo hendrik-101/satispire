@@ -24,7 +24,10 @@ const plan = {
   },
   layout: { rows: 0, variant: defaultBuildVariant },
 };
-function harness(sqlite = new DatabaseSync(':memory:')) {
+function harness(
+  sqlite = new DatabaseSync(':memory:'),
+  afterRun?: (sql: string) => Promise<void>,
+) {
   const db: SessionDatabase = {
     prepare(sql) {
       let args: SQLInputValue[] = [];
@@ -41,6 +44,7 @@ function harness(sqlite = new DatabaseSync(':memory:')) {
         },
         async run() {
           const r = sqlite.prepare(sql).run(...args);
+          await afterRun?.(sql);
           return { meta: { changes: Number(r.changes) } };
         },
       };
@@ -54,6 +58,7 @@ const call = (
   op: string,
   args: unknown,
   headers: Record<string, string> = {},
+  actorKey = 'fixture-caller',
 ) =>
   handleSessionRequest(
     new Request('https://site.test/api/sessions/' + op, {
@@ -66,6 +71,7 @@ const call = (
       body: JSON.stringify(args),
     }),
     db,
+    actorKey,
   );
 const auth = (m: Record<string, string>) => ({
   sessionId: m.sessionId,
@@ -299,7 +305,7 @@ describe('Sites durable D1 sessions', () => {
       (await call(db, 'join', { sessionId: a.sessionId, name: 'Bob' })).status,
     ).toBe(200);
     sqlite
-      .prepare('UPDATE site_session_admission SET window_start=?')
+      .prepare('UPDATE site_session_caller_admission SET window_start=?')
       .run(Date.now() - 60001);
     expect((await call(db, 'create', { name: 'New', plan })).status).toBe(200);
     sqlite.close();
@@ -323,6 +329,85 @@ describe('Sites durable D1 sessions', () => {
         }
       ).count,
     ).toBe(512);
+    sqlite.close();
+  });
+  it('isolates admission by trusted caller and ignores body or client headers', async () => {
+    const { db, sqlite } = setup();
+    for (let i = 0; i < 5; i++)
+      expect((await call(db, 'create', { name: 'Bad', plan: {} })).status).toBe(
+        400,
+      );
+    expect(
+      (
+        await call(
+          db,
+          'create',
+          { name: 'Alice', plan, actorKey: 'spoof' },
+          { 'CF-Connecting-IP': 'spoof' },
+        )
+      ).status,
+    ).toBe(429);
+    expect(
+      (await call(db, 'create', { name: 'Other', plan }, {}, 'other-caller'))
+        .status,
+    ).toBe(200);
+    const missing = await handleSessionRequest(
+      new Request('https://site.test/api/sessions/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Missing', plan }),
+      }),
+      db,
+    );
+    expect(missing.status).toBe(503);
+    const rows = sqlite
+      .prepare('SELECT actor_key FROM site_session_caller_admission')
+      .all();
+    expect(JSON.stringify(rows)).not.toContain('caller');
+    sqlite
+      .prepare('UPDATE site_session_caller_admission SET window_start=?')
+      .run(Date.now() - 300001);
+    await call(db, 'create', { name: 'New', plan }, {}, 'new-caller');
+    expect(
+      sqlite
+        .prepare('SELECT actor_key FROM site_session_caller_admission')
+        .all(),
+    ).toHaveLength(1);
+    sqlite.close();
+  });
+  it('keeps a new caller bucket during another caller admission cleanup', async () => {
+    const { db, sqlite } = setup();
+    let interleaved = false;
+    const paused = harness(sqlite, async (sql) => {
+      if (
+        !interleaved &&
+        sql.startsWith('INSERT OR IGNORE INTO site_session_caller_admission')
+      ) {
+        interleaved = true;
+        expect(
+          (
+            await call(
+              db,
+              'create',
+              { name: 'Other caller', plan },
+              {},
+              'other-actor',
+            )
+          ).status,
+        ).toBe(200);
+      }
+    }).db;
+    expect(
+      (
+        await call(
+          paused,
+          'create',
+          { name: 'First caller', plan },
+          {},
+          'first-actor',
+        )
+      ).status,
+    ).toBe(200);
     sqlite.close();
   });
 });

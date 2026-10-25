@@ -37,6 +37,23 @@ await serve({
   hostname: '127.0.0.1',
   port: 4178,
   silent: true,
-  fetch: (request) => worker.fetch(request, { DB }),
+  fetch: async (request) => {
+    // The loopback preview is the trusted server boundary; overwrite any caller-supplied value.
+    const headers = new Headers(request.headers);
+    headers.set('CF-Connecting-IP', '127.0.0.1');
+    const body =
+      request.method === 'GET' || request.method === 'HEAD'
+        ? null
+        : await request.arrayBuffer();
+    return worker.fetch(
+      new Request(request.url, {
+        method: request.method,
+        headers,
+        ...(body ? { body } : {}),
+        signal: request.signal,
+      }),
+      { DB },
+    );
+  },
 }).ready();
 console.log('Site acceptance server listening on http://127.0.0.1:4178');
