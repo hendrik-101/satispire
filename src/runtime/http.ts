@@ -20,8 +20,22 @@ export async function startHttpRuntime(options: {
   hostname?: string;
   port?: number;
   gracefulShutdown?: boolean;
+  convexUrl?: string;
 }): Promise<Server> {
   const { hostname, port } = listener.parse(options);
+  const convexUrl = options.convexUrl || null;
+  if (convexUrl) {
+    const url = new URL(convexUrl);
+    if (
+      !['http:', 'https:'].includes(url.protocol) ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      url.pathname !== '/'
+    )
+      throw new Error('Invalid CONVEX_URL');
+  }
   const version = buildInfo.parse(
     JSON.parse(
       await readFile(join(options.buildDirectory, 'build-info.json'), 'utf8'),
@@ -66,6 +80,8 @@ export async function startHttpRuntime(options: {
         'Cache-Control': 'no-store',
         'X-Content-Type-Options': 'nosniff',
       };
+      if (path === '/config.json')
+        return Response.json({ convexUrl }, { headers });
       if (path === '/healthz')
         return Response.json({ status: 'ok' }, { headers });
       if (path === '/version.json') return Response.json(version, { headers });

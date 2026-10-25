@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-const url = process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173';
+const url =
+  (process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173') + '/session';
 
 test('a calculated plan survives F5 in the same unique session', async ({
   page,
@@ -56,7 +57,7 @@ test('an unknown local session link does not masquerade as a new plan', async ({
     Boolean(process.env.VITE_CONVEX_URL),
     'Local fallback acceptance only',
   );
-  await page.goto(url + '/?session=' + 'a'.repeat(64));
+  await page.goto(url + '?session=' + 'a'.repeat(64));
   await expect(page.getByRole('alert')).toContainText('Session');
   await expect(page.getByLabel('Session-Status')).toContainText('Lokal');
 });

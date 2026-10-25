@@ -687,3 +687,26 @@ it('does not register a retry after a status callback synchronously closes the c
   expect(vi.getTimerCount()).toBe(0);
   await expect(saving).rejects.toThrow();
 });
+
+it.each([undefined, 'https://configured.convex.cloud'])(
+  'keeps explicit offline planning isolated from discovery and configured Convex (%s)',
+  async (convexUrl) => {
+    const c = createSessionController({
+      initialPlan,
+      localOnly: true,
+      ...(convexUrl ? { convexUrl } : {}),
+      onSnapshot: () => {},
+      onStatus: () => {},
+      onPresence: () => {},
+    });
+    controllers.push(c);
+    await c.start();
+    expect(c.mode).toBe('local');
+    await c.commit(editedPlan);
+    expect(storage.getItem('satispire.session.local.' + c.sessionId)).toContain(
+      '"rows":5',
+    );
+    expect(fetch).not.toHaveBeenCalled();
+    expect(remote.action).not.toHaveBeenCalled();
+  },
+);

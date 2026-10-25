@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { vanillaCatalog } from '../../src/domain/vanilla.js';
-const url = process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173';
+const url =
+  (process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173') + '/local';
 test('rejects a 1.0 plan without replacing the active 1.2 plan', async ({
   page,
 }) => {

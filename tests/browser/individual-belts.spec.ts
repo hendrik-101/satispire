@@ -9,7 +9,9 @@ import {
 test('two incoming steel belts each feed a real splitter and every machine joins the output mergers', async ({
   page,
 }) => {
-  await page.goto(process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173');
+  await page.goto(
+    (process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173') + '/local',
+  );
   await expect(page.locator('main.workspace')).toHaveAttribute(
     'data-ready',
     'true',

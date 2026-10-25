@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 
-const url = process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173';
+const url =
+  (process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173') + '/local';
 test('adds, edits, removes and round-trips multiple production goals', async ({
   page,
 }) => {

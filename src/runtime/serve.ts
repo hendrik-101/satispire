@@ -7,6 +7,7 @@ try {
   const server = await startHttpRuntime({
     buildDirectory: fileURLToPath(new URL('../../web-dist/', import.meta.url)),
     hostname: process.env.HOST ?? '127.0.0.1',
+    ...(process.env.CONVEX_URL ? { convexUrl: process.env.CONVEX_URL } : {}),
     port: Number(value),
   });
   console.log(`Satispire listening on ${server.url}`);

@@ -45,6 +45,7 @@ interface Options {
   onStatus(status: SessionStatus): void;
   onPresence(peers: SessionPresence[]): void;
   convexUrl?: string;
+  localOnly?: boolean;
   name?: string;
 }
 const createRef = makeFunctionReference<
@@ -100,7 +101,9 @@ function configuredUrl(): string | undefined {
 
 /** Owns browser persistence and revision ordering; no solver or layout work occurs here. */
 export function createSessionController(options: Options): SessionController {
-  const convexUrl = options.convexUrl ?? configuredUrl();
+  const convexUrl = options.localOnly
+    ? undefined
+    : (options.convexUrl ?? configuredUrl());
   let mode: SessionMode = convexUrl ? 'online' : 'local';
   let storageMode: string = mode;
   let http = false;
@@ -370,7 +373,7 @@ export function createSessionController(options: Options): SessionController {
         if (url.username || url.password || url.search || url.hash)
           throw new Error('Ungültige öffentliche Convex-URL.');
       }
-      if (!convexUrl) {
+      if (!convexUrl && !options.localOnly) {
         discovery = new AbortController();
         const timeout = setTimeout(() => discovery?.abort(), 2000);
         try {

@@ -9,7 +9,9 @@ import {
 test('shows decimal rates in target rows and connection cards while exports stay exact', async ({
   page,
 }) => {
-  await page.goto(process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173');
+  await page.goto(
+    (process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173') + '/local',
+  );
   await expect(page.locator('main.workspace')).toHaveAttribute(
     'data-ready',
     'true',
@@ -65,7 +67,9 @@ test('shows decimal rates in target rows and connection cards while exports stay
 test('preserves fraction text while typing and formats only the calculated value', async ({
   page,
 }) => {
-  await page.goto(process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173');
+  await page.goto(
+    (process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173') + '/local',
+  );
   await expect(page.locator('main.workspace')).toHaveAttribute(
     'data-ready',
     'true',

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-const url = process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173';
+const url =
+  (process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173') + '/session';
 test.skip(
   process.env.SATISPIRE_TEST_ONLINE !== '1',
   'Requires a running Convex deployment and VITE_CONVEX_URL',
@@ -71,6 +72,17 @@ test('a reusable session URL joins separate browsers, shares plans and restores 
     await expect(
       alice.getByLabel('Zielrate pro Minute', { exact: true }),
     ).toHaveValue('75');
+    await test.step('existing root session links restore the same HTTP session', async () => {
+      const rootLink = new URL(alice.url());
+      rootLink.pathname = '/';
+      await ready(alice, rootLink.href);
+      await expect(
+        alice.getByLabel('Zielrate pro Minute', { exact: true }),
+      ).toHaveValue('75');
+      await expect(
+        alice.getByRole('dialog', { name: 'Deine Räume' }),
+      ).toHaveCount(0);
+    });
   } finally {
     await first.close();
     await second.close();

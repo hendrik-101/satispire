@@ -7,6 +7,7 @@ services:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: '3000'
+      CONVEX_URL: '${CONVEX_URL:-}'
     ports:
       - '127.0.0.1:${SATISPIRE_HOST_PORT:?Supply a verified free loopback port}:3000'
     networks:

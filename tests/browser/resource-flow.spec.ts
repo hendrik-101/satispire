@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
-const url = process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173';
+const url =
+  (process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173') + '/local';
 test('resource colors and icons identify inputs and persist at their source output', async ({
   page,
 }) => {

@@ -1,7 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import { technologyAtTier, vanillaCatalog } from '../../src/domain/vanilla.js';
-const url = process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173';
+const url =
+  (process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173') + '/local';
 async function ready(page: import('@playwright/test').Page) {
   await page.goto(url);
   await expect(page.locator('main.workspace')).toHaveAttribute(

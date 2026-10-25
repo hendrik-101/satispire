@@ -1,7 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
 
 async function ready(page: Page) {
-  await page.goto(process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173');
+  await page.goto(
+    (process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173') + '/local',
+  );
   await expect(page.locator('main.workspace')).toHaveAttribute(
     'data-ready',
     'true',

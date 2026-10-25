@@ -1,6 +1,6 @@
 # Satispire test runtime and deployment guide
 
-The HTTP runtime serves the workspace; online sessions connect directly to a separately configured Convex backend. The application build does not provision that backend or a remote MCP server. Classic MCP stays stdio; WebMCP stays feature-detected in the browser. Local sessions persist in browser storage; configured online sessions persist complete plan intent in Convex. Plans remain exportable. No VPS/DNS/tunnel/credential changes or registry push are performed by these files. Runtime PR16 was squash-merged as 5302272 after successful gates; publication changes remain a separate follow-up.
+The HTTP runtime serves the workspace. `/` opens recent shared rooms, `/room/<roomId>#key=<shareSecret>` uses the Convex full-plan/history API, `/session` retains the existing session workspace, and `/local` provides explicit browser-only planning. Existing root `?session=<64hex>` links continue to open the session workspace. Online sessions use the separate Convex session API or the Sites HTTP/D1 adapter; the HTTP session backend does not serve the shared-room `plans:*` contract. The application build does not provision that backend or a remote MCP server. Classic MCP stays stdio; WebMCP stays feature-detected in the browser. Local sessions persist in browser storage; configured online sessions persist complete plan intent in their selected backend. Shared-room plans and history require Convex. Plans remain exportable. No VPS/DNS/tunnel/credential changes or registry push are performed by these files. Runtime PR16 was squash-merged as 5302272 after successful gates; publication changes remain a separate follow-up.
 
 ## Local production start
 
@@ -80,16 +80,49 @@ After explicit integration permission: squash PR13 to main, recreate PR14 on tha
 
 PR15 contains base-repair merge commits 622740b, 6f61628 and 636affb. A naive ordinary rebase/cherry-pick can drop their resolutions or replay repairs already included in the squash base. The net patch preserves the final intended child difference. If main gains unrelated changes, exact pinned-tree equality no longer proves safe integration: stop and reconcile explicitly rather than discarding those changes.
 
+## Shared room backend configuration
+
+Provision and deploy the checked-in Convex functions only through a separately
+authorized backend deployment. No credentials or deployment URL are included in
+this repository. Start the immutable Node image with `CONVEX_URL` set to the
+backend's public client URL (for example `https://<deployment>.convex.cloud`).
+`deploy/compose.test.yml` passes this optional variable through. The runtime
+validates HTTP(S), rejects embedded credentials, queries and fragments, and exposes
+only `{ "convexUrl": ... }` through uncached GET/HEAD `/config.json`. Do not set
+this variable to a deploy key or admin credential. This is public configuration,
+not an authentication secret, and does not require rebuilding the image.
+
+This runtime URL configures the shared-room client. It does not configure the existing session controller, which uses the build-time session configuration below. For Vite development, `CONVEX_URL` also supplies `/config.json`; alternatively,
+`VITE_CONVEX_URL` can provide a build-time public URL. Backend capabilities are
+obtained from registered create/join functions, not from deployment credentials.
+Without a configured URL the entry dialog and cached room labels still render,
+but create/join reports that online rooms are unavailable. `/local` remains
+usable. No shared-room save is simulated in browser storage.
+
+The HTTP listener still rejects application write methods; Convex handles its own
+transactions and WebSocket subscriptions. Browser acceptance must verify two
+independent memberships, reusable join links, URL/Share equality, output-labelled
+rejoin, reconnect, revision conflicts, history pagination and undo against the
+actual chosen deployment before a hosted rollout is accepted. Local convex-test
+and controlled-wire browser tests establish implementation behavior, not hosted
+credentials, connectivity or durable backend operations.
+
 ## Online session build configuration
 
 Deploy the current `convex/` functions to a dedicated Satispire backend before publishing an online build. Supply its public HTTPS client endpoint as `VITE_CONVEX_URL` while running `npm run build:runtime`. This value is compiled into the client and is intentionally public. It must never contain an admin/deploy key. Hosted `CONVEX_DEPLOY_KEY`, or self-hosted `CONVEX_SELF_HOSTED_URL` plus `CONVEX_SELF_HOSTED_ADMIN_KEY`, belong only in the secured backend deployment environment used by `npx convex deploy`.
 
-The unchanged default CI image has no configured Convex URL and therefore runs explicitly local sessions. A successful main artifact upload publishes that local-mode container artifact; it does not imply a live online URL or online collaboration. An online publication must build the accepted source with the actual endpoint, preserve immutable image/revision identity, and verify two independent browsers joining the same session through public HTTPS. The standard HTTP listener still accepts only GET/HEAD: mutations and subscriptions go directly to Convex. Its existing read-only container filesystem remains appropriate because server plan storage belongs to Convex, not this HTTP container.
+The default CI image has no configured Convex URL: `/session` falls back to explicitly local sessions, `/local` remains browser-only, and shared-room create/join is unavailable until a backend URL is supplied. A successful main artifact upload publishes that local-mode container artifact; it does not imply a live online URL or online collaboration. An online publication must build the accepted source with the actual endpoint, preserve immutable image/revision identity, and verify two independent browsers joining the same session through public HTTPS. The standard HTTP listener still accepts only GET/HEAD: mutations and subscriptions go directly to Convex. Its existing read-only container filesystem remains appropriate because server plan storage belongs to Convex, not this HTTP container.
 
 ## ChatGPT Site publication
 
 For the existing personal ChatGPT Site, publish the Worker variant with its managed D1 binding. `npm run build:site` builds the application and Worker; the packaging script accepts the personal manifest and generated Drizzle migration directory. Keep these personal declarations in the Site source repository, preserve its exact project ID and audience, synchronize the accepted upstream commit, then push that exact source before saving/deploying its archive through Sites. Publication provisions the logical D1 binding and applies schema-only migrations before uploading the Worker. Do not reuse another application's backend or publish a static local-only export as online collaboration.
 
-The Site adapter is verified in CI with `npm run test:browser:site`. This acceptance runs the built Worker over HTTP with actual SQLite and separate browser contexts; native Sites deployment and a public URL still require successful publication verification. The generic container's default configuration remains local mode.
+The Site adapter is verified in CI with `npm run test:browser:site`. This acceptance runs the built Worker over HTTP with actual SQLite and separate browser contexts; native Sites deployment and a public URL still require successful publication verification. The generic container's default session configuration remains local mode. The Sites HTTP/D1 adapter supports `/session` and existing `?session=` links; it does not implement the `/room/` full-plan history API. A Site must additionally configure a dedicated compatible Convex endpoint to offer those shared rooms.
 
 For public Sites creation, the Worker must receive Cloudflare's trusted CF-Connecting-IP header; absent caller identity fails closed for new sessions. Per-caller buckets expire after inactivity. Do not substitute caller-provided JSON, arbitrary forwarded-for values or a fixed global identifier in a public deployment. The fixed loopback preview identity is local-only. Optional Convex creation requires a configured trusted identity provider and an authenticated client; its anonymous creation action is not exposed by default. Capability-based joins/reads/edits keep their existing contract.
+
+The static Site export includes separate `/local` and `/session` entry documents
+and a public room HTML shell. The Worker accepts that shell only for UUID-shaped
+`/room/<roomId>` paths; unknown routes and missing assets still return 404. Room
+plans and membership are fetched by the browser through the configured Convex
+room backend, not embedded into the public HTML export.
