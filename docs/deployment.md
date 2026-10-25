@@ -126,3 +126,16 @@ and a public room HTML shell. The Worker accepts that shell only for UUID-shaped
 `/room/<roomId>` paths; unknown routes and missing assets still return 404. Room
 plans and membership are fetched by the browser through the configured Convex
 room backend, not embedded into the public HTML export.
+
+### Shared rooms on Sites
+
+The Site also serves shared rooms through its existing D1 binding; Convex is
+not required for this deployment. Apply `deploy/room-migration.sql` after the
+existing session migration for a new database. Personal Sites retain their
+existing Drizzle journal and generate an additional migration from the room
+tables; do not replace earlier migrations or recreate the database.
+
+`npm run test:browser:site` includes the home-page room creation flow, a second
+browser joining the generated share link, persistent edits after reload,
+history and undo, plus the existing session acceptance. The same room creation
+flow must also be verified on the deployed URL after native publication.

@@ -1,5 +1,7 @@
 import { ConvexError } from 'convex/values';
 import { ConvexClient } from 'convex/browser';
+import { HttpRoomClient, type RoomClient } from './http-room-client';
+export type { RoomClient } from './http-room-client';
 import { roomApi, type Membership, type RoomPlan } from '../../src/room-api';
 import {
   browserRoomStorage,
@@ -7,10 +9,10 @@ import {
   storeMembership,
 } from './recent-rooms';
 
-let client: ConvexClient | undefined;
+let client: RoomClient | undefined;
 const volatileMembers = new Map<string, Membership>();
-let preparing: Promise<ConvexClient> | undefined;
-export function getRoomClient(): Promise<ConvexClient> {
+let preparing: Promise<RoomClient> | undefined;
+export function getRoomClient(): Promise<RoomClient> {
   if (client) return Promise.resolve(client);
   return (preparing ??= prepare().catch((error) => {
     preparing = undefined;
@@ -21,7 +23,10 @@ async function prepare() {
   let url = import.meta.env.VITE_CONVEX_URL as string | undefined;
   if (!url) {
     try {
-      const response = await fetch('/config.json', { cache: 'no-store' });
+      const response = await fetch('/config.json', {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(15000),
+      });
       if (response.ok) {
         const config = await response.json();
         if (typeof config.convexUrl === 'string') url = config.convexUrl;
@@ -30,7 +35,24 @@ async function prepare() {
       /* An unconfigured Vite workspace remains explicitly local. */
     }
   }
-  if (!url) throw new Error('Online-Räume sind derzeit nicht verfügbar.');
+  if (!url) {
+    try {
+      const response = await fetch('/api/room-config', {
+        cache: 'no-store',
+        credentials: 'same-origin',
+        redirect: 'error',
+        signal: AbortSignal.timeout(15000),
+      });
+      if (response.ok) {
+        const config = await response.json();
+        if (config.transport === 'http')
+          return (client ??= new HttpRoomClient());
+      }
+    } catch {
+      /* A missing transport configuration leaves online rooms unavailable. */
+    }
+    throw new Error('Online-Räume sind derzeit nicht verfügbar.');
+  }
   return (client ??= new ConvexClient(url, { logger: false }));
 }
 export function roomErrorCode(error: unknown): string {

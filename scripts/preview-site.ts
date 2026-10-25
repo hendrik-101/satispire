@@ -1,7 +1,8 @@
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { serve } from 'srvx/node';
-import type { SessionDatabase } from '../src/runtime/site-sessions.js';
+import type { SessionStatement } from '../src/runtime/site-sessions.js';
+import type { RoomDatabase } from '../src/runtime/site-rooms.js';
 const database = new DatabaseSync(':memory:');
 database.exec(
   readFileSync(
@@ -9,11 +10,21 @@ database.exec(
     'utf8',
   ),
 );
-const DB: SessionDatabase = {
+database.exec(
+  readFileSync(
+    new URL('../deploy/room-migration.sql', import.meta.url),
+    'utf8',
+  ),
+);
+const executions = new WeakMap<
+  SessionStatement,
+  () => { meta: { changes: number } }
+>();
+const DB: RoomDatabase = {
   prepare(query: string) {
     const statement = database.prepare(query);
     let values: SQLInputValue[] = [];
-    return {
+    const prepared: SessionStatement = {
       bind(...args: SQLInputValue[]) {
         values = args;
         return this;
@@ -28,6 +39,25 @@ const DB: SessionDatabase = {
         return { meta: { changes: Number(statement.run(...values).changes) } };
       },
     };
+    executions.set(prepared, () => ({
+      meta: { changes: Number(statement.run(...values).changes) },
+    }));
+    return prepared;
+  },
+  async batch(statements) {
+    database.exec('BEGIN');
+    try {
+      const results = statements.map((statement) => {
+        const execute = executions.get(statement);
+        if (!execute) throw new Error('Unknown prepared statement');
+        return execute();
+      });
+      database.exec('COMMIT');
+      return results;
+    } catch (error) {
+      database.exec('ROLLBACK');
+      throw error;
+    }
   },
 };
 const worker = (
