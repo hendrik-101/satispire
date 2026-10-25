@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { itemName } from '../../src/domain/vanilla';
+import { localizedName as itemName } from './labels.js';
 import type { SharedPlan } from '../../src/domain/shared-plan';
 import type { Membership } from '../../src/room-api';
 import type { UnlockStorage } from './unlock-storage';

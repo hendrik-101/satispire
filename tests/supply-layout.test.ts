@@ -155,3 +155,60 @@ it('separates target deliveries from internal transfers without double counting 
   expect(chain.floors[0]!.targetOutput).toBeNull();
   expect(chain.floors[0]!.connections.targetOutput).toBeNull();
 });
+it('uses exact input and output capacity to permit longer automatic rows at higher belt tiers', () => {
+  const plan = solveProduction(vanillaCatalog, input);
+  const low = generateSupplyLayout(
+    vanillaCatalog,
+    plan,
+    { ...technology, beltTier: 1 },
+    0,
+  );
+  const high = generateSupplyLayout(vanillaCatalog, plan, technology, 0);
+  expect(
+    low.floors.find((f) => f.itemId === 'Desc_IronPlate_C')!.rowCounts,
+  ).toEqual(Array(8).fill(2));
+  expect(
+    high.floors.find((f) => f.itemId === 'Desc_IronPlate_C')!.rowCounts,
+  ).toEqual([8, 8]);
+  expect(
+    generateSupplyLayout(
+      vanillaCatalog,
+      plan,
+      { ...technology, beltTier: 1 },
+      3,
+    ).floors.find((f) => f.itemId === 'Desc_IronPlate_C')!.rowCounts,
+  ).toEqual([6, 5, 5]);
+});
+it('limits automatic rows by exact fractional output demand and the selected pipe capacity', () => {
+  // Synthetic transport fixture: only the output is fluid, isolating its capacity limit.
+  const catalog = {
+    ...vanillaCatalog,
+    items: vanillaCatalog.items.map((item) =>
+      item.id === 'Desc_IronPlate_C'
+        ? { ...item, transport: 'pipe' as const }
+        : item,
+    ),
+  };
+  const solved = solveProduction(vanillaCatalog, input);
+  const plan = {
+    ...solved,
+    nodes: solved.nodes.map((node) =>
+      node.itemId === 'Desc_IronPlate_C' ? { ...node, rate: '9601/10' } : node,
+    ),
+    targets: [{ itemId: 'Desc_IronPlate_C', rate: '9601/10' }],
+  };
+  const profile = { ...technology, beltTier: 6, pipeTier: 1 };
+  const low = generateSupplyLayout(catalog, plan, profile, 0);
+  const high = generateSupplyLayout(
+    catalog,
+    plan,
+    { ...profile, pipeTier: 2 },
+    0,
+  );
+  expect(
+    low.floors.find((f) => f.itemId === 'Desc_IronPlate_C')!.rowCounts,
+  ).toEqual([4, 4, 4, 4]);
+  expect(
+    high.floors.find((f) => f.itemId === 'Desc_IronPlate_C')!.rowCounts,
+  ).toEqual([8, 8]);
+});

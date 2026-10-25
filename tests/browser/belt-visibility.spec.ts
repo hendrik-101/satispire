@@ -46,7 +46,7 @@ test('clicking a machine opens its actual recipe, per-machine rates and clock de
   await page.goto(url);
   await expect(page.locator('main')).toHaveAttribute('data-ready', 'true');
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
-  await page.getByLabel('HUB-Tier').selectOption('4');
+  await page.getByLabel('HUB-Stufe').selectOption('4');
   await page
     .getByRole('button', { name: 'Profil anwenden', exact: true })
     .click();
@@ -68,7 +68,7 @@ test('clicking a machine opens its actual recipe, per-machine rates and clock de
     name: 'Stufeninspector',
   });
   await expect(inspector).toBeVisible();
-  await expect(inspector).toContainText('Steel Beam');
+  await expect(inspector).toContainText('Stahlträger');
   await expect(inspector).toContainText('87,5 % · Untertaktet');
   await expect(inspector.getByLabel('Mengen je Maschine')).toContainText(
     '13,125 Stk./min',

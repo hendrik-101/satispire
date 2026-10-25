@@ -46,11 +46,11 @@ import {
   technologyAtTier,
   availableChoices,
   availableRecipes,
-  itemName,
   recipeUnlocks,
 } from '../../src/domain/vanilla.js';
 import { generateSupplyLayout } from '../../src/domain/supply-layout.js';
 import { type TechnologyProfile } from '../../src/domain/technology.js';
+import { localizedName as itemName } from './labels.js';
 import { FloorView } from './FloorView';
 import { Graph } from './Graph';
 import { Icon } from './Icon';
@@ -219,9 +219,15 @@ export function Workspace({
   const planMatchesSession =
     JSON.stringify(factory.technology) ===
     JSON.stringify(sessionProfile.technology);
+  // Controller hydration can make `ready` visible before React applies its profile state.
+  // Keep the authoritative room profile ahead of persistence and editable controls.
+  const workspaceReady =
+    ready &&
+    (!!shared ||
+      canonical(sessionProfile) === canonical(sessionRoom.current.unlocks));
   const presentation = effectivePresentation(preferences, width);
   useEffect(() => {
-    if (!ready || shared) return;
+    if (!workspaceReady || shared) return;
     const room = sessionRoom.current;
     const app = createLocalApplication(
       room,
@@ -260,7 +266,7 @@ export function Workspace({
       dispose();
       application.current = null;
     };
-  }, [ready, sessionEpoch]);
+  }, [workspaceReady, sessionEpoch]);
   useEffect(() => {
     const restored =
       shared?.plan.unlocks ??
@@ -427,7 +433,7 @@ export function Workspace({
         })
         .catch((e: unknown) => {
           if (!disposed) {
-            setError('Session: ' + message(e));
+            setError('Sitzung: ' + message(e));
             setReady(true);
           }
         });
@@ -444,7 +450,7 @@ export function Workspace({
     };
   }, []);
   useEffect(() => {
-    if (!ready) return;
+    if (!workspaceReady) return;
     if (shared) return;
     const saved = saveUnlockProfile(
       sessionUnlockStorage,
@@ -455,7 +461,7 @@ export function Workspace({
     setStorageNotice(
       saved.session && saved.browser
         ? ''
-        : 'Browser-Speicherung eingeschränkt. Die Unlocks gelten weiterhin für die laufende Session.',
+        : 'Browser-Speicherung eingeschränkt. Die Freischaltungen gelten weiterhin für die laufende Sitzung.',
     );
     if (hydratingSnapshot.current) {
       hydratingSnapshot.current = false;
@@ -498,14 +504,14 @@ export function Workspace({
       if (!defaults[target] && Object.keys(defaults)[0])
         setTarget(Object.keys(defaults)[0]!);
       setError(
-        'Session-Unlocks geändert. Der bisherige Plan ist damit nicht berechenbar: ' +
+        'Sitzungsfreischaltungen geändert. Der bisherige Plan ist damit nicht berechenbar: ' +
           message(e),
       );
     }
-  }, [ready, sessionProfile]);
+  }, [workspaceReady, sessionProfile]);
   useEffect(() => {
     const session = controller.current;
-    if (!ready || !session || lastSnapshot.current === null) return;
+    if (!workspaceReady || !session || lastSnapshot.current === null) return;
     const document = planFileSchema.parse({
       schemaVersion: 1,
       catalogVersion: catalog.catalogVersion,
@@ -521,7 +527,7 @@ export function Workspace({
       (submittedPlans.current.get(serialized) ?? 0) + 1,
     );
     void session.commit(document).catch((e: unknown) => setError(message(e)));
-  }, [ready, factory, sessionProfile]);
+  }, [workspaceReady, factory, sessionProfile]);
   useEffect(() => {
     if (!ready) return;
     controller.current?.setPresence({
@@ -798,9 +804,9 @@ export function Workspace({
     if (!result.ok)
       throw new Error(
         result.error?.code === 'revision-conflict'
-          ? 'Die Session wurde inzwischen geändert. Bitte öffne die Einstellungen erneut.'
+          ? 'Die Sitzung wurde inzwischen geändert. Bitte öffne die Einstellungen erneut.'
           : (result.error?.message ??
-            'Session-Unlocks konnten nicht gespeichert werden.'),
+            'Sitzungsfreischaltungen konnten nicht gespeichert werden.'),
       );
   }
   async function importPlan(file: File) {
@@ -827,7 +833,9 @@ export function Workspace({
         JSON.stringify(importedProfile.technology) !==
         JSON.stringify(technology)
       )
-        throw new Error('Plan und Session-Unlocks passen nicht zusammen.');
+        throw new Error(
+          'Plan und Sitzungsfreischaltungen passen nicht zusammen.',
+        );
       const next = evaluate(
         input,
         technology,
@@ -1020,7 +1028,7 @@ export function Workspace({
             }
           }}
         >
-          <option value="0">Auto</option>
+          <option value="0">Automatisch</option>
           {[1, 2, 3, 4, 6, 8].map((n) => (
             <option key={n} value={n}>
               {n}
@@ -1028,31 +1036,13 @@ export function Workspace({
           ))}
         </select>
       </label>
-      <label>
-        Zoom
-        <select
-          aria-label="Zoom"
-          value={preferences.camera.zoom}
-          onChange={(e) =>
-            setPreferences((p) =>
-              updateViewPreferences(p, {
-                camera: { zoom: Number(e.target.value) },
-              }),
-            )
-          }
-        >
-          <option value="0.5">50 %</option>
-          <option value="1">100 %</option>
-          <option value="1.25">125 %</option>
-        </select>
-      </label>
     </>
   );
   return (
-    <main className="workspace" data-ready={ready ? 'true' : 'false'}>
+    <main className="workspace" data-ready={workspaceReady ? 'true' : 'false'}>
       <fieldset
         className="workspace hydration-boundary"
-        disabled={!ready || shared?.busy}
+        disabled={!workspaceReady || shared?.busy}
       >
         <header className="app-header">
           <h1>Satispire</h1>
@@ -1061,13 +1051,13 @@ export function Workspace({
             title={sessionStatus.sessionId ?? undefined}
           >
             {sessionStatus.sessionId
-              ? `Session ${sessionStatus.sessionId.slice(0, 8)}`
+              ? `Sitzung ${sessionStatus.sessionId.slice(0, 8)}`
               : 'Meine Fabrik'}
           </span>
           {!shared && (
             <span
               className="session-status"
-              aria-label="Session-Status"
+              aria-label="Sitzungsstatus"
               role="status"
               title={sessionStatus.message}
             >
@@ -1087,12 +1077,12 @@ export function Workspace({
                   .writeText(sessionStatus.link!)
                   .catch(() =>
                     setError(
-                      'Der Session-Link steht in der Adresszeile und kann dort kopiert werden.',
+                      'Der Sitzungslink steht in der Adresszeile und kann dort kopiert werden.',
                     ),
                   );
               }}
             >
-              Session-Link kopieren
+              Sitzungslink kopieren
             </button>
           )}
           <span className="catalog-version" title={catalog.catalogVersion}>
@@ -1109,9 +1099,9 @@ export function Workspace({
           >
             <details
               className="target-editor"
-              open={width > 640 || targetsExpanded}
+              open={targetsExpanded}
               onToggle={(e) => {
-                if (width <= 640) setTargetsExpanded(e.currentTarget.open);
+                setTargetsExpanded(e.currentTarget.open);
               }}
             >
               <summary>
@@ -1151,7 +1141,7 @@ export function Workspace({
                         )}
                         {manufactured.map((item) => (
                           <option key={item.id} value={item.id}>
-                            {item.name}
+                            {itemName(item.id, item.name)}
                           </option>
                         ))}
                       </select>
@@ -1257,7 +1247,7 @@ export function Workspace({
                   <>
                     <div className="sizing-amount">
                       <label className="sr-only" htmlFor="input-rate">
-                        Inputrate pro Minute
+                        Eingangsmenge pro Minute
                       </label>
                       <input
                         id="input-rate"
@@ -1275,7 +1265,7 @@ export function Workspace({
                       </span>
                     </div>
                     <label className="sr-only" htmlFor="input-item">
-                      Verfügbarer Input
+                      Verfügbares Material
                     </label>
                     <select
                       id="input-item"
@@ -1284,7 +1274,7 @@ export function Workspace({
                       disabled={pending || sizingInputs.length === 0}
                     >
                       {sizingInputs.length === 0 && (
-                        <option value="">Kein verfügbarer Input</option>
+                        <option value="">Kein verfügbares Material</option>
                       )}
                       {sizingInputs.map((entry) => (
                         <option key={entry.itemId} value={entry.itemId}>
@@ -1350,14 +1340,14 @@ export function Workspace({
                     ? 'Navigation'
                     : name === 'graph'
                       ? 'Graph'
-                      : 'Inspector'
+                      : 'Details'
                 }
                 title={
                   name === 'navigation'
                     ? 'Navigation'
                     : name === 'graph'
                       ? 'Graph'
-                      : 'Inspector'
+                      : 'Details'
                 }
                 aria-pressed={presentation.panels[name]}
                 disabled={name === 'navigation' && width < 1200}
@@ -1428,8 +1418,8 @@ export function Workspace({
         )}
         {!planMatchesSession && !profileOpen && (
           <div role="status" className="error-banner">
-            Der angezeigte Plan verwendet frühere Session-Unlocks. Wähle ein
-            freigeschaltetes Ziel und berechne ihn erneut.
+            Der angezeigte Plan verwendet frühere Sitzungsfreischaltungen. Wähle
+            ein freigeschaltetes Ziel und berechne ihn erneut.
           </div>
         )}
         <div className="workspace-body">
@@ -1540,12 +1530,16 @@ export function Workspace({
             <div className={'views preset-' + presentation.preset}>
               {presentation.preset !== 'production' && (
                 <FloorView
-                  key={`${selected}:${factory.rows}:${stage.machineCount}`}
                   catalog={catalog}
                   plan={factory.plan}
                   technology={factory.technology}
                   selected={selected}
                   zoom={preferences.camera.zoom}
+                  onZoomChange={(zoom) =>
+                    setPreferences((p) =>
+                      updateViewPreferences(p, { camera: { zoom } }),
+                    )
+                  }
                   rows={factory.rows}
                   variant={factory.variant}
                   changeVariant={(variant) => {
@@ -1644,13 +1638,7 @@ export function Workspace({
               </div>
               <dl>
                 <dt>Aktives Rezept</dt>
-                <dd>
-                  {
-                    catalog.recipes.find(
-                      (recipe) => recipe.id === stage.recipeId,
-                    )!.name
-                  }
-                </dd>
+                <dd>{itemName(stage.recipeId)}</dd>
                 <dt>Stufenrate</dt>
                 <dd>{formatRate(stage.rate)} / min</dd>
                 <dt>Maschinen</dt>
@@ -1720,7 +1708,7 @@ export function Workspace({
                     .filter((r) => r.outputs[0]!.itemId === stage.itemId)
                     .map((r) => (
                       <option key={r.id} value={r.id}>
-                        {r.name}
+                        {itemName(r.id, r.name)}
                       </option>
                     ))}
                 </select>
@@ -1776,9 +1764,9 @@ export function Workspace({
           </div>
           <div className="profile-controls">
             <label>
-              HUB-Tier
+              HUB-Stufe
               <select
-                aria-label="HUB-Tier"
+                aria-label="HUB-Stufe"
                 value={tier}
                 onChange={(e) => {
                   if (e.target.value === 'custom') return;
@@ -1802,9 +1790,9 @@ export function Workspace({
               </select>
             </label>
             <label>
-              Space Elevator
+              Weltraumlift
               <select
-                aria-label="Abgeschlossene Space-Elevator-Phase"
+                aria-label="Abgeschlossene Weltraumlift-Phase"
                 value={phase}
                 onChange={(e) => {
                   const next = Number(e.target.value);
@@ -1826,9 +1814,9 @@ export function Workspace({
               </select>
             </label>
             <label>
-              Belts
+              Förderbänder
               <select
-                aria-label="Maximales Belt-Tier"
+                aria-label="Maximale Förderbandstufe"
                 value={profileDraft.beltTier}
                 onChange={(e) => {
                   setTier('custom');
@@ -1846,9 +1834,9 @@ export function Workspace({
               </select>
             </label>
             <label>
-              Pipes
+              Rohre
               <select
-                aria-label="Maximales Pipe-Tier"
+                aria-label="Maximale Rohrstufe"
                 value={profileDraft.pipeTier}
                 onChange={(e) => {
                   setTier('custom');
@@ -1864,14 +1852,14 @@ export function Workspace({
             </label>
           </div>
           <p className="profile-help">
-            Gilt für die gesamte Session. Alle Teilnehmer können die Unlocks
-            ändern. Neue Sessions starten mit deinen zuletzt im Browser
-            gespeicherten Einstellungen.
+            Gilt für die gesamte Sitzung. Alle Teilnehmer können die
+            Freischaltungen ändern. Neue Sitzungen starten mit deinen zuletzt im
+            Browser gespeicherten Einstellungen.
           </p>
           <p className="profile-help">
-            HUB-Tiers sind Vorlagen. Eine niedrigere Space-Elevator-Phase
-            begrenzt die Vorlage; einzelne Unlocks lassen sich anschließend
-            individuell anpassen.
+            HUB-Stufen sind Vorlagen. Eine niedrigere Weltraumlift-Phase
+            begrenzt die Vorlage; einzelne Freischaltungen lassen sich
+            anschließend individuell anpassen.
           </p>
           <h3>Maschinen</h3>
           <div className="machine-options">
@@ -1879,13 +1867,13 @@ export function Workspace({
               <label key={m.id}>
                 <input
                   type="checkbox"
-                  aria-label={'Maschine ' + m.name}
+                  aria-label={'Maschine ' + itemName(m.id, m.name)}
                   checked={profileDraft.availableMachines.includes(m.id)}
                   onChange={(e) =>
                     toggleProfile('availableMachines', m.id, e.target.checked)
                   }
                 />
-                {m.name}
+                {itemName(m.id, m.name)}
               </label>
             ))}
           </div>
@@ -1900,21 +1888,23 @@ export function Workspace({
           <div className="recipe-options">
             {catalog.recipes
               .filter((r) =>
-                r.name.toLowerCase().includes(search.toLowerCase()),
+                `${itemName(r.id, r.name)} ${r.name}`
+                  .toLowerCase()
+                  .includes(search.toLowerCase()),
               )
               .map((r) => (
                 <label key={r.id}>
                   <input
                     type="checkbox"
-                    aria-label={'Rezept ' + r.name}
+                    aria-label={'Rezept ' + itemName(r.id, r.name)}
                     checked={profileDraft.unlockedRecipes.includes(r.id)}
                     onChange={(e) =>
                       toggleProfile('unlockedRecipes', r.id, e.target.checked)
                     }
                   />
                   <span>
-                    {r.name}
-                    {recipeUnlocks[r.id]!.alternate ? ' · Alt' : ''}
+                    {itemName(r.id, r.name)}
+                    {recipeUnlocks[r.id]!.alternate ? ' · Alternativ' : ''}
                   </span>
                 </label>
               ))}

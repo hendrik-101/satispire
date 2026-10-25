@@ -96,7 +96,7 @@ test('a delayed import cannot overwrite a newer shared phase with identical tech
   ).toBeEnabled();
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
   await expect(
-    page.getByLabel('Abgeschlossene Space-Elevator-Phase'),
+    page.getByLabel('Abgeschlossene Weltraumlift-Phase'),
   ).toHaveValue('1');
 });
 
@@ -106,7 +106,7 @@ test('shared locks mark the old plan and disable export until recalculation unde
   await installSessionTools(page);
   await ready(page);
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
-  await page.getByLabel('HUB-Tier').selectOption('3');
+  await page.getByLabel('HUB-Stufe').selectOption('3');
   await page.getByRole('button', { name: 'Profil anwenden' }).click();
   await page.getByLabel('Produktionsziel').selectOption('Desc_SteelIngot_C');
   await page
@@ -130,7 +130,7 @@ test('shared locks mark the old plan and disable export until recalculation unde
     page.getByRole('button', { name: 'Plan exportieren', exact: true }),
   ).toBeDisabled();
   await expect(page.locator('.error-banner[role="status"]')).toContainText(
-    'frühere Session-Unlocks',
+    'frühere Sitzungsfreischaltungen',
   );
   await page.getByLabel('Reihen', { exact: true }).selectOption('2');
   await expect(
@@ -159,10 +159,10 @@ test('blocked browser storage retains applied session settings and shows a notic
     'Browser-Speicherung eingeschränkt',
   );
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
-  await page.getByLabel('HUB-Tier').selectOption('4');
+  await page.getByLabel('HUB-Stufe').selectOption('4');
   await page.getByRole('button', { name: 'Profil anwenden' }).click();
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
-  await expect(page.getByLabel('HUB-Tier')).toHaveValue('4');
+  await expect(page.getByLabel('HUB-Stufe')).toHaveValue('4');
 });
 
 test('session commands update the UI and a stale open dialog cannot overwrite newer settings', async ({
@@ -171,7 +171,7 @@ test('session commands update the UI and a stale open dialog cannot overwrite ne
   await installSessionTools(page);
   await ready(page);
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
-  await page.getByLabel('HUB-Tier').selectOption('3');
+  await page.getByLabel('HUB-Stufe').selectOption('3');
   const profile = createUnlockProfile(7);
   const result = await page.evaluate(async (profile) => {
     const tools = (
@@ -192,7 +192,7 @@ test('session commands update the UI and a stale open dialog cannot overwrite ne
   await expect(page.getByRole('alert')).toContainText('inzwischen geändert');
   await page.getByRole('button', { name: 'Abbrechen' }).click();
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
-  await expect(page.getByLabel('HUB-Tier')).toHaveValue('7');
+  await expect(page.getByLabel('HUB-Stufe')).toHaveValue('7');
 });
 
 test('restores a custom profile whose usable targets exclude the default iron plate plan', async ({
@@ -233,59 +233,71 @@ test('restores a custom profile whose usable targets exclude the default iron pl
     'Desc_SteelIngot_C',
   );
 });
-test('applied session unlocks survive reload and initialize a fresh session from browser defaults', async ({
+test('applied session unlocks survive reload and cleared tab storage without startup writes', async ({
   page,
 }) => {
   await ready(page);
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
-  await page.getByLabel('HUB-Tier').selectOption('4');
+  await page.getByLabel('HUB-Stufe').selectOption('4');
   await expect(
-    page.getByLabel('Abgeschlossene Space-Elevator-Phase'),
+    page.getByLabel('Abgeschlossene Weltraumlift-Phase'),
   ).toHaveValue('1');
-  await page.getByLabel('Rezepte suchen').fill('Cast Screws');
+  await page.getByLabel('Rezepte suchen').fill('Gegossene Schrauben');
   await page
-    .getByLabel('Rezept Alternate: Cast Screws', { exact: true })
+    .getByLabel('Rezept Alternativ: Gegossene Schrauben', { exact: true })
     .check();
   await page.getByRole('button', { name: 'Profil anwenden' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
+  const beforeReload = await page.evaluate(() => {
+    const id = new URL(location.href).searchParams.get('session');
+    return JSON.parse(localStorage.getItem('satispire.session.local.' + id)!)
+      .revision as number;
+  });
   await page.reload();
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
   await expect(
-    page.getByLabel('Abgeschlossene Space-Elevator-Phase'),
+    page.getByLabel('Abgeschlossene Weltraumlift-Phase'),
   ).toHaveValue('1');
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const id = new URL(location.href).searchParams.get('session');
+        return JSON.parse(
+          localStorage.getItem('satispire.session.local.' + id)!,
+        ).revision as number;
+      }),
+    )
+    .toBe(beforeReload);
+
   await expect(
-    page.getByLabel('Maschine Foundry', { exact: true }),
+    page.getByLabel('Maschine Gießerei', { exact: true }),
   ).toBeChecked();
-  await page.getByLabel('Rezepte suchen').fill('Cast Screws');
+  await page.getByLabel('Rezepte suchen').fill('Gegossene Schrauben');
   await expect(
-    page.getByLabel('Rezept Alternate: Cast Screws', { exact: true }),
+    page.getByLabel('Rezept Alternativ: Gegossene Schrauben', { exact: true }),
   ).toBeChecked();
-  await page
-    .getByLabel('Abgeschlossene Space-Elevator-Phase')
-    .selectOption('2');
+  await page.getByLabel('Abgeschlossene Weltraumlift-Phase').selectOption('2');
   await expect(
-    page.getByLabel('Rezept Alternate: Cast Screws', { exact: true }),
+    page.getByLabel('Rezept Alternativ: Gegossene Schrauben', { exact: true }),
   ).toBeChecked();
   await page.getByRole('button', { name: 'Abbrechen' }).click();
   await page.evaluate(() => sessionStorage.clear());
   await page.reload();
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
   await expect(
-    page.getByLabel('Maschine Foundry', { exact: true }),
+    page.getByLabel('Maschine Gießerei', { exact: true }),
   ).toBeChecked();
-  await page.getByLabel('HUB-Tier').selectOption('9');
-  await page
-    .getByLabel('Abgeschlossene Space-Elevator-Phase')
-    .selectOption('0');
-  await expect(page.getByLabel('HUB-Tier')).toHaveValue('2');
+  await page.getByLabel('HUB-Stufe').selectOption('9');
+  await page.getByLabel('Abgeschlossene Weltraumlift-Phase').selectOption('0');
+  await expect(page.getByLabel('HUB-Stufe')).toHaveValue('2');
   await expect(
-    page.getByLabel('Maschine Foundry', { exact: true }),
+    page.getByLabel('Maschine Gießerei', { exact: true }),
   ).not.toBeChecked();
   await page.getByRole('button', { name: 'Abbrechen' }).click();
   await page.reload();
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
   await expect(
-    page.getByLabel('Abgeschlossene Space-Elevator-Phase'),
+    page.getByLabel('Abgeschlossene Weltraumlift-Phase'),
   ).toHaveValue('1');
 });
 
@@ -319,7 +331,7 @@ test('an existing calculated session restores even when browser defaults unlock 
     });
   }, profile);
   expect(result.ok).toBe(true);
-  await expect(page.getByLabel('Session-Status')).toContainText('Gespeichert');
+  await expect(page.getByLabel('Sitzungsstatus')).toContainText('Gespeichert');
   const link = page.url();
   await page.reload();
   await expect(page.locator('main.workspace')).toHaveAttribute(
@@ -332,7 +344,7 @@ test('an existing calculated session restores even when browser defaults unlock 
     page.getByRole('button', { name: 'Plan exportieren', exact: true }),
   ).toBeDisabled();
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
-  await page.getByLabel('HUB-Tier').selectOption('2');
+  await page.getByLabel('HUB-Stufe').selectOption('2');
   await page.getByRole('button', { name: 'Profil anwenden' }).click();
   await expect(page.getByLabel('Produktionsziel', { exact: true })).toHaveValue(
     'Desc_IronRod_C',
@@ -340,7 +352,7 @@ test('an existing calculated session restores even when browser defaults unlock 
   await expect(
     page.getByLabel('Zielrate pro Minute', { exact: true }),
   ).toHaveValue('75');
-  await expect(page.getByLabel('Session-Status')).toContainText('Gespeichert');
+  await expect(page.getByLabel('Sitzungsstatus')).toContainText('Gespeichert');
   await page.reload();
   await expect(
     page.getByLabel('Zielrate pro Minute', { exact: true }),

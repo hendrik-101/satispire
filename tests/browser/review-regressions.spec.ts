@@ -81,7 +81,7 @@ for (const scenario of [
         .click();
       await expect(page.getByRole('alert')).toHaveCount(0);
     }
-    await page.getByRole('button', { name: 'Inspector', exact: true }).click();
+    await page.getByRole('button', { name: 'Details', exact: true }).click();
     await page
       .getByLabel('Stufe auswählen', { exact: true })
       .selectOption(scenario.item);
@@ -114,7 +114,7 @@ test('import preserves active selected alternates while dropping inactive locked
     .getByRole('button', { name: 'Plan berechnen', exact: true })
     .click();
   await expect(page.getByRole('alert')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Inspector', exact: true }).click();
+  await page.getByRole('button', { name: 'Details', exact: true }).click();
   await page
     .getByLabel('Stufe auswählen', { exact: true })
     .selectOption('Desc_IronScrew_C');
@@ -147,7 +147,7 @@ test('input-free photonic matter has only output ports in the canvas, graph and 
     page.locator('.machine-button.selected .machine-port'),
   ).toHaveCount(1);
   await page.getByRole('button', { name: 'Graph', exact: true }).click();
-  await page.getByRole('button', { name: 'Inspector', exact: true }).click();
+  await page.getByRole('button', { name: 'Details', exact: true }).click();
   await expect(page.locator('.graph-node.selected .machine-port')).toHaveCount(
     1,
   );
@@ -167,6 +167,7 @@ test('input-free photonic matter has only output ports in the canvas, graph and 
 test('advanced graph assigns distinct in-bounds lanes beyond eight bypass edges', async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
   const technology = technologyAtTier(9, allRecipes);
   await importProduction(page, {
     targets: [{ itemId: 'Desc_SpaceElevatorPart_5_C', rate: '1' }],
@@ -190,6 +191,7 @@ test('advanced graph assigns distinct in-bounds lanes beyond eight bypass edges'
   );
   expect(Math.max(...lanes)).toBeLessThan(height);
   const scroll = page.locator('.graph-scroll');
+  expect((await scroll.boundingBox())!.height).toBeGreaterThanOrEqual(300);
   await scroll.evaluate((element) => {
     element.scrollTop = element.scrollHeight;
   });

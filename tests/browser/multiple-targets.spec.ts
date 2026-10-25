@@ -107,7 +107,7 @@ test('input sizing ignores an invalid disabled primary output rate', async ({
   await expect(page.locator('main')).toHaveAttribute('data-ready', 'true');
   await page.getByLabel('Zielrate pro Minute', { exact: true }).fill('');
   await page.getByLabel('Berechnungsmodus').selectOption('input');
-  await page.getByLabel('Inputrate pro Minute').fill('180');
+  await page.getByLabel('Eingangsmenge pro Minute').fill('180');
   await page
     .getByRole('button', { name: 'Plan berechnen', exact: true })
     .click();
@@ -232,7 +232,7 @@ test('input sizing preserves the promoted goals demand ratio after removing the 
     page.getByLabel('Zielrate pro Minute 3', { exact: true }),
   ).toHaveValue('40');
   await page.getByLabel('Berechnungsmodus').selectOption('input');
-  await page.getByLabel('Inputrate pro Minute').fill('180');
+  await page.getByLabel('Eingangsmenge pro Minute').fill('180');
   await page
     .getByRole('button', { name: 'Ziel 1 entfernen', exact: true })
     .click();

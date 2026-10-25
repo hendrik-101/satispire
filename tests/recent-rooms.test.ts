@@ -24,7 +24,7 @@ it('uses canonical URLs and displays outputs rather than identifiers', () => {
     `https://example.org/room/${id}#key=${secret}`,
   );
   expect(outputLabel(initialSharedPlan())).toContain('20');
-  expect(outputLabel(initialSharedPlan())).toContain('Iron Plate');
+  expect(outputLabel(initialSharedPlan())).toContain('Eisenplatte');
   expect(() => roomUrl('https://example.org', '../escape', secret)).toThrow();
 });
 it('deduplicates and sorts recent rooms while keeping membership separate', () => {

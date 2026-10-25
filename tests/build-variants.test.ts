@@ -202,3 +202,42 @@ it('retains the legitimate 64-override schema boundary', async () => {
     variantSchema.parse({ ...defaultBuildVariant, overrides }).overrides,
   ).toEqual(overrides);
 });
+it('aligns sibling branches with their producer and resolves conflicting parents deterministically', () => {
+  const branching = {
+    ...plan,
+    nodes: [
+      node('a', ['b', 'c']),
+      node('b', ['d']),
+      node('c', ['d']),
+      node('d', ['ore']),
+    ],
+  };
+  const result = deriveBuildVariants(branching);
+  expect(
+    result.floors.map((f) => [f.itemId, f.inputSide, f.outputSide]),
+  ).toEqual([
+    ['d', 'west', 'east'],
+    ['b', 'east', 'west'],
+    ['c', 'east', 'west'],
+    ['a', 'west', 'east'],
+  ]);
+  expect(result.transfers.every((t) => t.sideChanges === 0)).toBe(true);
+  const overridden = deriveBuildVariants(branching, {
+    ...defaultBuildVariant,
+    overrides: [{ itemId: 'b', inputSide: 'north', outputSide: 'east' }],
+  });
+  expect(overridden.floors.find((f) => f.itemId === 'a')!.inputSide).toBe(
+    'west',
+  );
+  expect(
+    overridden.transfers.find(
+      (t) => t.fromItemId === 'b' && t.toItemId === 'a',
+    )!.sideChanges,
+  ).toBe(2);
+  expect(
+    deriveBuildVariants({
+      ...branching,
+      nodes: [...branching.nodes].reverse(),
+    }),
+  ).toEqual(result);
+});

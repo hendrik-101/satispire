@@ -4,6 +4,9 @@ import type { Catalog } from '../../src/domain/catalog.js';
 import type { ProductionPlan } from '../../src/domain/production.js';
 import { displayName, graphConnections } from './model';
 import { formatRate } from './format-rate.js';
+import { graphLayout } from './graph-layout.js';
+import { resourceColor } from './resource-colors.js';
+import { localizedName } from './labels.js';
 
 export function Graph({
   plan,
@@ -20,7 +23,16 @@ export function Graph({
 }) {
   const markerId = useId().replace(/:/g, '');
   const label = (id: string) =>
-    displayName(catalog.items.find((item) => item.id === id)?.name ?? id);
+    localizedName(
+      id,
+      catalog.items.find((item) => item.id === id)?.name ?? displayName(id),
+    );
+  const machineLabel = (id: string) =>
+    localizedName(
+      id,
+      catalog.machines.find((machine) => machine.id === id)?.name ??
+        displayName(id),
+    );
   const edges = graphConnections(plan);
   const ids = [
     ...new Set([
@@ -40,43 +52,12 @@ export function Graph({
       </section>
     );
   }
-  const depths = new Map<string, number>();
-  function depth(id: string): number {
-    const cached = depths.get(id);
-    if (cached !== undefined) return cached;
-    const incoming = edges.filter((edge) => edge.to === id);
-    const result = incoming.length
-      ? 1 + Math.max(...incoming.map((edge) => depth(edge.from)))
-      : 0;
-    depths.set(id, result);
-    return result;
-  }
-  const rows = new Map<number, string[]>();
-  for (const id of ids) {
-    const level = depth(id);
-    rows.set(level, [...(rows.get(level) ?? []), id]);
-  }
-  const rowCount = Math.max(1, ...[...rows.values()].map((row) => row.length));
-  const columnCount = Math.max(0, ...rows.keys()) + 1;
-  const width = columnCount * 240 - 64 + 24;
-  const contentHeight = rowCount * 116;
+  const { depths, positions, width, contentHeight } = graphLayout(ids, edges);
   const bypassEdges = edges.filter(
-    (edge) => depth(edge.to) - depth(edge.from) > 1,
+    (edge) => depths.get(edge.to)! - depths.get(edge.from)! > 1,
   );
   const height =
     contentHeight + (bypassEdges.length ? 16 + bypassEdges.length * 8 : 0);
-  const positions = new Map(
-    ids.map((id) => {
-      const row = rows.get(depth(id))!;
-      return [
-        id,
-        {
-          x: depth(id) * 240 + 12,
-          y: row.indexOf(id) * 116 + 12 + (rowCount - row.length) * 58,
-        },
-      ];
-    }),
-  );
   const activeEdges = new Set<(typeof edges)[number]>();
   for (const upstream of [true, false]) {
     const pending = [selected];
@@ -126,12 +107,15 @@ export function Graph({
             const from = positions.get(edge.from)!;
             const to = positions.get(edge.to)!;
             const active = activeEdges.has(edge);
-            const outputs = edges.filter(
-              (candidate) => candidate.from === edge.from,
-            );
-            const inputs = edges.filter(
-              (candidate) => candidate.to === edge.to,
-            );
+            const color = resourceColor(edge.from);
+            const outputs = edges
+              .filter((candidate) => candidate.from === edge.from)
+              .sort((a, b) => positions.get(a.to)!.y - positions.get(b.to)!.y);
+            const inputs = edges
+              .filter((candidate) => candidate.to === edge.to)
+              .sort(
+                (a, b) => positions.get(a.from)!.y - positions.get(b.from)!.y,
+              );
             const startX = from.x + 176;
             const startY =
               from.y +
@@ -140,10 +124,19 @@ export function Graph({
               to.y + (92 * (inputs.indexOf(edge) + 1)) / (inputs.length + 1);
             const bypassIndex = bypassEdges.indexOf(edge);
             const bypassY = contentHeight + 8 + bypassIndex * 8;
+            // Distinct stems stay inside the 64px inter-column gap.
+            const exitX =
+              startX +
+              32 -
+              (20 * (outputs.indexOf(edge) + 1)) / (outputs.length + 1);
+            const entryX =
+              to.x -
+              32 +
+              (20 * (inputs.indexOf(edge) + 1)) / (inputs.length + 1);
             const path =
               bypassIndex < 0
                 ? `M ${startX} ${startY} C ${startX + 32} ${startY}, ${to.x - 32} ${endY}, ${to.x - 5} ${endY}`
-                : `M ${startX} ${startY} H ${startX + 24} V ${bypassY} H ${to.x - 24} V ${endY} H ${to.x - 5}`;
+                : `M ${startX} ${startY} H ${exitX} V ${bypassY} H ${entryX} V ${endY} H ${to.x - 5}`;
             return (
               <g key={edge.from + '>' + edge.to + ':' + index}>
                 <path
@@ -155,16 +148,19 @@ export function Graph({
                       : '')
                   }
                   d={path}
+                  stroke={color}
                   markerEnd={`url(#${markerId})`}
                 />
                 <circle
                   className={'graph-port' + (active ? ' active' : '')}
+                  stroke={color}
                   cx={startX}
                   cy={startY}
                   r={3}
                 />
                 <circle
                   className={'graph-port' + (active ? ' active' : '')}
+                  stroke={color}
                   cx={to.x}
                   cy={endY}
                   r={3}
@@ -219,16 +215,9 @@ export function Graph({
                       </strong>
                       <small
                         className="graph-node-machine"
-                        title={
-                          catalog.machines.find((m) => m.id === node.machineId)
-                            ?.name ?? node.machineId
-                        }
+                        title={machineLabel(node.machineId)}
                       >
-                        {node.machineCount} ×{' '}
-                        {displayName(
-                          catalog.machines.find((m) => m.id === node.machineId)
-                            ?.name ?? node.machineId,
-                        )}
+                        {node.machineCount} × {machineLabel(node.machineId)}
                       </small>
                     </span>
                   </button>
@@ -251,7 +240,7 @@ export function Graph({
                       <strong className="graph-node-rate">
                         {formatRate(item.rate)} <small>/ min</small>
                       </strong>
-                      <small className="graph-node-machine">Import</small>
+                      <small className="graph-node-machine">Zufuhr</small>
                     </span>
                   </div>
                 )}

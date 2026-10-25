@@ -11,7 +11,7 @@ test('direct entry opens a single recent-room dialog with output labels', async 
         {
           roomId: '172be3fe-e426-46c2-84f4-765639fcebee',
           shareSecret: 'a'.repeat(64),
-          label: '40 Iron Plate/min · 20 Iron Rod/min',
+          label: '40 Eisenplatte/min · 20 Eisenstange/min',
           visitedAt: 1,
         },
       ]),
@@ -20,7 +20,9 @@ test('direct entry opens a single recent-room dialog with output labels', async 
   await page.goto(base);
   const dialog = page.getByRole('dialog', { name: 'Deine Räume' });
   await expect(dialog).toBeVisible();
-  await expect(page.getByRole('link', { name: /40 Iron Plate/ })).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: /40 Eisenplatte/ }),
+  ).toBeVisible();
   await expect(dialog).not.toContainText('172be3fe');
   await page.getByRole('button', { name: 'Neuen Raum starten' }).click();
   await expect(page.getByRole('alert')).toContainText('Online-Räume');
@@ -101,7 +103,7 @@ test('creates the canonical shared room, synchronizes two browsers and undoes th
   await page.getByRole('button', { name: 'Historie schließen' }).click();
   await page.getByRole('link', { name: 'Räume', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Deine Räume' })).toBeVisible();
-  await page.getByRole('link', { name: /20 Iron Plate/ }).click();
+  await page.getByRole('link', { name: /20 Eisenplatte/ }).click();
   await expect(page).toHaveURL(canonical);
   await expect(page.locator('main.workspace')).toHaveAttribute(
     'data-ready',
@@ -158,7 +160,7 @@ test('saves rows and unlocks atomically and keeps personal navigation out of his
   await page.getByLabel('Reihen', { exact: true }).selectOption('2');
   await expect.poll(() => fixture.state().plan.layout.rows).toBe(2);
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
-  await page.getByLabel('HUB-Tier').selectOption('4');
+  await page.getByLabel('HUB-Stufe').selectOption('4');
   await page
     .getByRole('button', { name: 'Profil anwenden', exact: true })
     .click();
@@ -167,7 +169,8 @@ test('saves rows and unlocks atomically and keeps personal navigation out of his
   expect(fixture.state().plan.production.technology).toEqual(
     fixture.state().plan.unlocks.technology,
   );
-  await page.getByLabel('Zoom', { exact: true }).selectOption('0.5');
+  await page.getByRole('button', { name: 'Verkleinern', exact: true }).click();
+  await expect(page.getByLabel('Aktueller Zoom')).toHaveText('83 %');
   expect(fixture.state().revision).toBe(2);
 });
 
@@ -520,7 +523,7 @@ test('existing session URLs still reopen their saved plan without the room entry
   await page
     .getByRole('button', { name: 'Plan berechnen', exact: true })
     .click();
-  await expect(page.getByLabel('Session-Status')).toContainText('Gespeichert');
+  await expect(page.getByLabel('Sitzungsstatus')).toContainText('Gespeichert');
   const sessionId = new URL(page.url()).searchParams.get('session');
   expect(sessionId).toMatch(/^[a-f0-9]{64}$/);
   await page.goto(base + '/?session=' + sessionId);

@@ -4,7 +4,7 @@ import {
   transportCapacity,
   type TechnologyProfile,
 } from '../../src/domain/technology.js';
-import { itemName } from '../../src/domain/vanilla.js';
+import { localizedName as itemName } from './labels.js';
 import { formatRate } from './format-rate.js';
 import {
   optimizeCorridors,
@@ -51,16 +51,17 @@ export function flowDescription(
       ? 'Band'
       : 'Bänder';
   return {
-    name:
-      catalog.items.find((i) => i.id === flow.itemId)?.name ??
-      itemName(flow.itemId),
+    name: itemName(
+      flow.itemId,
+      catalog.items.find((i) => i.id === flow.itemId)?.name,
+    ),
     rate: `${formatRate(flow.rate)} ${unit}`,
     transport: `${flow.lines} ${transport} Mk.${tier} · je ${transportCapacity(catalog, flow.itemId, technology)} ${unit}`,
   };
 }
 
 /** Renderer-only schematic routes. Each material owns an intake and a rail. */
-export function supplySceneMetrics(
+function prepareSupplyScene(
   layout: Layout,
   floor: Floor,
   catalog: Catalog,
@@ -279,6 +280,150 @@ export function supplySceneMetrics(
     }
   }
   const allLabels = [...labels, outputLabel];
+  return {
+    shift,
+    feeds,
+    maxX,
+    maxY,
+    firstY,
+    lastY,
+    inputRail,
+    outputRail,
+    feeders,
+    inputSpines,
+    labels,
+    inputAnchors,
+    output,
+    outputLabel,
+    allLabels,
+  };
+}
+
+/** Bounds preparation never routes belts or places individual load labels. */
+export function supplySceneBounds(
+  layout: Layout,
+  floor: Floor,
+  catalog: Catalog,
+  technology: TechnologyProfile,
+  compact = false,
+) {
+  const prepared = prepareSupplyScene(
+    layout,
+    floor,
+    catalog,
+    technology,
+    compact,
+  );
+  const {
+    shift,
+    maxX,
+    maxY,
+    inputSpines,
+    outputRail,
+    inputAnchors,
+    output,
+    allLabels,
+  } = prepared;
+  const inputs = floor.inputs.reduce((sum, feed) => sum + feed.lines, 0);
+  const lanes = inputs + floor.transport.collectors;
+  const leftOutput =
+    floor.outputSide === 'west' || floor.outputSide === 'north';
+  // Include exterior corridors (2-unit pitch), serpentine sides and delivery trees.
+  const deliveryOrders = floor.transport.nodes
+    .filter((node) => node.stage === 'delivery')
+    .map((node) => node.order);
+  const deliveryReach =
+    floor.transport.collectors * 2 +
+    deliveryPitch +
+    Math.max(0, ...deliveryOrders) * deliveryPitch;
+  const labelWidth = Math.max(
+    0,
+    ...floor.transport.edges.map(
+      (edge) => (formatRate(edge.rate).length + 7) * 0.96 + 1,
+    ),
+  );
+  // Load labels may sit five units off a route; track reservation can shift by 14.4.
+  const margin = Math.max(16, labelWidth + 6);
+  const left =
+    Math.min(
+      shift,
+      shift - 4 - lanes * 2,
+      outputRail - (leftOutput ? deliveryReach : 0),
+      ...inputSpines,
+      ...inputAnchors.map((anchor) => anchor.x),
+      output.x,
+      ...allLabels.map((label) => label.x),
+    ) - margin;
+  const top =
+    Math.min(
+      shift,
+      ...floor.machines.map((machine) => machine.y + shift - 4 - inputs * 3.2),
+      ...inputAnchors.map(
+        (anchor, index) =>
+          anchor.y - (floor.inputs[index]!.lines * deliveryPitch) / 2,
+      ),
+      output.y - (floor.transport.outputLines * deliveryPitch) / 2,
+      ...allLabels.map((label) => label.y),
+    ) - margin;
+  const right =
+    Math.max(
+      shift + layout.footprint.width,
+      maxX + lanes * 2 + 4,
+      shift + floor.width + 4 + lanes * 2,
+      outputRail + (leftOutput ? 0 : deliveryReach),
+      ...inputSpines,
+      ...inputAnchors.map((anchor) => anchor.x),
+      output.x,
+      ...allLabels.map((label) => label.x + label.width),
+      ...layout.transfers.map(
+        (transfer) =>
+          transfer.x + shift + 6 + itemName(transfer.fromItemId).length * 1.1,
+      ),
+    ) + margin;
+  const bottom =
+    Math.max(
+      shift + layout.footprint.depth,
+      maxY + 4 + floor.transport.collectors * 3.2,
+      ...inputAnchors.map(
+        (anchor, index) =>
+          anchor.y + (floor.inputs[index]!.lines * deliveryPitch) / 2,
+      ),
+      output.y + (floor.transport.outputLines * deliveryPitch) / 2,
+      ...allLabels.map((label) => label.y + label.height),
+    ) + margin;
+  return {
+    sceneLeft: left,
+    sceneTop: top,
+    sceneWidth: right - left,
+    sceneHeight: bottom - top,
+  };
+}
+
+/** Detailed routing is reserved for the visible floor. */
+export function supplySceneMetrics(
+  layout: Layout,
+  floor: Floor,
+  catalog: Catalog,
+  technology: TechnologyProfile,
+  compact = false,
+) {
+  const {
+    shift,
+    feeds,
+    maxX,
+    maxY,
+    firstY,
+    lastY,
+    inputRail,
+    outputRail,
+    feeders,
+    inputSpines,
+    labels,
+    inputAnchors,
+    output,
+    outputLabel,
+    allLabels,
+  } = prepareSupplyScene(layout, floor, catalog, technology, compact);
   const routeContext = {
     shift,
     inputSpines,
@@ -395,7 +540,11 @@ export function supplySceneMetrics(
     ...allLabels.map((l) => l.y - 2),
   );
   const sceneRight = Math.max(
-    shift + floor.width + 3,
+    shift + layout.footprint.width + 3,
+    ...layout.transfers.map(
+      (transfer) =>
+        transfer.x + shift + 6 + itemName(transfer.fromItemId).length * 1.1,
+    ),
     ...loadLabels.map((label) => label.x + label.width + 1),
     ...points.map((point) => point.x + 2),
     outputRail + 3,
@@ -406,7 +555,7 @@ export function supplySceneMetrics(
     maxY + 8,
     ...loadLabels.map((label) => label.y + label.height + 1),
     ...points.map((point) => point.y + 2),
-    shift + floor.depth + 3,
+    shift + layout.footprint.depth + 3,
     ...allLabels.map((l) => l.y + l.height + 2),
   );
   return {

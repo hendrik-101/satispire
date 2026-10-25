@@ -3,7 +3,7 @@ import type {
   SessionPresenceInput,
 } from '../../src/session-plan.js';
 import { RemoteCursors } from './RemoteCursors.js';
-import { supplySceneMetrics } from './supply-scene.js';
+import { supplySceneBounds, supplySceneMetrics } from './supply-scene.js';
 import { type BuildVariant } from '../../src/domain/build-variants.js';
 import { VariantControl } from './VariantControl.js';
 import { SupplyDiagram } from './SupplyDiagram.js';
@@ -13,10 +13,11 @@ import type { Catalog } from '../../src/domain/catalog.js';
 import type { ProductionPlan } from '../../src/domain/production.js';
 import type { TechnologyProfile } from '../../src/domain/technology.js';
 import { generateSupplyLayout } from '../../src/domain/supply-layout.js';
-import { itemName } from '../../src/domain/vanilla.js';
+import { localizedName as itemName } from './labels.js';
 import { MachineGlyph } from './MachineGlyph.js';
 import { resourcePalette } from './resource-colors.js';
 import { formatPercent, formatRate } from './format-rate.js';
+import { Rational } from '../../src/domain/rational.js';
 
 export function FloorView({
   catalog,
@@ -24,6 +25,7 @@ export function FloorView({
   technology,
   selected,
   zoom,
+  onZoomChange,
   rows,
   variant,
   changeVariant,
@@ -40,6 +42,7 @@ export function FloorView({
   technology: TechnologyProfile;
   selected: string;
   zoom: number;
+  onZoomChange?: (zoom: number) => void;
   rows: number;
   variant: BuildVariant;
   changeVariant: (variant: BuildVariant) => void;
@@ -90,12 +93,43 @@ export function FloorView({
     x: m.x + 17,
     y: m.y + 17,
   }));
+  // Scene geometry depends on the factory, never on the selected floor.
+  const scenes = useMemo(
+    () =>
+      layout.floors.map((entry) =>
+        supplySceneBounds(layout, entry, catalog, technology, compact),
+      ),
+    [layout, catalog, technology, compact],
+  );
   const scene = useMemo(
     () => supplySceneMetrics(layout, floor, catalog, technology, compact),
     [layout, floor, catalog, technology, compact],
   );
-  const { feeds, sceneLeft, sceneTop, sceneWidth, sceneHeight } = scene;
-  const scale = zoom * camera.scale;
+  const feeds = scene.feeds;
+  const sceneLeft = Math.min(...scenes.map((entry) => entry.sceneLeft));
+  const sceneTop = Math.min(...scenes.map((entry) => entry.sceneTop));
+  const sceneWidth =
+    Math.max(...scenes.map((entry) => entry.sceneLeft + entry.sceneWidth)) -
+    sceneLeft;
+  const sceneHeight =
+    Math.max(...scenes.map((entry) => entry.sceneTop + entry.sceneHeight)) -
+    sceneTop;
+  const machineRate = (rate: string, itemId: string) =>
+    `${formatRate(
+      Rational.parseCanonical(rate)
+        .divide(Rational.parse(String(stage.machineCount)))
+        .toString(),
+    )} ${catalog.items.find((item) => item.id === itemId)?.transport === 'pipe' ? 'm³/min' : 'Stk./min'}`;
+  const machineDescription = `${itemName(floor.machineId)} · Takt ${formatPercent(stage.utilization)} · EIN: ${stage.inputs.map((input) => `${itemName(input.itemId)} ${machineRate(input.rate, input.itemId)}`).join(', ')} · AUS: ${itemName(stage.itemId)} ${machineRate(stage.rate, stage.itemId)}`;
+  const scale = onZoomChange ? zoom : zoom * camera.scale;
+  const changeZoom = (factor: number) => {
+    if (onZoomChange) onZoomChange(Math.max(0.05, Math.min(20, zoom * factor)));
+    else
+      setCamera((current) => ({
+        ...current,
+        scale: Math.max(0.4, Math.min(4, current.scale * factor)),
+      }));
+  };
   const aspect =
     viewport.width && viewport.height
       ? viewport.width / viewport.height
@@ -113,14 +147,18 @@ export function FloorView({
         <VariantControl
           variant={variant}
           itemId={floor.itemId}
-          index={floor.index}
+          inputSide={floor.inputSide}
+          outputSide={floor.outputSide}
           onChange={changeVariant}
         />
       </div>
       <div className="floor-canvas-tools">
         <button
           type="button"
-          onClick={() => setCamera({ x: 0, y: 0, scale: 1 / zoom })}
+          onClick={() => {
+            setCamera({ x: 0, y: 0, scale: onZoomChange ? 1 : 1 / zoom });
+            onZoomChange?.(1);
+          }}
           aria-label="Schema einpassen"
         >
           Einpassen
@@ -128,27 +166,23 @@ export function FloorView({
         <button
           type="button"
           aria-label="Verkleinern"
-          onClick={() =>
-            setCamera((c) => ({
-              ...c,
-              scale: Math.max(0.4, c.scale / (compact ? 1.5 : 1.2)),
-            }))
-          }
+          onClick={() => changeZoom(1 / (compact ? 1.5 : 1.2))}
         >
           −
         </button>
         <button
           type="button"
           aria-label="Vergrößern"
-          onClick={() =>
-            setCamera((c) => ({
-              ...c,
-              scale: Math.min(4, c.scale * (compact ? 1.5 : 1.2)),
-            }))
-          }
+          onClick={() => changeZoom(compact ? 1.5 : 1.2)}
         >
           +
         </button>
+        <output
+          aria-label="Aktueller Zoom"
+          data-canvas-zoom={Math.round(scale * 100)}
+        >
+          {Math.round(scale * 100)} %
+        </output>
       </div>
       <div className="drawing">
         <svg
@@ -162,15 +196,7 @@ export function FloorView({
           role="group"
           aria-label={`Blockschema ${itemName(floor.itemId)}`}
           style={{ width: '100%', touchAction: 'none', overflow: 'hidden' }}
-          onWheel={(event) => {
-            setCamera((c) => ({
-              ...c,
-              scale: Math.max(
-                0.4,
-                Math.min(4, c.scale * (event.deltaY < 0 ? 1.1 : 1 / 1.1)),
-              ),
-            }));
-          }}
+          onWheel={(event) => changeZoom(event.deltaY < 0 ? 1.1 : 1 / 1.1)}
           onPointerDown={(event) => {
             if (
               (event.target as Element).closest(
@@ -266,6 +292,7 @@ export function FloorView({
               tabIndex={0}
               aria-label={`${itemName(floor.machineId)} ${m.id}`}
               aria-pressed={machine === m.id}
+              aria-describedby={`${marker}-machine-${m.id}`}
               onFocus={() => {
                 const left = m.x - 2;
                 const right = m.x + m.width + 2;
@@ -294,7 +321,8 @@ export function FloorView({
                 }
               }}
             >
-              <title>{`${itemName(floor.machineId)} ${m.id} · Takt ${formatPercent(stage.utilization)}`}</title>
+              <title>{`${itemName(floor.machineId)} ${m.id} · ${machineDescription}`}</title>
+              <desc id={`${marker}-machine-${m.id}`}>{machineDescription}</desc>
               <svg
                 x={m.x}
                 y={m.y}
@@ -330,7 +358,14 @@ export function FloorView({
         className="canvas-grid-key"
         title="Farbe = Rohstoff · Pfeile = Flussrichtung"
       >
-        Foundation 8 × 8 m · Raster 0,5 m{' '}
+        Fundament 8 × 8 m · Raster 0,5 m{' '}
+        <span>
+          {itemName(floor.machineId)} = Maschinensymbol · EIN = Eingang · AUS =
+          Ausgang
+        </span>
+        <span>
+          Farbe = Material · Pfeil = Flussrichtung · Schacht = Etagenverbindung
+        </span>
         <span>Symbole nicht maßstäblich · Bandlasten: Stk./min</span>
       </div>
     </section>
