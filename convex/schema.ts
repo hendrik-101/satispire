@@ -64,6 +64,12 @@ const state = v.object({
   ),
 });
 export default defineSchema({
+  sessionAdmission: defineTable({
+    key: v.string(),
+    windowStart: v.number(),
+    attempts: v.number(),
+    durableCount: v.number(),
+  }).index('by_key', ['key']),
   sessions: defineTable({
     sessionId: v.string(),
     revision: v.number(),

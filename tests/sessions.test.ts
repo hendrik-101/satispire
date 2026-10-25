@@ -341,4 +341,47 @@ describe('durable anonymous sessions', () => {
       cursor: { x: 1, y: 2 },
     });
   });
+  it('charges failed creates and rejects admission without affecting existing members', async () => {
+    const t = convexTest(schema, modules);
+    const a = await t.action(refs.create, { name: 'Alice', plan });
+    for (let i = 0; i < 4; i++)
+      await expect(
+        t.action(refs.create, { name: 'Bad', plan: {} }),
+      ).rejects.toThrow();
+    await expect(
+      t.action(refs.create, { name: 'Limited', plan }),
+    ).rejects.toThrow(/rate-limited/);
+    expect((await t.query(refs.read, auth(a))).revision).toBe(0);
+    await t.action(refs.join, { sessionId: a.sessionId, name: 'Bob' });
+    await t.run(async (ctx) => {
+      const row = await ctx.db.query('sessionAdmission').first();
+      await ctx.db.patch(row!._id, { windowStart: Date.now() - 60001 });
+    });
+    await t.action(refs.create, { name: 'After window', plan });
+    await t.run(async (ctx) => {
+      const row = await ctx.db.query('sessionAdmission').first();
+      await ctx.db.patch(row!._id, { durableCount: 512 });
+    });
+    await expect(t.action(refs.create, { name: 'Full', plan })).rejects.toThrow(
+      /session-limit/,
+    );
+  });
+  it('serializes the durable quota across concurrent creations', async () => {
+    const t = convexTest(schema, modules);
+    await t.action(refs.create, { name: 'Existing', plan });
+    await t.run(async (ctx) => {
+      const row = await ctx.db.query('sessionAdmission').first();
+      await ctx.db.patch(row!._id, { durableCount: 511 });
+    });
+    const results = await Promise.allSettled([
+      t.action(refs.create, { name: 'A', plan }),
+      t.action(refs.create, { name: 'B', plan }),
+    ]);
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    await t.run(async (ctx) => {
+      expect(
+        (await ctx.db.query('sessionAdmission').first())?.durableCount,
+      ).toBe(512);
+    });
+  });
 });

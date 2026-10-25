@@ -25,6 +25,9 @@ it('serves an immutable exported workspace and advertises the hosted session tra
   );
   expect(await root.text()).toContain('Satispire');
   expect(root.headers.get('cache-control')).toBe('no-store');
+  expect(root.headers.get('content-security-policy')).toBe(
+    "frame-ancestors 'self' https://chatgpt.com https://chat.openai.com",
+  );
   const config = await worker.fetch(
     new Request('https://site.example/api/session-config'),
     env,

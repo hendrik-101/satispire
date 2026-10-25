@@ -1,3 +1,4 @@
+import { frameAncestors } from './framing.js';
 import { handleSessionRequest, type SessionDatabase } from './site-sessions.js';
 export interface SiteAsset {
   body: string;
@@ -14,6 +15,7 @@ export function createSitesWorker(assets: Readonly<Record<string, SiteAsset>>) {
       const headers = {
         'Cache-Control': 'no-store',
         'X-Content-Type-Options': 'nosniff',
+        'Content-Security-Policy': frameAncestors,
       };
       if (path.startsWith('/api/sessions/')) {
         if (!env.DB)

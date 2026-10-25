@@ -174,18 +174,40 @@ export async function handleSessionRequest(
     )?.[1];
     if (!operation) fail(404, 'not-found');
     const a = await body(request);
+    if (operation === 'create') {
+      const now = Date.now();
+      await db
+        .prepare(
+          'INSERT OR IGNORE INTO site_session_admission(id,window_start,attempts) VALUES (1,0,0)',
+        )
+        .run();
+      const charged = await db
+        .prepare(
+          'UPDATE site_session_admission SET attempts=CASE WHEN window_start<=? THEN 1 ELSE attempts+1 END, window_start=CASE WHEN window_start<=? THEN ? ELSE window_start END WHERE id=1 AND (window_start<=? OR attempts<5)',
+        )
+        .bind(now - 60000, now - 60000, now, now - 60000)
+        .run();
+      if (!charged.meta.changes) fail(429, 'rate-limited');
+      const count = await db
+        .prepare('SELECT COUNT(*) AS count FROM site_sessions')
+        .first<{ count: number }>();
+      if (count && count.count >= 512) fail(503, 'session-limit');
+    }
+
     if (operation === 'create' || operation === 'join') {
       const name = string(a, 'name', 80).trim();
       if (!name) fail(400, 'invalid-participant');
       const sessionId =
         operation === 'create' ? random() : token(a, 'sessionId');
-      if (operation === 'create')
-        await db
+      if (operation === 'create') {
+        const inserted = await db
           .prepare(
-            'INSERT INTO site_sessions(session_id,plan_json) VALUES (?,?)',
+            'INSERT INTO site_sessions(session_id,plan_json) SELECT ?,? WHERE (SELECT COUNT(*) FROM site_sessions)<512',
           )
           .bind(sessionId, JSON.stringify(plan(a.plan)))
           .run();
+        if (!inserted.meta.changes) fail(503, 'session-limit');
+      }
       const capability = random();
       const participantId = crypto.randomUUID();
       const inserted = await db

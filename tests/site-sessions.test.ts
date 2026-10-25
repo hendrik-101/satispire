@@ -284,4 +284,45 @@ describe('Sites durable D1 sessions', () => {
     expect(await malformed.json()).toEqual({ error: { code: 'invalid-json' } });
     sqlite.close();
   });
+  it('charges invalid creation attempts and leaves existing sessions usable when limited', async () => {
+    const { db, sqlite } = setup();
+    const a = await (await call(db, 'create', { name: 'Alice', plan })).json();
+    for (let i = 0; i < 4; i++)
+      expect((await call(db, 'create', { name: 'Bad', plan: {} })).status).toBe(
+        400,
+      );
+    expect((await call(db, 'create', { name: 'Alice', plan })).status).toBe(
+      429,
+    );
+    expect((await call(db, 'read', auth(a))).status).toBe(200);
+    expect(
+      (await call(db, 'join', { sessionId: a.sessionId, name: 'Bob' })).status,
+    ).toBe(200);
+    sqlite
+      .prepare('UPDATE site_session_admission SET window_start=?')
+      .run(Date.now() - 60001);
+    expect((await call(db, 'create', { name: 'New', plan })).status).toBe(200);
+    sqlite.close();
+  });
+  it('caps durable sessions atomically without removing saved plans', async () => {
+    const { db, sqlite } = setup();
+    const insert = sqlite.prepare(
+      'INSERT INTO site_sessions(session_id,plan_json) VALUES (?,?)',
+    );
+    for (let i = 0; i < 511; i++)
+      insert.run(`existing-${i}`, JSON.stringify(plan));
+    const results = await Promise.all([
+      call(db, 'create', { name: 'A', plan }),
+      call(db, 'create', { name: 'B', plan }),
+    ]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 503]);
+    expect(
+      (
+        sqlite.prepare('SELECT COUNT(*) count FROM site_sessions').get() as {
+          count: number;
+        }
+      ).count,
+    ).toBe(512);
+    sqlite.close();
+  });
 });

@@ -50,6 +50,39 @@ async function verified(
   if (!member || member.sessionId !== a.sessionId) throw new Error('forbidden');
   return { member, s: await session(ctx, a.sessionId) };
 }
+const chargeRef = makeFunctionReference<
+  'mutation',
+  Record<string, never>,
+  string | null
+>('sessions:chargeCreation');
+export const chargeCreation = internalMutationGeneric({
+  args: {},
+  handler: async (ctx) => {
+    let row = await ctx.db
+      .query('sessionAdmission')
+      .withIndex('by_key', (q) => q.eq('key', 'global'))
+      .unique();
+    if (!row) {
+      const count = (await ctx.db.query('sessions').take(513)).length;
+      const id = await ctx.db.insert('sessionAdmission', {
+        key: 'global',
+        windowStart: 0,
+        attempts: 0,
+        durableCount: count,
+      });
+      row = await ctx.db.get(id);
+    }
+    if (!row) throw new Error('internal-error');
+    const now = Date.now();
+    const fresh = row.windowStart <= now - 60000;
+    if (!fresh && row.attempts >= 5) return 'rate-limited';
+    await ctx.db.patch(row._id, {
+      attempts: fresh ? 1 : row.attempts + 1,
+      windowStart: fresh ? now : row.windowStart,
+    });
+    return row.durableCount >= 512 ? 'session-limit' : null;
+  },
+});
 const registerRef = makeFunctionReference<'mutation'>('sessions:register');
 async function membership(
   ctx: GenericActionCtx<DataModelFromSchemaDefinition<typeof schema>>,
@@ -68,7 +101,11 @@ async function membership(
 }
 export const create = actionGeneric({
   args: { plan: v.any(), name: v.string() },
-  handler: (ctx, args) => membership(ctx, args),
+  handler: async (ctx, args) => {
+    const error = await ctx.runMutation(chargeRef, {});
+    if (error) throw new Error(error);
+    return membership(ctx, args);
+  },
 });
 export const join = actionGeneric({
   args: { sessionId: v.string(), name: v.string() },
@@ -88,7 +125,16 @@ export const register = internalMutationGeneric({
       throw new Error('invalid-participant');
     let count = 0;
     if (a.plan !== undefined) {
+      const admission = await ctx.db
+        .query('sessionAdmission')
+        .withIndex('by_key', (q) => q.eq('key', 'global'))
+        .unique();
+      if (!admission || admission.durableCount >= 512)
+        throw new Error('session-limit');
       const plan = validateSessionPlan(a.plan);
+      await ctx.db.patch(admission._id, {
+        durableCount: admission.durableCount + 1,
+      });
       await ctx.db.insert('sessions', {
         sessionId: a.sessionId,
         revision: 0,

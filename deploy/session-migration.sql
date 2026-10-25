@@ -27,3 +27,9 @@ CREATE TABLE site_session_presence (
 );
 CREATE INDEX site_presence_scope ON site_session_presence(session_id,view,floor,updated_at);
 CREATE INDEX site_presence_expiry ON site_session_presence(updated_at);
+
+CREATE TABLE site_session_admission (
+ id INTEGER PRIMARY KEY CHECK(id=1),
+ window_start INTEGER NOT NULL,
+ attempts INTEGER NOT NULL
+);
