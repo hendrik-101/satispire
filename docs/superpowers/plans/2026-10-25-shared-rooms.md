@@ -1,6 +1,6 @@
 # Shared Rooms Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Share persistent rooms with live plans, reversible history and an output-labelled recent-room entry dialog.
 
@@ -44,13 +44,13 @@ separate. Preserve existing local CLI/MCP behavior.
 `PlanChange` identifies atomic plan fields with before/after presence and values;
 use the same field partition for diffing and reverse checks.
 
-- [ ] Write known-answer tests for full plan preservation, unrelated later edits,
+- [x] Write known-answer tests for full plan preservation, unrelated later edits,
       overlapping-field conflict, atomic targets/imports/recipes, unlock/technology
       mismatch and invalid resulting production. Run `npx vitest run tests/shared-plan.test.ts`
       and confirm the new behavior initially fails.
-- [ ] Implement catalog-aware full plan validation and reversal without clocks,
+- [x] Implement catalog-aware full plan validation and reversal without clocks,
       persistence or network dependencies; preserve existing planner contracts.
-- [ ] Rerun the focused tests and typecheck; commit this deliverable.
+- [x] Rerun the focused tests and typecheck; commit this deliverable.
 
 ### Task 2: Persistent room plans, joins and history
 
@@ -65,17 +65,17 @@ consume command ID and expected revision; undo identifies a history entry.
 View returns accepted plan and revision without secrets. History uses indexed
 pagination and returns author, timestamp, summary and changes without tokens.
 
-- [ ] Write convex-test cases exercising full state round trips, hash-only token
+- [x] Write convex-test cases exercising full state round trips, hash-only token
       storage, reusable link joins, owner/editor distinction, cross-room/viewer denial,
       paginated history, undo/undo-of-undo, dependent conflict and duplicate request
       replay after intervening changes. Confirm failures before implementation.
-- [ ] Add separate indexed plan/history/receipt/share-link records, preserving
+- [x] Add separate indexed plan/history/receipt/share-link records, preserving
       existing room methods. Reuse existing capability verification rather than
       accepting caller-supplied participant identity. Initialize legacy room plan
       state explicitly; do not silently replace an existing shared plan.
-- [ ] Implement authenticated transactional edit/undo, full validation and
+- [x] Implement authenticated transactional edit/undo, full validation and
       atomic receipt/history writes. Use server timestamps and deterministic ordering.
-- [ ] Run new and existing Convex/room tests plus typecheck; commit.
+- [x] Run new and existing Convex/room tests plus typecheck; commit.
 
 ### Task 3: Room transport, entry dialog and canonical links
 
@@ -90,14 +90,14 @@ subscriptions, exposing accepted plan/revision, load/save errors and membership.
 Recent records contain roomId, cached output label, canonical link and last visit;
 private membership credentials use a separate browser-storage record.
 
-- [ ] Add tests for output names/rates instead of IDs, corrupt/unavailable storage,
+- [x] Add tests for output names/rates instead of IDs, corrupt/unavailable storage,
       stale labels, direct-link bypass, one dialog on `/`, rejoin, and create navigation.
-- [ ] Implement validated browser records and session entry. Subscribe/load using
+- [x] Implement validated browser records and session entry. Subscribe/load using
       stored membership or redeem the link into independent membership. Cancel stale
       subscriptions/responses on room changes; clear user-visible secrets from errors.
-- [ ] Implement configured Convex client and an explicit missing-configuration
+- [x] Implement configured Convex client and an explicit missing-configuration
       state. Never create a local fake shared room on backend failure.
-- [ ] Test with a controlled transport fixture plus registered-backend tests;
+- [x] Test with a controlled transport fixture plus registered-backend tests;
       verify address-bar/Share URL equality and independent browser memberships.
       Run focused Vitest/Playwright tests and typecheck; commit.
 
@@ -111,27 +111,27 @@ Extend `tests/browser/shared-rooms.spec.ts` and affected existing browser tests.
 edit operations from the room client. `RoomHistory` pages history and requests
 undo through the same client. Personal preferences continue existing local storage.
 
-- [ ] Add browser tests for full production/layout/unlock synchronization, imports
+- [x] Add browser tests for full production/layout/unlock synchronization, imports
       as one edit, remote changes without echo writes, preserved drafts on conflict,
       connection failure, stale responses after navigation, history and undo feedback.
-- [ ] Route accepted planner mutations through explicit shared edits instead of
+- [x] Route accepted planner mutations through explicit shared edits instead of
       post-render autosave effects. Apply subscribed plans without creating history.
       Preserve last accepted plan on rejection and block misleading unsaved actions.
-- [ ] Replace export with Share, including clipboard failure fallback. Add the
+- [x] Replace export with Share, including clipboard failure fallback. Add the
       accessible history panel and conflict states using existing visual tokens.
-- [ ] Run focused browser tests, existing workspace tests and typecheck; commit.
+- [x] Run focused browser tests, existing workspace tests and typecheck; commit.
 
 ### Task 5: Verification and Draft delivery
 
 **Files:** Update `README.md`, `docs/local-workspace.md`,
 `docs/collaboration-contract.md`, `docs/deployment.md` and a task QA record.
 
-- [ ] Document required Convex deployment configuration, canonical links, browser
+- [x] Document required Convex deployment configuration, canonical links, browser
       membership/recent-room storage, history/undo semantics and live-test limits.
-- [ ] Run `npm run check`, `npm run test:coverage`, `npm run test:browser` and the
+- [x] Run `npm run check`, `npm run test:coverage`, `npm run test:browser` and the
       compiled runtime/browser checks affected by routing/backend integration.
-- [ ] Inspect current changes for authorization leaks, cross-room writes, unsafe
+- [x] Inspect current changes for authorization leaks, cross-room writes, unsafe
       migration, undo atomicity and URL secret handling. Resolve findings and rerun
       affected checks; use the required review workflow before declaring completion.
-- [ ] Commit, push and create/update a Draft PR. Report actual check evidence and
+- [x] Commit, push and create/update a Draft PR. Report actual check evidence and
       any missing live Convex verification. Do not merge or deploy.
