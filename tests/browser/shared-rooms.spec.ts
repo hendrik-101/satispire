@@ -25,6 +25,12 @@ test('direct entry opens a single recent-room dialog with output labels', async 
   await page.getByRole('button', { name: 'Neuen Raum starten' }).click();
   await expect(page.getByRole('alert')).toContainText('Online-Räume');
   await expect(page.getByRole('dialog')).toHaveCount(1);
+  await page.getByRole('link', { name: 'Lokal weiterplanen' }).click();
+  await expect(page.locator('main.workspace')).toHaveAttribute(
+    'data-ready',
+    'true',
+  );
+  await expect(page).toHaveURL(base + '/local');
 });
 test('a direct room link bypasses the entry dialog and reports unavailable backend truthfully', async ({
   page,
@@ -37,6 +43,12 @@ test('a direct room link bypasses the entry dialog and reports unavailable backe
   await expect(
     page.getByRole('button', { name: 'Erneut verbinden' }),
   ).toBeVisible();
+  await page.getByRole('link', { name: 'Lokal weiterplanen' }).click();
+  await expect(page.locator('main.workspace')).toHaveAttribute(
+    'data-ready',
+    'true',
+  );
+  await expect(page).toHaveURL(base + '/local');
 });
 
 test('creates the canonical shared room, synchronizes two browsers and undoes through history', async ({
@@ -349,4 +361,42 @@ test('loads older history pages and explains conflicting undo without changing t
   );
   expect(fixture.state().revision).toBe(22);
   expect(fixture.state().plan.production.targets[0]!.rate).toBe('42');
+});
+
+test('a delayed save acknowledgement cannot put an older target back into the current editor', async ({
+  page,
+}) => {
+  const fixture = roomWireFixture();
+  await fixture.install(page);
+  await page.goto(
+    base + '/room/' + fixture.roomId + '#key=' + fixture.shareSecret,
+  );
+  await expect(page.locator('main.workspace')).toHaveAttribute(
+    'data-ready',
+    'true',
+  );
+  fixture.holdNextMutationReply();
+  await page.getByLabel('Zielrate pro Minute', { exact: true }).fill('40');
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await expect.poll(() => fixture.state().revision).toBe(1);
+  const newer = fixture.state().plan;
+  newer.production.targets[0]!.rate = '80';
+  fixture.remoteEdit(newer);
+  await expect.poll(() => fixture.state().revision).toBe(2);
+  fixture.releaseMutationReply();
+  await expect(
+    page.getByRole('button', { name: 'Plan berechnen', exact: true }),
+  ).toBeEnabled();
+  await expect(
+    page.getByLabel('Zielrate pro Minute', { exact: true }),
+  ).toHaveValue('80');
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Plan berechnen', exact: true }),
+  ).toBeEnabled();
+  expect(fixture.state().plan.production.targets[0]!.rate).toBe('80');
 });

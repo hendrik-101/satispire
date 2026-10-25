@@ -145,6 +145,7 @@ export function RoomWorkspace({ roomId }: { roomId: string }) {
               Erneut verbinden
             </button>
             <a href="/">Zur Raumübersicht</a>
+            <a href="/local">Lokal weiterplanen</a>
           </>
         ) : (
           <p role="status">Raum wird geöffnet …</p>

@@ -26,6 +26,9 @@ export function roomWireFixture() {
     revision = 0,
     clock = 0,
     members = 0;
+  let holdNextAck = false;
+  let releaseAck: (() => void) | undefined;
+  let heldWire: Wire | undefined;
   const entries: HistoryEntry[] = [],
     wires = new Set<Wire>();
   const timestamp = () => {
@@ -51,6 +54,7 @@ export function roomWireFixture() {
     throw Error('Unexpected query ' + query.udfPath);
   }
   function transition(wire: Wire, querySet = wire.version.querySet) {
+    if (wire === heldWire) return;
     const next = { ...wire.version, querySet, ts: timestamp() };
     wire.socket.send(
       JSON.stringify({
@@ -168,16 +172,23 @@ export function roomWireFixture() {
                 undoOf: typeof args.entryId === 'string' ? args.entryId : null,
               });
               plan = next;
-              socket.send(
-                JSON.stringify({
-                  type: 'MutationResponse',
-                  requestId: message.requestId,
-                  success: true,
-                  result: { revision, duplicate: false },
-                  ts: timestamp(),
-                  logLines: [],
-                }),
-              );
+              const response = JSON.stringify({
+                type: 'MutationResponse',
+                requestId: message.requestId,
+                success: true,
+                result: { revision, duplicate: false },
+                ts: timestamp(),
+                logLines: [],
+              });
+              if (holdNextAck) {
+                holdNextAck = false;
+                heldWire = wire;
+                releaseAck = () => {
+                  socket.send(response);
+                  heldWire = undefined;
+                  transition(wire);
+                };
+              } else socket.send(response);
               for (const w of wires) transition(w);
             } catch (error) {
               socket.send(
@@ -200,6 +211,14 @@ export function roomWireFixture() {
       revision++;
       clock++;
       for (const w of wires) transition(w);
+    },
+    holdNextMutationReply() {
+      holdNextAck = true;
+    },
+    releaseMutationReply() {
+      if (!releaseAck) throw Error('No pending mutation reply');
+      releaseAck();
+      releaseAck = undefined;
     },
     seedHistory(count: number) {
       for (let i = 0; i < count; i++) {

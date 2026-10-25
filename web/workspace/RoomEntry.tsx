@@ -133,7 +133,12 @@ export function RoomEntry() {
         ) : (
           <p>Noch keine Räume besucht.</p>
         )}
-        {error && <p role="alert">{error}</p>}
+        {error && (
+          <>
+            <p role="alert">{error}</p>
+            <a href="/local">Lokal weiterplanen</a>
+          </>
+        )}
         <button type="button" disabled={pending} onClick={() => void create()}>
           {pending ? 'Raum wird erstellt …' : 'Neuen Raum starten'}
         </button>

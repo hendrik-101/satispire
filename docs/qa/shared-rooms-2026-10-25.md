@@ -80,6 +80,22 @@ browser run also includes the added older-history/undo-conflict case.
 - No live Convex backend, credentials, infrastructure, merge or deployment was
   provisioned. Hosted transport/persistence acceptance remains a separate step
   against the configured backend; local verification is not a substitute.
-- Deferred Minor review item: the missing-configuration message is truthful but
-  has no direct offline/configuration action. `/local` and operator configuration
-  are documented in the workspace/deployment guides.
+- The initially deferred missing-configuration navigation was fixed during the
+  PR follow-up: both the entry dialog and direct-room error screen now offer
+  **Lokal weiterplanen**, leading explicitly to `/local`. Browser regressions
+  verify that the action reaches the usable offline workspace. A delayed/batched
+  server-acknowledgement test also protects the existing latest-plan editor
+  behavior; it passes without changing save semantics.
+
+## PR follow-up verification
+
+`npm run check` and `npm run test:coverage` passed again (384 tests; line coverage
+95.85%). All 12 focused room browser tests passed. The two missing-backend screens
+were exercised through actual link navigation. At the start of the follow-up,
+GitHub CI was green on `54cc9d3`; the hosted Codex security review completed on
+that head without findings. Code-review results are recorded separately on the PR.
+
+The optional CodeRabbit CLI is not installed in this executor. Its installer
+request to `https://cli.coderabbit.ai/install.sh` returned HTTP 403 through the
+configured proxy, so no CodeRabbit result is claimed. Enabling that additional
+review requires allowing the installer service and then authenticating the CLI.
