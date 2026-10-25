@@ -201,6 +201,26 @@ export function roomWireFixture() {
       clock++;
       for (const w of wires) transition(w);
     },
+    seedHistory(count: number) {
+      for (let i = 0; i < count; i++) {
+        const next = structuredClone(plan);
+        next.production.targets[0]!.rate = String(21 + i);
+        const changes = diffPlan(plan, next);
+        revision++;
+        clock++;
+        entries.unshift({
+          id: 'entry-' + revision,
+          revision,
+          participantId: 'member',
+          author: 'Mitspieler',
+          timestamp: Date.now(),
+          summary: 'Outputs',
+          changes,
+          undoOf: null,
+        });
+        plan = next;
+      }
+    },
     state: () => structuredClone({ plan, revision, entries, members }),
   };
 }

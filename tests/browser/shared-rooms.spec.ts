@@ -320,3 +320,33 @@ test('recovers valid room links from corrupt membership using structured redacte
   );
   expect(fixture.state().members).toBe(1);
 });
+
+test('loads older history pages and explains conflicting undo without changing the plan', async ({
+  page,
+}) => {
+  const fixture = roomWireFixture();
+  fixture.seedHistory(22);
+  await fixture.install(page);
+  await page.goto(
+    base + '/room/' + fixture.roomId + '#key=' + fixture.shareSecret,
+  );
+  await expect(page.locator('main.workspace')).toHaveAttribute(
+    'data-ready',
+    'true',
+  );
+  await page.getByRole('button', { name: 'Historie', exact: true }).click();
+  const history = page.getByRole('complementary', {
+    name: 'Änderungshistorie',
+  });
+  await expect(history.locator('li')).toHaveCount(20);
+  await page.getByRole('button', { name: 'Ältere Änderungen laden' }).click();
+  await expect(history.locator('li')).toHaveCount(22);
+  await page
+    .getByRole('button', { name: 'Änderung 1 rückgängig machen', exact: true })
+    .click();
+  await expect(history.getByRole('alert')).toContainText(
+    'wegen späterer Änderungen',
+  );
+  expect(fixture.state().revision).toBe(22);
+  expect(fixture.state().plan.production.targets[0]!.rate).toBe('42');
+});
