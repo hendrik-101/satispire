@@ -1,8 +1,14 @@
+import type {
+  SessionPresence,
+  SessionPresenceInput,
+} from '../../src/session-plan.js';
+import { RemoteCursors } from './RemoteCursors.js';
 import { supplySceneMetrics } from './supply-scene.js';
 import { type BuildVariant } from '../../src/domain/build-variants.js';
 import { VariantControl } from './VariantControl.js';
 import { SupplyDiagram } from './SupplyDiagram.js';
-import { useId, useMemo, useRef, useState } from 'react';
+import { FoundationGrid } from './FoundationGrid.js';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { Catalog } from '../../src/domain/catalog.js';
 import type { ProductionPlan } from '../../src/domain/production.js';
 import type { TechnologyProfile } from '../../src/domain/technology.js';
@@ -10,6 +16,7 @@ import { generateSupplyLayout } from '../../src/domain/supply-layout.js';
 import { itemName } from '../../src/domain/vanilla.js';
 import { MachineGlyph } from './MachineGlyph.js';
 import { resourcePalette } from './resource-colors.js';
+import { formatPercent, formatRate } from './format-rate.js';
 
 export function FloorView({
   catalog,
@@ -24,6 +31,9 @@ export function FloorView({
   selectMachine,
   motion = false,
   compact = false,
+  showBeltRates = false,
+  peers = [],
+  onPresence,
 }: {
   catalog: Catalog;
   plan: ProductionPlan;
@@ -37,6 +47,9 @@ export function FloorView({
   selectMachine?: (id: number) => void;
   motion?: boolean;
   compact?: boolean;
+  showBeltRates?: boolean;
+  peers?: SessionPresence[];
+  onPresence?: (cursor: SessionPresenceInput['cursor']) => void;
 }) {
   const layout = useMemo(
     () => generateSupplyLayout(catalog, plan, technology, rows, variant),
@@ -44,7 +57,23 @@ export function FloorView({
   );
   const floor =
     layout.floors.find((f) => f.itemId === selected) ?? layout.floors[0]!;
+  const stage = plan.nodes.find((node) => node.itemId === floor.itemId)!;
   const marker = useId().replace(/:/g, '');
+  const sceneRef = useRef<SVGSVGElement>(null);
+  const [viewport, setViewport] = useState({ width: 0, height: 0 });
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry)
+        setViewport({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height,
+        });
+    });
+    observer.observe(scene);
+    return () => observer.disconnect();
+  }, []);
   const [camera, setCamera] = useState({
     x: 0,
     y: 0,
@@ -61,11 +90,20 @@ export function FloorView({
     x: m.x + 17,
     y: m.y + 17,
   }));
-  const { feeds, sceneLeft, sceneTop, sceneWidth, sceneHeight } =
-    supplySceneMetrics(layout, floor);
+  const scene = useMemo(
+    () => supplySceneMetrics(layout, floor, catalog, technology, compact),
+    [layout, floor, catalog, technology, compact],
+  );
+  const { feeds, sceneLeft, sceneTop, sceneWidth, sceneHeight } = scene;
   const scale = zoom * camera.scale;
-  const viewWidth = sceneWidth / scale;
-  const viewHeight = sceneHeight / scale;
+  const aspect =
+    viewport.width && viewport.height
+      ? viewport.width / viewport.height
+      : sceneWidth / sceneHeight;
+  const fittedWidth = Math.max(sceneWidth, sceneHeight * aspect);
+  const fittedHeight = Math.max(sceneHeight, sceneWidth / aspect);
+  const viewWidth = fittedWidth / scale;
+  const viewHeight = fittedHeight / scale;
   const viewX = sceneLeft + (sceneWidth - viewWidth) / 2 + camera.x;
   const viewY = sceneTop + (sceneHeight - viewHeight) / 2 + camera.y;
   return (
@@ -114,6 +152,7 @@ export function FloorView({
       </div>
       <div className="drawing">
         <svg
+          ref={sceneRef}
           className={`floor-scene${motion ? ' flow-motion' : ''}`}
           data-testid="floor-scene"
           data-floor-index={floor.index}
@@ -133,7 +172,12 @@ export function FloorView({
             }));
           }}
           onPointerDown={(event) => {
-            if ((event.target as Element).closest('[data-machine-id]')) return;
+            if (
+              (event.target as Element).closest(
+                '[data-machine-id], [data-belt-id]',
+              )
+            )
+              return;
             event.currentTarget.setPointerCapture(event.pointerId);
             drag.current = {
               x: event.clientX,
@@ -142,7 +186,18 @@ export function FloorView({
               cameraY: camera.y,
             };
           }}
+          onPointerLeave={() => onPresence?.(null)}
           onPointerMove={(event) => {
+            if (onPresence) {
+              const matrix = event.currentTarget.getScreenCTM();
+              if (matrix) {
+                const point = event.currentTarget.createSVGPoint();
+                point.x = event.clientX;
+                point.y = event.clientY;
+                const world = point.matrixTransform(matrix.inverse());
+                onPresence({ x: world.x, y: world.y });
+              }
+            }
             const start = drag.current;
             if (!start) return;
             const rect = event.currentTarget.getBoundingClientRect();
@@ -160,6 +215,7 @@ export function FloorView({
             drag.current = null;
           }}
           onPointerCancel={() => {
+            onPresence?.(null);
             drag.current = null;
           }}
         >
@@ -179,7 +235,28 @@ export function FloorView({
               </marker>
             ))}
           </defs>
-          <SupplyDiagram layout={layout} floor={floor} marker={marker} />
+          <FoundationGrid
+            id={marker}
+            x={viewX}
+            y={viewY}
+            width={viewWidth}
+            height={viewHeight}
+            pixelsPerUnit={Math.min(
+              viewport.width / viewWidth,
+              viewport.height / viewHeight,
+            )}
+          />
+          <SupplyDiagram
+            key={floor.itemId}
+            scene={scene}
+            layout={layout}
+            floor={floor}
+            marker={marker}
+            catalog={catalog}
+            technology={technology}
+            compact={compact}
+            showBeltRates={showBeltRates}
+          />
           {machines.map((m) => (
             <g
               key={m.id}
@@ -191,9 +268,9 @@ export function FloorView({
               aria-pressed={machine === m.id}
               onFocus={() => {
                 const left = m.x - 2;
-                const right = m.x + 10;
+                const right = m.x + m.width + 2;
                 const upper = m.y - 2;
-                const lower = m.y + 8;
+                const lower = m.y + m.depth + 2;
                 const dx =
                   left < viewX
                     ? left - viewX
@@ -217,12 +294,13 @@ export function FloorView({
                 }
               }}
             >
+              <title>{`${itemName(floor.machineId)} ${m.id} · Takt ${formatPercent(stage.utilization)}`}</title>
               <svg
-                x={m.x - 1}
-                y={m.y - 1}
-                width="10"
-                height="8"
-                viewBox="0 0 100 80"
+                x={m.x}
+                y={m.y}
+                width={m.width}
+                height={m.depth}
+                viewBox="0 0 80 100"
               >
                 <MachineGlyph
                   machineId={floor.machineId}
@@ -235,16 +313,25 @@ export function FloorView({
               </svg>
             </g>
           ))}
+          <RemoteCursors peers={peers} svg />
         </svg>
       </div>
       <div className="canvas-summary">
         <strong>{itemName(floor.itemId)}</strong>
+        <span>{formatRate(stage.rate)} / min</span>
         <span>
-          {plan.nodes.find((n) => n.itemId === floor.itemId)!.rate} / min
+          {floor.machines.length}{' '}
+          {floor.machines.length === 1 ? 'Maschine' : 'Maschinen'} ·{' '}
+          {floor.rowCounts.join(' + ')} · je {formatPercent(stage.utilization)}{' '}
+          Takt
         </span>
-        <span>
-          {floor.machines.length} Maschinen · {floor.rowCounts.join(' + ')}
-        </span>
+      </div>
+      <div
+        className="canvas-grid-key"
+        title="Farbe = Rohstoff · Pfeile = Flussrichtung"
+      >
+        Foundation 8 × 8 m · Raster 0,5 m{' '}
+        <span>Symbole nicht maßstäblich · Bandlasten: Stk./min</span>
       </div>
     </section>
   );

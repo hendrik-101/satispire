@@ -30,7 +30,7 @@ test('direct entry opens a single recent-room dialog with output labels', async 
     'data-ready',
     'true',
   );
-  await expect(page).toHaveURL(base + '/local');
+  expect(new URL(page.url()).pathname).toBe('/local');
 });
 test('a direct room link bypasses the entry dialog and reports unavailable backend truthfully', async ({
   page,
@@ -48,7 +48,7 @@ test('a direct room link bypasses the entry dialog and reports unavailable backe
     'data-ready',
     'true',
   );
-  await expect(page).toHaveURL(base + '/local');
+  expect(new URL(page.url()).pathname).toBe('/local');
 });
 
 test('creates the canonical shared room, synchronizes two browsers and undoes through history', async ({
@@ -506,4 +506,32 @@ test('an independent own edit cannot clear an earlier collaborator conflict', as
     .click();
   await expect(page.getByRole('alert')).toContainText('inzwischen geändert');
   expect(fixture.state().plan.production.targets[0]!.rate).toBe('40');
+});
+
+test('existing session URLs still reopen their saved plan without the room entry dialog', async ({
+  page,
+}) => {
+  await page.goto(base + '/local');
+  await expect(page.locator('main.workspace')).toHaveAttribute(
+    'data-ready',
+    'true',
+  );
+  await page.getByLabel('Zielrate pro Minute', { exact: true }).fill('42');
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await expect(page.getByLabel('Session-Status')).toContainText('Gespeichert');
+  const sessionId = new URL(page.url()).searchParams.get('session');
+  expect(sessionId).toMatch(/^[a-f0-9]{64}$/);
+  await page.goto(base + '/?session=' + sessionId);
+  await expect(page.getByRole('dialog', { name: 'Deine Räume' })).toHaveCount(
+    0,
+  );
+  await expect(page.locator('main.workspace')).toHaveAttribute(
+    'data-ready',
+    'true',
+  );
+  await expect(
+    page.getByLabel('Zielrate pro Minute', { exact: true }),
+  ).toHaveValue('42');
 });

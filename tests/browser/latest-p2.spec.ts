@@ -23,8 +23,12 @@ test('shows all required transport lines at 320 Iron Plates/min on Tier 2', asyn
     .getByRole('button', { name: 'Plan berechnen', exact: true })
     .click();
   const scene = page.getByTestId('floor-scene');
-  await expect(scene.locator('[data-feed="1"]')).toContainText('4×');
-  await expect(scene.locator('[data-aggregate="output"]')).toContainText('3×');
+  await expect(scene.locator('[data-feed-label="1"]')).toContainText(
+    '4 Bänder Mk.2',
+  );
+  await expect(scene.locator('[data-aggregate="output"]')).toContainText(
+    '3 Bänder Mk.2',
+  );
   await page.screenshot({
     path: test.info().outputPath('transport-counts.png'),
     fullPage: true,

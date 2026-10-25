@@ -47,10 +47,14 @@ test('resource colors and icons identify inputs and persist at their source outp
     ),
   ).toBe(true);
   await expect(
-    scene.locator('[data-feed="1"] [data-resource-icon="Desc_IronPlate_C"]'),
+    scene.locator(
+      '[data-feed-label="1"] [data-resource-icon="Desc_IronPlate_C"]',
+    ),
   ).toHaveCount(1);
   await expect(
-    scene.locator('[data-feed="2"] [data-resource-icon="Desc_IronScrew_C"]'),
+    scene.locator(
+      '[data-feed-label="2"] [data-resource-icon="Desc_IronScrew_C"]',
+    ),
   ).toHaveCount(1);
   await expect(
     scene.locator(

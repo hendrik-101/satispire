@@ -87,29 +87,53 @@ for (const side of ['north-output', 'south-input'] as const) {
     const directions = await page
       .getByTestId('floor-scene')
       .evaluate((svg, out) => {
-        const selector = out
-          ? '.supply-belt-output .supply-belt-edge'
-          : '[data-feed] .supply-belt-input .supply-belt-edge';
-        return Array.from(svg.querySelectorAll<SVGPathElement>(selector))
-          .filter((p) => !p.closest('[data-output-attachment]'))
+        const terminals = Array.from(svg.querySelectorAll('[data-kind]'))
+          .filter(
+            (node) =>
+              node.getAttribute('data-kind') === (out ? 'outlet' : 'inlet'),
+          )
+          .map((node) => node.getAttribute('data-transport-node'));
+        return Array.from(svg.querySelectorAll<SVGGElement>('.supply-belt'))
+          .filter((belt) =>
+            terminals.includes(
+              belt.getAttribute(out ? 'data-edge-to' : 'data-edge-from'),
+            ),
+          )
+          .map(
+            (belt) => belt.querySelector<SVGPathElement>('.supply-belt-edge')!,
+          )
           .map((p) => {
             const start = p.getPointAtLength(0),
               end = p.getPointAtLength(p.getTotalLength());
+            const machinePorts = Array.from(
+              svg.querySelectorAll<SVGPathElement>(
+                out
+                  ? '.supply-belt[data-machine-output] .supply-belt-edge'
+                  : '.supply-belt[data-machine-input] .supply-belt-edge',
+              ),
+            ).map(
+              (path) =>
+                path.getPointAtLength(out ? 0 : path.getTotalLength()).y,
+            );
+            const machineY = out
+              ? Math.min(...machinePorts)
+              : Math.max(...machinePorts);
             const reference = p.getAttribute('marker-end')!;
             const marker = document.getElementById(reference.slice(5, -1));
             return {
               dx: end.x - start.x,
-              dy: end.y - start.y,
+              dy: out ? end.y - machineY : machineY - start.y,
               color: p.getAttribute('stroke'),
               markerColor: marker?.querySelector('path')?.getAttribute('fill'),
             };
-          })
-          .filter((p) => Math.abs(p.dx) < 0.001 && Math.abs(p.dy) > 20);
+          });
       }, side === 'north-output');
-    expect(directions).toHaveLength(1);
-    expect(directions[0]!.color).toBeTruthy();
-    expect(directions[0]!.markerColor).toBe(directions[0]!.color);
-    expect(directions[0]!.dy).toBeLessThan(0);
+    expect(directions.length).toBeGreaterThan(0);
+    for (const direction of directions) {
+      expect(direction.color).toBeTruthy();
+      expect(direction.markerColor).toBe(direction.color);
+      expect(direction.dy).toBeLessThan(0);
+    }
     await page.locator('.variant-control summary').click();
     await page.screenshot({
       path: test.info().outputPath(`${side}.png`),

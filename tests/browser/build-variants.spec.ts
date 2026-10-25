@@ -128,7 +128,7 @@ test('groups multiple feeds on one side, keeps contextual floor overrides, and f
     .click();
   await expect(scene).toHaveAttribute('viewBox', fitted!);
 });
-test('every machine joins its full row manifolds and aggregate line counts stay explicit', async ({
+test('individual belt manifolds connect every machine and keep line counts explicit', async ({
   page,
 }) => {
   await ready(page);
@@ -141,38 +141,27 @@ test('every machine joins its full row manifolds and aggregate line counts stay 
     .getByLabel('Stufe auswählen', { exact: true })
     .selectOption('Desc_IronIngot_C');
   const scene = page.getByTestId('floor-scene');
-  const firstRow = scene.locator('[data-input-row="0"] path.supply-belt-edge');
-  await expect(firstRow).toHaveCount(1);
-  const connected = await scene.evaluate((svg) => {
-    const rail = svg.querySelector<SVGPathElement>(
-      '[data-input-row="0"] path.supply-belt-edge',
-    )!;
-    const ends = [
-      rail.getPointAtLength(0).x,
-      rail.getPointAtLength(rail.getTotalLength()).x,
-    ];
-    const junctions = Array.from(
-      svg.querySelectorAll<SVGRectElement>('[data-row="0"] .supply-junction'),
-    ).filter(
-      (r) =>
-        r.getAttribute('data-resource-id') ===
-        rail.parentElement!.getAttribute('data-resource-id'),
-    );
-    return (
-      junctions.length > 1 &&
-      junctions.every(
-        (r) =>
-          Number(r.getAttribute('x')) + 0.5 >= Math.min(...ends) &&
-          Number(r.getAttribute('x')) + 0.5 <= Math.max(...ends),
-      )
-    );
-  });
-  expect(connected).toBe(true);
+  await expect(scene.locator('[data-kind="inlet"]')).toHaveCount(4);
+  await expect(scene.locator('.supply-belt[data-machine-input]')).toHaveCount(
+    16,
+  );
+  await expect(scene.locator('.supply-belt[data-machine-output]')).toHaveCount(
+    16,
+  );
+  await expect(
+    scene.locator(
+      '.transport-junction[data-kind="splitter"][data-resource-id="Desc_OreIron_C"]',
+    ),
+  ).toHaveCount(12);
   await page
     .getByLabel('Stufe auswählen', { exact: true })
     .selectOption('Desc_IronPlate_C');
-  await expect(scene.locator('[data-feed="1"]')).toContainText('4×');
-  await expect(scene.locator('[data-aggregate="output"]')).toContainText('3×');
+  await expect(scene.locator('[data-feed-label="1"]')).toContainText(
+    '4 Bänder Mk.2',
+  );
+  await expect(scene.locator('[data-aggregate="output"]')).toContainText(
+    '3 Bänder Mk.2',
+  );
 });
 test('external ore feeds share one intake side without fake transfers and obsolete overrides do not block target changes', async ({
   page,

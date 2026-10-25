@@ -3,6 +3,7 @@ import { MachineGlyph } from './MachineGlyph';
 import type { Catalog } from '../../src/domain/catalog.js';
 import type { ProductionPlan } from '../../src/domain/production.js';
 import { displayName, graphConnections } from './model';
+import { formatRate } from './format-rate.js';
 
 export function Graph({
   plan,
@@ -173,7 +174,7 @@ export function Graph({
                   y={startY - 7}
                   className={'edge-label' + (active ? ' active' : '')}
                 >
-                  {edge.rate}/min
+                  {formatRate(edge.rate)}/min
                 </text>
               </g>
             );
@@ -214,7 +215,7 @@ export function Graph({
                         {label(id)}
                       </span>
                       <strong className="graph-node-rate">
-                        {item.rate} <small>/ min</small>
+                        {formatRate(item.rate)} <small>/ min</small>
                       </strong>
                       <small
                         className="graph-node-machine"
@@ -248,7 +249,7 @@ export function Graph({
                         {label(id)}
                       </span>
                       <strong className="graph-node-rate">
-                        {item.rate} <small>/ min</small>
+                        {formatRate(item.rate)} <small>/ min</small>
                       </strong>
                       <small className="graph-node-machine">Import</small>
                     </span>

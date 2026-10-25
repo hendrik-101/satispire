@@ -14,11 +14,13 @@ export interface ViewCamera {
 export interface ViewPreferences {
   schemaVersion: 1;
   preset: ViewPreset;
+  beltRates: boolean;
   panels: ViewPanels;
   camera: ViewCamera;
 }
 export interface ViewPreferenceChange {
   preset?: ViewPreset;
+  beltRates?: boolean;
   panels?: Partial<ViewPanels>;
   camera?: { zoom?: number; origin?: { x?: number; y?: number } };
 }
@@ -49,6 +51,7 @@ export interface ViewPresentation {
 export const defaultViewPreferences: Readonly<ViewPreferences> = Object.freeze({
   schemaVersion: 1,
   preset: 'floors',
+  beltRates: false,
   panels: Object.freeze({ navigation: true, inspector: true, graph: false }),
   camera: Object.freeze({ zoom: 1, origin: Object.freeze({ x: 0, y: 0 }) }),
 });
@@ -77,6 +80,7 @@ const preferencesSchema = z
   .object({
     schemaVersion: z.literal(1),
     preset: presetSchema,
+    beltRates: z.boolean().default(false),
     panels: panelsSchema,
     camera: cameraSchema,
   })
@@ -84,6 +88,7 @@ const preferencesSchema = z
 const changeSchema = z
   .object({
     preset: presetSchema.optional(),
+    beltRates: z.boolean().optional(),
     panels: panelsSchema.partial().optional(),
     camera: cameraSchema
       .extend({ origin: originSchema.partial() })
@@ -114,6 +119,7 @@ export function updateViewPreferences(
   const updated: ViewPreferences = {
     schemaVersion: 1,
     preset: parsed.preset ?? current.preset,
+    beltRates: parsed.beltRates ?? current.beltRates,
     panels:
       parsed.panels === undefined
         ? current.panels

@@ -94,6 +94,9 @@ describe('HTTP runtime', () => {
         'x-forwarded-proto': 'https',
       },
     });
+    expect(response.headers.get('content-security-policy')).toBe(
+      "frame-ancestors 'self' https://chatgpt.com https://chat.openai.com",
+    );
     expect(await response.json()).toMatchObject({
       path: '/planner',
       host: new URL(base).host,

@@ -178,6 +178,46 @@ button[aria-pressed='true'] {
   gap: 7px;
   min-width: 0;
 }
+.sizing-expression {
+  min-width: 0;
+}
+.planning-controls .sizing-expression .sizing-mode {
+  width: 210px;
+}
+.sizing-expression.is-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 100%;
+}
+.planning-controls .sizing-expression.is-input select {
+  width: 100%;
+  min-width: 0;
+}
+.sizing-amount {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.planning-controls .sizing-amount input {
+  width: 100%;
+  min-width: 0;
+  flex: 1;
+}
+.sizing-amount .rate-unit {
+  margin: 0;
+}
+.supply-belt {
+  cursor: pointer;
+}
+.supply-belt:focus-visible {
+  outline: none;
+}
+.supply-belt:focus-visible .supply-belt-edge {
+  stroke-width: 0.5;
+}
 .planning-controls input {
   width: 78px;
   text-align: right;
@@ -357,8 +397,22 @@ input[type='checkbox'] {
   justify-content: center;
   padding: 65px 40px 60px;
   overflow: hidden;
-  background-image: radial-gradient(#47556066 0.75px, transparent 0.75px);
-  background-size: 20px 20px;
+  background: #1b2126;
+}
+.flow-label text {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.canvas-grid-key {
+  position: absolute;
+  left: 20px;
+  bottom: 40px;
+  color: #b4bec7;
+  font-size: 12px;
+  pointer-events: none;
+}
+.canvas-grid-key span {
+  margin-left: 12px;
 }
 .drawing > svg {
   width: 100%;
@@ -984,6 +1038,15 @@ input[type='checkbox'] {
     flex-wrap: wrap;
     gap: 7px 12px;
   }
+  .canvas-grid-key {
+    left: 14px;
+    right: 14px;
+    bottom: 92px;
+  }
+  .canvas-grid-key span {
+    display: block;
+    margin: 3px 0 0;
+  }
   .canvas-summary span:last-child {
     margin-left: 0;
     width: 100%;
@@ -1006,7 +1069,7 @@ input[type='checkbox'] {
 @media (max-width: 640px) {
   .floor-panel {
     min-height: 360px;
-    height: min(440px, calc(100dvh - 180px));
+    height: min(560px, calc(100dvh - 180px));
   }
   .views,
   .views:has(.graph-panel) {
@@ -1015,7 +1078,7 @@ input[type='checkbox'] {
   }
   .drawing {
     min-height: 0;
-    padding: 58px 12px 104px;
+    padding: 58px 12px 160px;
   }
 }
 
@@ -1092,36 +1155,40 @@ input[type='checkbox'] {
   }
 }
 
-.target-editor {
-  position: relative;
+.planning-controls {
+  align-items: flex-start;
+  flex-wrap: nowrap;
 }
-.target-editor summary {
+.planning-actions {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.target-editor {
+  flex: 0 1 420px;
+  min-width: 0;
+}
+.target-editor > summary {
+  display: none;
   cursor: pointer;
-  white-space: nowrap;
-  padding: 8px;
+  padding: 6px 0;
 }
 .target-editor-panel {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  z-index: 40;
-  width: 400px;
-  max-width: calc(100vw - 32px);
-  max-height: 55vh;
-  overflow: auto;
-  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  background: #21272c;
-  border: 1px solid #39434c;
-  border-radius: 4px;
+  gap: 6px;
+  max-height: 35vh;
+  overflow-y: auto;
+  padding: 2px;
 }
 .target-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 78px 32px;
+  grid-template-columns: minmax(120px, 1fr) 78px 30px 30px;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 .planning-controls .target-row select,
 .planning-controls .target-row input {
@@ -1131,37 +1198,74 @@ input[type='checkbox'] {
 .target-row button {
   padding: 6px;
 }
-@media (max-width: 640px) {
+.add-target {
+  align-self: flex-start;
+  padding: 4px 8px;
+  min-height: 28px;
+  font-size: 12px;
+  background: transparent;
+}
+@media (min-width: 1001px) {
   .app-header {
-    position: relative;
+    align-items: flex-start;
+  }
+  .app-header h1,
+  .project-name {
+    padding-top: 6px;
+  }
+}
+@media (max-width: 640px) {
+  .planning-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
   }
   .target-editor {
-    position: static;
-    grid-column: 2;
-    grid-row: 2;
+    flex: none;
+    width: 100%;
   }
-  .target-editor summary {
-    font-size: 12px;
-    padding: 2px 0;
-  }
-  .planning-controls .rate-controls {
-    grid-column: 1;
-  }
-  .planning-controls[data-sizing-mode='input'] .rate-controls {
-    grid-column: 1 / -1;
-  }
-  .planning-controls[data-sizing-mode='input'] .target-editor {
-    grid-column: 1;
-    grid-row: 3;
-  }
-  .planning-controls[data-sizing-mode='input'] .primary {
-    grid-column: 2 / 4;
+  .target-editor > summary {
+    display: list-item;
   }
   .target-editor-panel {
-    left: 12px;
-    right: 12px;
+    max-height: 32vh;
+    padding: 2px;
+  }
+  .target-row {
+    grid-template-columns: minmax(0, 1fr) 70px 28px 30px;
+  }
+  .planning-actions {
+    width: 100%;
+    gap: 6px;
+  }
+  .planning-actions .sizing-mode {
     width: auto;
-    max-width: none;
+    flex: 1;
+  }
+  .planning-actions .primary {
+    flex: none;
+  }
+  .planning-actions .technology-button {
+    margin-left: 0;
+  }
+  .planning-actions .rate-controls {
+    order: 2;
+    width: 100%;
+  }
+  .sizing-expression {
+    flex: 1;
+  }
+  .planning-controls .sizing-expression .sizing-mode {
+    width: 100%;
+  }
+  .sizing-expression.is-input {
+    grid-template-columns: minmax(115px, 0.7fr) minmax(0, 1fr);
+    flex-basis: 100%;
+  }
+  .sizing-expression.is-input .sizing-mode,
+  .sizing-expression.is-input #input-scope {
+    grid-column: 1 / -1;
   }
 }
 
