@@ -91,7 +91,7 @@ for (const example of [
         const box = svg.getBoundingClientRect();
         return Array.from(
           svg.querySelectorAll(
-            '[data-feed], [data-aggregate], [data-output-attachment], [data-target-delivery]',
+            '[data-feed], [data-feed-label], [data-aggregate], [data-output-attachment], [data-target-delivery], .block-boundary',
           ),
         ).every((el) => {
           const r = el.getBoundingClientRect();

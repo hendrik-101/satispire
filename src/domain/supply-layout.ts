@@ -2,8 +2,8 @@ import { deriveBuildVariants } from './build-variants.js';
 import type { Catalog } from './catalog.js';
 import type { ProductionPlan } from './production.js';
 import { getMachineGeometry } from './machine-geometry.js';
+import { generateBeltRouting } from './belt-routing.js';
 import {
-  supplyLines,
   validateTechnology,
   requireTechnology,
   type TechnologyProfile,
@@ -27,27 +27,8 @@ export function generateSupplyLayout(
   if (plan.nodes.length > 64 || plan.nodes.some((n) => n.machineCount > 512))
     throw new Error('Layout-Kapazität überschritten');
   const build = deriveBuildVariants(plan, variant);
-  const blocks = build.floors.map((orientation) => {
+  const arrangements = build.floors.map((orientation) => {
     const node = plan.nodes.find((n) => n.itemId === orientation.itemId)!;
-    const recipe = catalog.recipes.find((r) => r.id === node.recipeId);
-    if (!recipe) throw new Error('Unbekanntes Layout-Rezept');
-    requireTechnology(recipe, technology);
-    const inputs = node.inputs.map((i) => ({
-      ...orientation.inputs.find((input) => input.itemId === i.itemId)!,
-      lines: supplyLines(catalog, i.itemId, i.rate, technology),
-    }));
-    const output = {
-      itemId: node.itemId,
-      rate: node.rate,
-      lines: supplyLines(catalog, node.itemId, node.rate, technology),
-    };
-    const target = plan.targets.find((t) => t.itemId === node.itemId);
-    const targetOutput = target
-      ? {
-          ...target,
-          lines: supplyLines(catalog, target.itemId, target.rate, technology),
-        }
-      : null;
     const rowCount = Math.min(
       node.machineCount,
       rows || Math.max(1, Math.ceil(Math.sqrt(node.machineCount))),
@@ -58,12 +39,75 @@ export function generateSupplyLayout(
         Math.floor(node.machineCount / rowCount) +
         (i < node.machineCount % rowCount ? 1 : 0),
     );
+    let machineId = 0;
+    const rowIds = rowCounts.map((count) =>
+      Array.from({ length: count }, () => ++machineId),
+    );
+    const ordered = (reverseRows: boolean, reverseColumns: boolean) =>
+      (reverseRows ? [...rowIds].reverse() : rowIds).flatMap((ids, row) =>
+        reverseColumns !== (row % 2 === 1) ? [...ids].reverse() : ids,
+      );
+    return {
+      itemId: node.itemId,
+      rowCounts,
+      input: ordered(
+        orientation.inputSide === 'south',
+        orientation.inputSide === 'east',
+      ),
+      output: ordered(
+        orientation.outputSide === 'north',
+        orientation.outputSide === 'west',
+      ),
+    };
+  });
+  const routing = generateBeltRouting(
+    catalog,
+    plan,
+    technology,
+    build.transfers,
+    arrangements,
+  );
+  const blocks = build.floors.map((orientation) => {
+    const node = plan.nodes.find((n) => n.itemId === orientation.itemId)!;
+    const recipe = catalog.recipes.find((r) => r.id === node.recipeId);
+    if (!recipe) throw new Error('Unbekanntes Layout-Rezept');
+    requireTechnology(recipe, technology);
+    const transport = routing.find((graph) => graph.itemId === node.itemId)!;
+    const inputs = node.inputs.map((i) => ({
+      ...orientation.inputs.find((input) => input.itemId === i.itemId)!,
+      lines: transport.inputs.find((input) => input.itemId === i.itemId)!.lines,
+    }));
+    const output = {
+      itemId: node.itemId,
+      rate: node.rate,
+      lines: transport.outputLines,
+    };
+    const target = plan.targets.find((t) => t.itemId === node.itemId);
+    const targetOutput = target
+      ? {
+          ...target,
+          lines: transport.outputs.find(
+            (output) => output.terminalId === `target:${target.itemId}`,
+          )!.lines,
+        }
+      : null;
+    const rowCounts = arrangements.find(
+      (a) => a.itemId === node.itemId,
+    )!.rowCounts;
+    const rowCount = rowCounts.length;
     const columns = Math.max(...rowCounts);
-    const laneCount =
-      inputs.reduce((sum, i) => sum + i.lines, 0) + output.lines;
+    const inputLines = inputs.reduce((sum, i) => sum + i.lines, 0);
+    const laneCount = inputLines + transport.collectors + output.lines;
     if (laneCount > 256) throw new Error('Versorgungs-Kapazität überschritten');
     const width = columns * 14 + 16;
-    const depth = rowCount * 16 + 12 + laneCount * 2;
+    const rowPitch = 12.5 + 8 + 3.2 * (inputLines + transport.collectors);
+    const firstY = 8 + 3.2 * inputLines;
+    const depth =
+      firstY +
+      (rowCount - 1) * rowPitch +
+      12.5 +
+      8 +
+      3.2 * transport.collectors;
     return {
       ...orientation,
       itemId: node.itemId,
@@ -76,6 +120,7 @@ export function generateSupplyLayout(
       inputs,
       output,
       targetOutput,
+      transport,
       machineGeometry: getMachineGeometry(
         catalog.catalogVersion,
         node.machineId,
@@ -89,9 +134,10 @@ export function generateSupplyLayout(
             column +
             1,
           x: 8 + column * 14,
-          y: 8 + row * 16,
-          width: 8,
-          depth: 6,
+          row,
+          y: firstY + row * rowPitch,
+          width: 10,
+          depth: 12.5,
         })),
       ),
       connections: {

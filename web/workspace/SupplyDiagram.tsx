@@ -1,63 +1,140 @@
-import { supplySceneMetrics } from './supply-scene.js';
+import { useState } from 'react';
+import { supplySceneMetrics, type FlowLabel } from './supply-scene.js';
 import type { generateSupplyLayout } from '../../src/domain/supply-layout.js';
+import type { Catalog } from '../../src/domain/catalog.js';
+import type { TechnologyProfile } from '../../src/domain/technology.js';
 import { itemName } from '../../src/domain/vanilla.js';
 import { resourceColor } from './resource-colors.js';
 import { ResourceIcon } from './ResourceIcon.js';
+import { formatRate } from './format-rate.js';
+import { TransportJunction } from './TransportJunction.js';
 type Layout = ReturnType<typeof generateSupplyLayout>;
 type Floor = Layout['floors'][number];
-type Point = { x: number; y: number };
-/** Logical aggregate/row topology; the paths are schematic, not individual belts. */
+
+function beltPath(points: readonly { x: number; y: number }[]) {
+  const first = points[0]!;
+  let d = `M ${first.x} ${first.y}`;
+  for (let i = 1; i < points.length - 1; i++) {
+    const previous = points[i - 1]!,
+      point = points[i]!,
+      next = points[i + 1]!;
+    const before = Math.hypot(point.x - previous.x, point.y - previous.y);
+    const after = Math.hypot(next.x - point.x, next.y - point.y);
+    const radius = Math.min(0.32, before / 2, after / 2);
+    const start = {
+      x: point.x - ((point.x - previous.x) / before) * radius,
+      y: point.y - ((point.y - previous.y) / before) * radius,
+    };
+    const end = {
+      x: point.x + ((next.x - point.x) / after) * radius,
+      y: point.y + ((next.y - point.y) / after) * radius,
+    };
+    d += ` L ${start.x} ${start.y} Q ${point.x} ${point.y} ${end.x} ${end.y}`;
+  }
+  const last = points.at(-1)!;
+  return `${d} L ${last.x} ${last.y}`;
+}
+
+/** Each edge is one capacity-checked belt/pipe between actual topology ports. */
 export function SupplyDiagram({
   layout,
   floor,
   marker,
+  catalog,
+  technology,
+  compact = false,
+  showBeltRates = false,
+  scene,
 }: {
   layout: Layout;
   floor: Floor;
   marker: string;
+  catalog: Catalog;
+  technology: TechnologyProfile;
+  compact?: boolean;
+  showBeltRates?: boolean;
+  scene?: ReturnType<typeof supplySceneMetrics>;
 }) {
-  const {
-    shift,
-    feeds,
-    maxY,
-    firstY,
-    outputRail,
-    feeders,
-    labels,
-    outputIcon,
-  } = supplySceneMetrics(layout, floor);
-  const port = (p: Point) => ({ x: p.x + shift, y: p.y + shift });
-  const input = port(floor.connections.input),
-    output = port(floor.connections.output);
-  const path = (points: Point[], out = true, itemId = floor.itemId) => (
-    <g
-      data-resource-id={itemId}
-      className={`supply-belt supply-belt-${out ? 'output' : 'input'}`}
-    >
-      <path
-        d={points.map((p, i) => `${i ? 'L' : 'M'} ${p.x} ${p.y}`).join(' ')}
-        fill="none"
-        stroke="#17232b"
-        strokeWidth="0.7"
-        strokeLinejoin="round"
-      />
-      <path
-        className="supply-belt-edge"
-        d={points.map((p, i) => `${i ? 'L' : 'M'} ${p.x} ${p.y}`).join(' ')}
-        fill="none"
-        stroke={resourceColor(itemId)}
-        strokeWidth="0.3"
-        strokeLinejoin="round"
-        markerEnd={`url(#${marker}-${resourceColor(itemId).slice(1)})`}
-      />
-    </g>
-  );
-  const feeder = (feed: number) => feeders[feed]!;
-  const inputAt = (m: Floor['machines'][number], feed: number) =>
-    m.x + shift + 1 + ((feed + 1) * 6) / (feeds + 1);
-  const transfers = layout.transfers.filter((t) =>
-    t.span.includes(floor.index),
-  );
+  const [hoveredBelt, setHoveredBelt] = useState<string | null>(null);
+  const [focusedBelt, setFocusedBelt] = useState<string | null>(null);
+  const [selectedBelt, setSelectedBelt] = useState<string | null>(null);
+  const { shift, labels, outputLabel, nodes, belts, portSides, loadLabels } =
+    scene ?? supplySceneMetrics(layout, floor, catalog, technology, compact);
+  const drawBelt = (belt: (typeof belts)[number]) => {
+    const d = beltPath(belt.points);
+    const unit = belt.transport === 'pipe' ? 'm³/min' : 'Stk./min';
+    return (
+      <g
+        key={belt.id}
+        className={`supply-belt supply-belt-${belt.flow}`}
+        role="button"
+        tabIndex={0}
+        aria-label={`${itemName(belt.itemId)} · ${formatRate(belt.rate)} ${unit}`}
+        aria-pressed={selectedBelt === belt.id}
+        onPointerEnter={() => setHoveredBelt(belt.id)}
+        onPointerLeave={() => setHoveredBelt(null)}
+        onFocus={() => setFocusedBelt(belt.id)}
+        onBlur={() => setFocusedBelt(null)}
+        onClick={(event) => {
+          event.stopPropagation();
+          setSelectedBelt((current) => (current === belt.id ? null : belt.id));
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            setSelectedBelt((current) =>
+              current === belt.id ? null : belt.id,
+            );
+          } else if (event.key === 'Escape') {
+            setSelectedBelt(null);
+            event.currentTarget.blur();
+          }
+        }}
+        data-belt-id={belt.id}
+        data-resource-id={belt.itemId}
+        data-edge-from={belt.from}
+        data-edge-to={belt.to}
+        data-lane={belt.lane}
+        data-rate={belt.rate}
+        data-capacity={belt.capacity}
+        data-machine-input={
+          nodes.find(
+            (node) => node.id === belt.to && node.kind === 'machine-input',
+          )?.machineId
+        }
+        data-machine-output={
+          nodes.find(
+            (node) => node.id === belt.from && node.kind === 'machine-output',
+          )?.machineId
+        }
+      >
+        <title>{`${itemName(belt.itemId)} · ${formatRate(belt.rate)} ${unit} · ${belt.transport === 'pipe' ? 'Rohr' : 'Band'} Mk.${belt.tier} · Kapazität ${belt.capacity} ${unit}`}</title>
+        <path
+          d={d}
+          fill="none"
+          stroke="transparent"
+          strokeWidth="1.8"
+          pointerEvents="stroke"
+        />
+        <path
+          d={d}
+          fill="none"
+          stroke="#1b2126"
+          strokeWidth="0.75"
+          strokeLinejoin="round"
+        />
+        <path
+          className="supply-belt-edge"
+          d={d}
+          fill="none"
+          stroke={resourceColor(belt.itemId)}
+          strokeWidth={selectedBelt === belt.id ? '0.45' : '0.25'}
+          strokeLinejoin="round"
+          markerEnd={`url(#${marker}-${resourceColor(belt.itemId).slice(1)})`}
+        />
+      </g>
+    );
+  };
   return (
     <>
       <rect
@@ -79,300 +156,202 @@ export function SupplyDiagram({
           data-side={floor.inputSide}
           aria-label={itemName(feed.itemId)}
         >
-          {path(
-            [
-              input,
-              { x: feeder(i), y: input.y },
-              { x: feeder(i), y: firstY - i * 1.2 },
-            ],
-            false,
-            feed.itemId,
-          )}
-          <ResourceIcon
-            itemId={feed.itemId}
-            x={labels[i]!.x}
-            y={labels[i]!.y - 2.2}
-          />
-          <text
-            x={labels[i]!.x + 3.7}
-            y={labels[i]!.y}
-            fontSize="1.7"
-            fontFamily="monospace"
-            fill="#f1f4f6"
-          >
-            {labels[i]!.text}
-          </text>
-          {floor.rowCounts.length > 1 &&
-            path(
-              floor.inputSide === 'south'
-                ? [
-                    {
-                      x: feeder(i),
-                      y: firstY + (floor.rowCounts.length - 1) * 16 - i * 1.2,
-                    },
-                    { x: feeder(i), y: firstY - i * 1.2 },
-                  ]
-                : [
-                    { x: feeder(i), y: firstY - i * 1.2 },
-                    {
-                      x: feeder(i),
-                      y: firstY + (floor.rowCounts.length - 1) * 16 - i * 1.2,
-                    },
-                  ],
-              false,
-              feed.itemId,
-            )}
+          {belts
+            .filter(
+              (belt) => belt.flow === 'input' && belt.itemId === feed.itemId,
+            )
+            .map(drawBelt)}
         </g>
       ))}
-      {path(
-        floor.outputSide === 'north'
-          ? [
-              { x: outputRail, y: maxY + 5 },
-              { x: outputRail, y: firstY + 12 },
-            ]
-          : [
-              { x: outputRail, y: firstY + 12 },
-              { x: outputRail, y: maxY + 5 },
-            ],
-        true,
-      )}
       <g data-output-attachment>
-        {path(
-          floor.outputSide === 'north'
-            ? [
-                { x: outputRail, y: firstY + 12 },
-                { x: outputRail, y: shift - 3 },
-                { x: output.x, y: shift - 3 },
-                output,
-              ]
-            : [
-                { x: outputRail, y: maxY + 5 },
-                { x: output.x, y: maxY + 5 },
-                output,
-              ],
-          true,
-        )}
+        {belts.filter((belt) => belt.flow === 'output').map(drawBelt)}
       </g>
-      {floor.rowCounts.map((_, row) => {
-        const machines = floor.machines.filter((m) => m.y === 8 + row * 16);
-        const first = machines[0]!;
-        const iy = first.y + shift - 3,
-          oy = first.y + shift + 9;
-        return (
-          <g key={row} data-row={row}>
-            {floor.inputs.map((f, i) => (
-              <g key={f.itemId} data-input-row={row}>
-                {path(
-                  [
-                    { x: feeder(i), y: iy - i * 1.2 },
-                    {
-                      x: inputAt(
-                        floor.inputSide === 'east'
-                          ? first
-                          : machines[machines.length - 1]!,
-                        i,
-                      ),
-                      y: iy - i * 1.2,
-                    },
-                  ],
-                  false,
-                  f.itemId,
-                )}
-              </g>
-            ))}
-            {path(
-              [
-                {
-                  x:
-                    (floor.outputSide === 'west'
-                      ? machines[machines.length - 1]!
-                      : first
-                    ).x +
-                    shift +
-                    4,
-                  y: oy,
-                },
-                { x: outputRail, y: oy },
-              ],
-              true,
-            )}
-            {machines.map((m) => (
-              <g key={m.id}>
-                {floor.inputs.map((f, i) => (
-                  <g key={f.itemId}>
-                    {path(
-                      [
-                        { x: inputAt(m, i), y: iy - i * 1.2 },
-                        { x: inputAt(m, i), y: m.y + shift - 1 },
-                      ],
-                      false,
-                      f.itemId,
-                    )}
-                    <rect
-                      className="supply-junction"
-                      data-resource-id={f.itemId}
-                      x={inputAt(m, i) - 0.5}
-                      y={iy - i * 1.2 - 0.5}
-                      width="1"
-                      height="1"
-                      rx="0.2"
-                      fill={resourceColor(f.itemId)}
-                      stroke="#26343c"
-                      strokeWidth="0.15"
-                    />
-                  </g>
-                ))}
-                {path(
-                  [
-                    { x: m.x + shift + 4, y: m.y + shift + 7 },
-                    { x: m.x + shift + 4, y: oy },
-                  ],
-                  true,
-                )}
-                <rect
-                  className="supply-junction"
-                  data-resource-id={floor.itemId}
-                  x={m.x + shift + 3.4}
-                  y={oy - 0.6}
-                  width="1.2"
-                  height="1.2"
-                  rx="0.2"
-                  fill={resourceColor(floor.itemId)}
-                  stroke="#26343c"
-                  strokeWidth="0.15"
-                />
-              </g>
-            ))}
-          </g>
-        );
-      })}
-      {[
-        { p: input, out: false, side: floor.inputSide, show: feeds > 0 },
-        { p: output, out: true, side: floor.outputSide, show: true },
-      ]
-        .filter((a) => a.show)
-        .map(({ p, out, side }) => (
-          <g
-            key={out ? 'out' : 'in'}
-            data-aggregate={out ? 'output' : 'input'}
-            data-side={side}
-          >
-            <circle
-              cx={p.x}
-              cy={p.y}
-              r="0.8"
-              fill={out ? resourceColor(floor.itemId) : '#b4bec7'}
-            />
-            <text
-              x={p.x + (side === 'west' ? -1.5 : side === 'east' ? 1.5 : 0)}
-              y={p.y + (side === 'north' ? -2 : side === 'south' ? 3 : 0.5)}
-              textAnchor={
-                side === 'west' ? 'end' : side === 'east' ? 'start' : 'middle'
-              }
-              fontSize="1.7"
-              fill="#f1f4f6"
-            >
-              {out ? `${floor.output.lines}× OUT` : 'IN'}
-            </text>
-            {out && (
-              <ResourceIcon
-                itemId={floor.itemId}
-                x={outputIcon.x}
-                y={outputIcon.y - 2.2}
-              />
-            )}
-          </g>
+      {nodes
+        .filter((node) => node.kind === 'inlet' || node.kind === 'outlet')
+        .map((node) => (
+          <circle
+            key={node.id}
+            cx={node.x}
+            cy={node.y}
+            r="0.45"
+            fill={resourceColor(node.itemId)}
+            data-transport-node={node.id}
+            data-kind={node.kind}
+            data-intake-resource={
+              node.kind === 'inlet' ? node.itemId : undefined
+            }
+            data-terminal-id={node.terminalId}
+            data-lane={node.lane}
+          />
         ))}
-      {floor.targetOutput &&
-        floor.connections.targetOutput &&
-        (() => {
-          const target = port(floor.connections.targetOutput);
+      {nodes
+        .filter((node) =>
+          ['splitter', 'merger', 'pipe-junction'].includes(node.kind),
+        )
+        .map((node) => {
+          const incident = belts.filter(
+            (belt) => belt.from === node.id || belt.to === node.id,
+          );
+          const name =
+            node.kind === 'splitter'
+              ? 'Splitter'
+              : node.kind === 'merger'
+                ? 'Merger'
+                : 'Rohrkreuzung';
           return (
             <g
-              data-target-delivery
-              aria-label={`Zielausgang ${itemName(floor.itemId)}`}
+              key={node.id}
+              className="transport-junction"
+              data-transport-node={node.id}
+              data-kind={node.kind}
+              data-resource-id={node.itemId}
+              data-lane={node.lane}
+              aria-label={name}
             >
-              {path([output, target], true)}
-              <circle
-                cx={target.x}
-                cy={target.y}
-                r="0.7"
-                fill={resourceColor(floor.itemId)}
+              <title>{`${name} · ${itemName(node.itemId)} · ${incident
+                .filter((belt) => belt.to === node.id)
+                .map((belt) => formatRate(belt.rate))
+                .join(' + ')} → ${incident
+                .filter((belt) => belt.from === node.id)
+                .map((belt) => formatRate(belt.rate))
+                .join(' + ')} / min`}</title>
+              <TransportJunction
+                x={node.x}
+                y={node.y}
+                kind={node.kind as 'splitter' | 'merger' | 'pipe-junction'}
+                color={resourceColor(node.itemId)}
+                ports={incident.map((belt) => ({
+                  ...portSides.get(`${belt.id}:${node.id}`)!,
+                  out: belt.from === node.id,
+                }))}
               />
-              <text
-                x={
-                  target.x +
-                  (floor.outputSide === 'west'
-                    ? -1.5
-                    : floor.outputSide === 'east'
-                      ? 1.5
-                      : 0)
-                }
-                y={
-                  target.y +
-                  (floor.outputSide === 'north'
-                    ? -2
-                    : floor.outputSide === 'south'
-                      ? 3
-                      : 0.5)
-                }
-                textAnchor={
-                  floor.outputSide === 'west'
-                    ? 'end'
-                    : floor.outputSide === 'east'
-                      ? 'start'
-                      : 'middle'
-                }
-                fontSize="1.6"
-                fill="#f1f4f6"
-              >
-                ZIEL
-              </text>
-              <title>{`${floor.targetOutput.rate}/min · ${floor.targetOutput.lines} Transportlinien · symbolisch`}</title>
             </g>
           );
-        })()}
-      {transfers.map((t) => {
-        const p = { x: t.x + 5, y: t.y + 5 };
-        const source = t.fromFloor === floor.index;
-        const destination = t.toFloor === floor.index;
-        const aggregate = source ? output : input;
-        // The same perimeter slot is shown on every floor of the transfer span.
-        const mid =
-          t.side === 'west' || t.side === 'east'
-            ? { x: p.x, y: aggregate.y }
-            : { x: aggregate.x, y: p.y };
-        const points = source ? [aggregate, mid, p] : [p, mid, aggregate];
-        return (
+        })}
+      <g className="belt-load-labels" aria-label="Bandlasten pro Minute">
+        {loadLabels.map((label) => (
           <g
-            key={t.id}
-            className="transfer-module"
-            data-transfer-id={t.id}
-            data-side={t.side}
-            data-side-changes={t.sideChanges}
-            aria-label="Symbolischer Etagenübergang"
+            key={label.beltId}
+            data-load-belt={label.beltId}
+            data-overloaded={label.overloaded ? 'true' : 'false'}
+            style={{
+              display:
+                showBeltRates ||
+                hoveredBelt === label.beltId ||
+                focusedBelt === label.beltId ||
+                selectedBelt === label.beltId
+                  ? undefined
+                  : 'none',
+              pointerEvents: 'none',
+            }}
           >
-            {(source || destination) && path(points, source, t.fromItemId)}
             <rect
-              x={p.x - 2}
-              y={p.y - 3}
-              width="4"
-              height="6"
-              rx="0.6"
-              fill="#3b4852"
-              stroke="#8a9ca7"
-              strokeWidth="0.25"
+              x={label.x}
+              y={label.y}
+              width={label.width}
+              height={label.height}
+              rx=".25"
+              fill="#1b2126"
             />
-            <path
-              d={`M ${p.x - 1} ${p.y - 2} H ${p.x + 1} V ${p.y + 2} H ${p.x - 1} Z M ${p.x} ${p.y - 1} V ${p.y + 1}`}
-              fill="none"
-              stroke="#b3c2cb"
-              strokeWidth="0.3"
-            />
-            <title>{`Etage ${t.fromFloor + 1} → ${t.toFloor + 1} · ${t.sideChanges ? `${t.sideChanges} Seitenwechsel` : 'ausgerichtet'} · symbolisch`}</title>
+            <text
+              x={label.x + label.width / 2}
+              y={label.y + 1.75}
+              textAnchor="middle"
+              fontFamily="monospace"
+              fontSize="1.6"
+              fill={label.overloaded ? '#ff9b85' : '#d8e1e7'}
+            >
+              {label.text}
+            </text>
           </g>
-        );
-      })}
+        ))}
+      </g>
+      <g data-flow-labels>
+        {labels.map((label, i) => (
+          <g key={floor.inputs[i]!.itemId} data-feed-label={i + 1}>
+            <FlowCard
+              label={label}
+              itemId={floor.inputs[i]!.itemId}
+              direction="EIN"
+            />
+          </g>
+        ))}
+        <g data-aggregate="output" data-side={floor.outputSide}>
+          <FlowCard label={outputLabel} itemId={floor.itemId} direction="AUS" />
+        </g>
+      </g>
     </>
+  );
+}
+
+function FlowCard({
+  label,
+  itemId,
+  direction,
+}: {
+  label: FlowLabel;
+  itemId: string;
+  direction: string;
+}) {
+  return (
+    <g className="flow-label">
+      <rect
+        x={label.x}
+        y={label.y}
+        width={label.width}
+        height={label.height}
+        rx="0.6"
+        fill="#21272c"
+        stroke="#48545e"
+        strokeWidth="0.12"
+      />
+      <ResourceIcon
+        itemId={itemId}
+        x={label.x + 0.8}
+        y={label.y + 0.8}
+        size={2.7}
+      />
+      <text x={label.x + 4.2} y={label.y + 2.3} fontSize="1.35" fill="#f1f4f6">
+        {label.name}
+      </text>
+      <text
+        x={label.x + 0.9}
+        y={label.y + 4.6}
+        fontSize="1.3"
+        fill={resourceColor(itemId)}
+      >
+        {direction} gesamt · {label.rate}
+      </text>
+      <text x={label.x + 0.9} y={label.y + 6.7} fontSize="1.15" fill="#b4bec7">
+        {label.transport}
+      </text>
+      {label.destinations.map((destination, i) => (
+        <g
+          key={i}
+          className={destination.transfer ? 'transfer-module' : undefined}
+          aria-label={
+            destination.transfer ? 'Symbolischer Etagenübergang' : undefined
+          }
+          data-transfer-id={destination.transfer?.id}
+          data-side={destination.transfer?.side}
+        >
+          <text
+            x={label.x + 0.9}
+            y={label.y + 8.8 + i * 2}
+            fontSize="1.2"
+            fill="#b4bec7"
+            data-target-delivery={
+              destination.transfer
+                ? undefined
+                : direction === 'AUS'
+                  ? true
+                  : undefined
+            }
+          >
+            {destination.text}
+          </text>
+        </g>
+      ))}
+    </g>
   );
 }

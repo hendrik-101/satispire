@@ -11,7 +11,6 @@ test('adds, edits, removes and round-trips multiple production goals', async ({
     .getByLabel('Produktionsziel', { exact: true })
     .selectOption('Desc_IronPlate_C');
   await page.getByLabel('Zielrate pro Minute', { exact: true }).fill('20');
-  await page.locator('.target-editor summary').click();
   await page
     .getByRole('button', { name: 'Ziel hinzufügen', exact: true })
     .click();
@@ -37,6 +36,11 @@ test('adds, edits, removes and round-trips multiple production goals', async ({
     return JSON.parse(await readFile((await (await download).path())!, 'utf8'));
   }
   const saved = await exported();
+  expect(saved.production.recipes).toMatchObject({
+    Desc_IronPlate_C: 'Recipe_IronPlate_C',
+    Desc_IronRod_C: 'Recipe_IronRod_C',
+    Desc_IronScrew_C: 'Recipe_Screw_C',
+  });
   expect(saved.production.targets).toEqual([
     { itemId: 'Desc_IronPlate_C', rate: '20' },
     { itemId: 'Desc_IronRod_C', rate: '33/2' },
@@ -57,7 +61,10 @@ test('adds, edits, removes and round-trips multiple production goals', async ({
   });
   await expect(
     page.getByLabel('Zielrate pro Minute 2', { exact: true }),
-  ).toHaveValue('33/2');
+  ).toHaveValue('16,5');
+  expect((await exported()).production.recipes).toEqual(
+    saved.production.recipes,
+  );
   await page
     .getByRole('button', { name: 'Ziel 2 entfernen', exact: true })
     .click();
@@ -72,6 +79,8 @@ test('adds, edits, removes and round-trips multiple production goals', async ({
     path: test.info().outputPath('multiple-targets-desktop.png'),
   });
   await page.setViewportSize({ width: 390, height: 844 });
+  if ((await page.locator('.target-editor').getAttribute('open')) === null)
+    await page.locator('.target-editor summary').click();
   await expect(
     page.getByLabel('Produktionsziel 2', { exact: true }),
   ).toBeVisible();
@@ -90,7 +99,7 @@ test('adds, edits, removes and round-trips multiple production goals', async ({
   ).toBe(true);
 });
 
-test('input sizing ignores an invalid hidden primary output rate', async ({
+test('input sizing ignores an invalid disabled primary output rate', async ({
   page,
 }) => {
   await page.goto(url);
@@ -106,4 +115,132 @@ test('input sizing ignores an invalid hidden primary output rate', async ({
   await expect(
     page.getByLabel('Zielrate pro Minute', { exact: true }),
   ).toHaveValue('120');
+});
+
+test('export includes added and edited goals before an explicit recalculation', async ({
+  page,
+}) => {
+  await page.goto(url);
+  await expect(page.locator('main')).toHaveAttribute('data-ready', 'true');
+  await page
+    .getByRole('button', { name: 'Ziel hinzufügen', exact: true })
+    .click();
+  await page
+    .getByLabel('Produktionsziel 2', { exact: true })
+    .selectOption('Desc_IronRod_C');
+  await page.getByLabel('Zielrate pro Minute 2', { exact: true }).fill('16,5');
+  const download = page.waitForEvent('download');
+  await page
+    .getByRole('button', { name: 'Plan exportieren', exact: true })
+    .click();
+  const saved = JSON.parse(
+    await readFile((await (await download).path())!, 'utf8'),
+  );
+  expect(saved.production.targets).toEqual([
+    { itemId: 'Desc_IronPlate_C', rate: '20' },
+    { itemId: 'Desc_IronRod_C', rate: '33/2' },
+  ]);
+  await page.getByLabel('Plan-Datei').setInputFiles({
+    name: 'draft-goals.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(saved)),
+  });
+  await expect(
+    page.getByLabel('Zielrate pro Minute 2', { exact: true }),
+  ).toHaveValue('16,5');
+});
+
+test('all goals share desktop rows and mobile disclosure, including removing the first goal', async ({
+  page,
+}) => {
+  await page.goto(url);
+  await expect(page.locator('main')).toHaveAttribute('data-ready', 'true');
+  for (const [number, item] of [
+    [2, 'Desc_IronRod_C'],
+    [3, 'Desc_IronScrew_C'],
+  ] as const) {
+    await page
+      .getByRole('button', { name: 'Ziel hinzufügen', exact: true })
+      .click();
+    await page
+      .getByLabel(`Produktionsziel ${number}`, { exact: true })
+      .selectOption(item);
+    await page
+      .getByLabel(`Zielrate pro Minute ${number}`, { exact: true })
+      .fill(String(number * 10));
+  }
+  for (const name of [
+    'Produktionsziel',
+    'Produktionsziel 2',
+    'Produktionsziel 3',
+  ])
+    await expect(page.getByLabel(name, { exact: true })).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Ziel 1 entfernen', exact: true })
+    .click();
+  await expect(page.getByLabel('Produktionsziel', { exact: true })).toHaveValue(
+    'Desc_IronRod_C',
+  );
+  const download = page.waitForEvent('download');
+  await page
+    .getByRole('button', { name: 'Plan exportieren', exact: true })
+    .click();
+  const saved = JSON.parse(
+    await readFile((await (await download).path())!, 'utf8'),
+  );
+  expect(saved.production.targets).toEqual([
+    { itemId: 'Desc_IronRod_C', rate: '20' },
+    { itemId: 'Desc_IronScrew_C', rate: '30' },
+  ]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const details = page.locator('.target-editor');
+  if ((await details.getAttribute('open')) !== null)
+    await details.locator('summary').click();
+  for (const name of ['Produktionsziel', 'Produktionsziel 2'])
+    await expect(page.getByLabel(name, { exact: true })).toBeHidden();
+  await details.locator('summary').click();
+  for (const name of ['Produktionsziel', 'Produktionsziel 2'])
+    await expect(page.getByLabel(name, { exact: true })).toBeVisible();
+});
+
+test('input sizing preserves the promoted goals demand ratio after removing the first goal', async ({
+  page,
+}) => {
+  await page.goto(url);
+  await expect(page.locator('main')).toHaveAttribute('data-ready', 'true');
+  async function exported() {
+    const download = page.waitForEvent('download');
+    await page
+      .getByRole('button', { name: 'Plan exportieren', exact: true })
+      .click();
+    return JSON.parse(await readFile((await (await download).path())!, 'utf8'));
+  }
+  const saved = await exported();
+  saved.production.targets = [
+    { itemId: 'Desc_IronPlate_C', rate: '20' },
+    { itemId: 'Desc_IronRod_C', rate: '30' },
+    { itemId: 'Desc_IronScrew_C', rate: '40' },
+  ];
+  saved.production.imports = ['Desc_OreIron_C'];
+  await page.getByLabel('Plan-Datei').setInputFiles({
+    name: 'three-goals.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(saved)),
+  });
+  await expect(
+    page.getByLabel('Zielrate pro Minute 3', { exact: true }),
+  ).toHaveValue('40');
+  await page.getByLabel('Berechnungsmodus').selectOption('input');
+  await page.getByLabel('Inputrate pro Minute').fill('180');
+  await page
+    .getByRole('button', { name: 'Ziel 1 entfernen', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  expect((await exported()).production.targets).toEqual([
+    { itemId: 'Desc_IronRod_C', rate: '135' },
+    { itemId: 'Desc_IronScrew_C', rate: '180' },
+  ]);
 });

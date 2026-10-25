@@ -36,6 +36,7 @@ describe('personal view preferences', () => {
     expect(defaultViewPreferences).toEqual({
       schemaVersion: 1,
       preset: 'floors',
+      beltRates: false,
       panels: { navigation: true, inspector: true, graph: false },
       camera: { zoom: 1, origin: { x: 0, y: 0 } },
     });
@@ -110,6 +111,7 @@ describe('personal view preferences', () => {
     const saved = preferencesForPersistence(state);
     expect(saved).toEqual(state.preferences);
     expect(Object.keys(saved).sort()).toEqual([
+      'beltRates',
       'camera',
       'panels',
       'preset',
@@ -268,4 +270,29 @@ describe('temporary presenter camera', () => {
       beginPresenterFollow(state, { zoom: Infinity, origin: { x: 0, y: 0 } }),
     ).toThrow();
   });
+});
+
+it('restores legacy preferences without losing their arrangement and persists belt rates', () => {
+  const { beltRates, ...legacy } = updateViewPreferences(
+    defaultViewPreferences,
+    {
+      preset: 'split',
+      panels: { inspector: false },
+      camera: { zoom: 2 },
+    },
+  );
+  expect(beltRates).toBe(false);
+  expect(restorePreferences(legacy)).toEqual({ ...legacy, beltRates: false });
+  const enabled = updateViewPreferences(restorePreferences(legacy), {
+    beltRates: true,
+  });
+  expect(restorePreferences(JSON.parse(JSON.stringify(enabled)))).toEqual(
+    enabled,
+  );
+  expect(() =>
+    validateViewPreferences({ ...enabled, beltRate: true }),
+  ).toThrow();
+  expect(() =>
+    updateViewPreferences(enabled, { beltRates: 'yes' } as never),
+  ).toThrow();
 });

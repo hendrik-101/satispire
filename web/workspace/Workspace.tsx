@@ -1,3 +1,4 @@
+import { Rational } from '../../src/domain/rational.js';
 import {
   defaultBuildVariant,
   deriveBuildVariants,
@@ -33,10 +34,7 @@ import {
   recipeUnlocks,
 } from '../../src/domain/vanilla.js';
 import { generateSupplyLayout } from '../../src/domain/supply-layout.js';
-import {
-  supplyLines,
-  type TechnologyProfile,
-} from '../../src/domain/technology.js';
+import { type TechnologyProfile } from '../../src/domain/technology.js';
 import { FloorView } from './FloorView';
 import { Graph } from './Graph';
 import { Icon } from './Icon';
@@ -44,6 +42,11 @@ import { ProductionView } from './ProductionView';
 import { MachineGlyph } from './MachineGlyph';
 import { SourceCredits } from './SourceCredits';
 import { calculateProduction } from './model';
+import {
+  sizeProductionByInput,
+  productionSizingInputs,
+} from '../../src/domain/production-sizing.js';
+import { formatPercent, formatRate, formatRateInput } from './format-rate.js';
 import { createLocalApplication } from '../../src/application.js';
 import { createRoom } from '../../src/domain/rooms.js';
 import {
@@ -134,7 +137,10 @@ export function Workspace() {
   const [additionalTargets, setAdditionalTargets] = useState<
     ProductionInput['targets']
   >([]);
+  const [targetsExpanded, setTargetsExpanded] = useState(true);
   const [sizingMode, setSizingMode] = useState<'target' | 'input'>('target');
+  const [inputScope, setInputScope] = useState<'factory' | 'stage'>('factory');
+  const [inputStageItem, setInputStageItem] = useState('');
   const [inputItem, setInputItem] = useState('');
   const [inputRate, setInputRate] = useState('180');
   const [choices, setChoices] = useState(firstInput.recipes);
@@ -350,7 +356,7 @@ export function Workspace() {
       }
     });
   }, [sessionProfile.technology, factory.input.imports]);
-  const sizingInputs = useMemo(() => {
+  const sizingPlan = useMemo(() => {
     try {
       return calculateProduction(
         catalog,
@@ -363,9 +369,9 @@ export function Workspace() {
           { itemId: target, rate: '1' },
           ...additionalTargets.map((entry) => ({ ...entry, rate: '1' })),
         ],
-      ).plan.imports;
+      ).plan;
     } catch {
-      return [];
+      return undefined;
     }
   }, [
     factory.input,
@@ -374,6 +380,21 @@ export function Workspace() {
     additionalTargets,
     sessionProfile.technology,
   ]);
+  const sizingStage =
+    sizingPlan?.nodes.find(
+      (node) => node.itemId === (inputStageItem || selected),
+    )?.itemId ??
+    sizingPlan?.nodes.find((node) => node.itemId === target)?.itemId ??
+    sizingPlan?.nodes[0]?.itemId ??
+    '';
+  const sizingInputs = sizingPlan
+    ? productionSizingInputs(
+        sizingPlan,
+        inputScope === 'factory'
+          ? { scope: 'factory' }
+          : { scope: 'stage', stageItemId: sizingStage },
+      )
+    : [];
   const sizingInput =
     sizingInputs.find((entry) => entry.itemId === inputItem)?.itemId ??
     sizingInputs[0]?.itemId ??
@@ -424,36 +445,63 @@ export function Workspace() {
       selectStage(firstStage(next.plan));
     return next;
   }
+  function resolveDraft() {
+    const result = calculateProduction(
+      catalog,
+      {
+        ...factory.input,
+        recipes: choices,
+        technology: sessionProfile.technology,
+      },
+      [{ itemId: target, rate }, ...additionalTargets].map((entry) => ({
+        ...entry,
+        rate:
+          sizingMode === 'input' && !entry.rate.trim()
+            ? (factory.input.targets.find(
+                (previous) => previous.itemId === entry.itemId,
+              )?.rate ?? '1')
+            : entry.rate,
+      })),
+    );
+    return sizingMode === 'input'
+      ? sizeProductionByInput(
+          catalog,
+          result.input,
+          inputScope === 'factory'
+            ? {
+                scope: 'factory',
+                itemId: sizingInput,
+                rate: Rational.parse(
+                  inputRate.trim().replace(',', '.'),
+                ).toString(),
+              }
+            : {
+                scope: 'stage',
+                stageItemId: sizingStage,
+                itemId: sizingInput,
+                rate: Rational.parse(
+                  inputRate.trim().replace(',', '.'),
+                ).toString(),
+              },
+        )
+      : result;
+  }
+  function updateTargetRows(targets: ProductionInput['targets']) {
+    setTarget(targets[0]!.itemId);
+    setRate(formatRateInput(targets[0]!.rate));
+    setAdditionalTargets(
+      targets
+        .slice(1)
+        .map((entry) => ({ ...entry, rate: formatRateInput(entry.rate) })),
+    );
+  }
   function calculate() {
     sequence.current++;
     setPending(false);
     try {
-      const result = calculateProduction(
-        catalog,
-        {
-          ...factory.input,
-          recipes: choices,
-          technology: sessionProfile.technology,
-        },
-        [
-          {
-            itemId: target,
-            rate:
-              sizingMode === 'target'
-                ? rate
-                : factory.input.targets[0]!.itemId === target
-                  ? factory.input.targets[0]!.rate
-                  : '1',
-          },
-          ...additionalTargets,
-        ],
-        sizingMode === 'input'
-          ? { itemId: sizingInput, rate: inputRate }
-          : undefined,
-      );
+      const result = resolveDraft();
       const next = apply(result.input);
-      setRate(next.input.targets[0]!.rate);
-      setAdditionalTargets(next.input.targets.slice(1));
+      updateTargetRows(next.input.targets);
     } catch (e) {
       setError(message(e));
     }
@@ -515,9 +563,7 @@ export function Workspace() {
       if (id !== sequence.current) return;
       await updateSessionProfile(importedProfile, expectedRevision);
       setFactory(next);
-      setTarget(input.targets[0]!.itemId);
-      setRate(input.targets[0]!.rate);
-      setAdditionalTargets(input.targets.slice(1));
+      updateTargetRows(input.targets);
       setSizingMode('target');
       setInputItem('');
       setChoices({
@@ -537,6 +583,15 @@ export function Workspace() {
   }
   function exportPlan() {
     if (!planMatchesSession) return;
+    let exported = factory;
+    try {
+      exported = apply(resolveDraft().input);
+      updateTargetRows(exported.input.targets);
+    } catch (e) {
+      setError(
+        `Entwurf ungültig: ${message(e)} Exportiert wurde der letzte gültige Plan.`,
+      );
+    }
     const url = URL.createObjectURL(
       new Blob(
         [
@@ -545,8 +600,8 @@ export function Workspace() {
               schemaVersion: 1,
               catalogVersion: catalog.catalogVersion,
               unlocks: sessionProfile,
-              production: factory.input,
-              layout: { rows: factory.rows, variant: factory.variant },
+              production: exported.input,
+              layout: { rows: exported.rows, variant: exported.variant },
             },
             null,
             2,
@@ -568,9 +623,23 @@ export function Workspace() {
   const stage =
     factory.plan.nodes.find((n) => n.itemId === selected) ??
     factory.plan.nodes[0]!;
-  const machineGeometry = supplyLayout.floors.find(
+  const perMachineRate = (rate: string) =>
+    Rational.parseCanonical(rate)
+      .divide(Rational.parse(String(stage.machineCount)))
+      .toString();
+  const clockComparison = Rational.parseCanonical(stage.utilization).compare(
+    Rational.parse('1'),
+  );
+  const clockStatus =
+    clockComparison < 0
+      ? 'Untertaktet'
+      : clockComparison > 0
+        ? 'Übertaktet'
+        : 'Standardtakt';
+  const stageFloor = supplyLayout.floors.find(
     (floor) => floor.itemId === stage.itemId,
-  )!.machineGeometry;
+  )!;
+  const machineGeometry = stageFloor.machineGeometry;
   function openProfile() {
     profileRevision.current = sessionRoom.current.revision;
     setProfileDraft(structuredClone(sessionProfile.technology));
@@ -705,149 +774,101 @@ export function Workspace() {
               calculate();
             }}
           >
-            <label className="sr-only" htmlFor="target">
-              Produktionsziel
-            </label>
-            <select
-              id="target"
-              aria-label="Produktionsziel"
-              value={target}
-              onChange={(e) => {
-                setTarget(e.target.value);
-                setAdditionalTargets((entries) =>
-                  entries.filter((entry) => entry.itemId !== e.target.value),
-                );
+            <details
+              className="target-editor"
+              open={width > 640 || targetsExpanded}
+              onToggle={(e) => {
+                if (width <= 640) setTargetsExpanded(e.currentTarget.open);
               }}
-              disabled={pending}
             >
-              {manufactured.map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.name}
-                </option>
-              ))}
-            </select>
-            <label className="sr-only" htmlFor="sizing-mode">
-              Berechnungsmodus
-            </label>
-            <select
-              id="sizing-mode"
-              className="sizing-mode"
-              value={sizingMode}
-              onChange={(e) =>
-                setSizingMode(e.target.value as 'target' | 'input')
-              }
-              disabled={pending}
-            >
-              <option value="target">Nach Zielmenge</option>
-              <option value="input">Nach Input</option>
-            </select>
-            <div className="rate-controls">
-              {sizingMode === 'input' && (
-                <>
-                  <label className="sr-only" htmlFor="input-item">
-                    Verfügbarer Input
-                  </label>
-                  <select
-                    id="input-item"
-                    value={sizingInput}
-                    onChange={(e) => setInputItem(e.target.value)}
-                    disabled={pending || sizingInputs.length === 0}
-                  >
-                    {sizingInputs.length === 0 && (
-                      <option value="">Kein externer Input</option>
-                    )}
-                    {sizingInputs.map((entry) => (
-                      <option key={entry.itemId} value={entry.itemId}>
-                        {itemName(entry.itemId)}
-                      </option>
-                    ))}
-                  </select>
-                </>
-              )}
-              <label className="sr-only" htmlFor="rate">
-                {sizingMode === 'target'
-                  ? 'Zielrate pro Minute'
-                  : 'Inputrate pro Minute'}
-              </label>
-              <input
-                id="rate"
-                value={sizingMode === 'target' ? rate : inputRate}
-                onChange={(e) =>
-                  sizingMode === 'target'
-                    ? setRate(e.target.value)
-                    : setInputRate(e.target.value)
-                }
-                title="Dezimalzahl oder Bruch, z. B. 7,5 oder 15/2"
-                inputMode="decimal"
-                disabled={pending}
-              />
-              <span className="rate-unit">/ min</span>
-            </div>
-            <details className="target-editor">
-              <summary>Ziele ({additionalTargets.length + 1})</summary>
+              <summary>
+                Produktionsziele ({additionalTargets.length + 1})
+              </summary>
               <div className="target-editor-panel">
-                <strong>Weitere Ziele · Menge / min</strong>
-                {additionalTargets.map((entry, index) => (
-                  <div className="target-row" key={index}>
-                    <select
-                      aria-label={`Produktionsziel ${index + 2}`}
-                      value={entry.itemId}
-                      disabled={pending}
-                      onChange={(e) =>
-                        setAdditionalTargets((entries) =>
-                          entries.map((value, i) =>
-                            i === index
-                              ? { ...value, itemId: e.target.value }
-                              : value,
-                          ),
-                        )
-                      }
-                    >
-                      {!manufactured.some(
-                        (item) => item.id === entry.itemId,
-                      ) && (
-                        <option value={entry.itemId}>
-                          {itemName(entry.itemId)}
-                        </option>
-                      )}
-                      {manufactured.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.name}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      aria-label={`Zielrate pro Minute ${index + 2}`}
-                      value={entry.rate}
-                      inputMode="decimal"
-                      title="Menge pro Minute; Dezimalzahl oder Bruch"
-                      disabled={pending}
-                      onChange={(e) =>
-                        setAdditionalTargets((entries) =>
-                          entries.map((value, i) =>
-                            i === index
-                              ? { ...value, rate: e.target.value }
-                              : value,
-                          ),
-                        )
-                      }
-                    />
-                    <button
-                      type="button"
-                      aria-label={`Ziel ${index + 2} entfernen`}
-                      disabled={pending}
-                      onClick={() =>
-                        setAdditionalTargets((entries) =>
-                          entries.filter((_, i) => i !== index),
-                        )
-                      }
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
+                {[{ itemId: target, rate }, ...additionalTargets].map(
+                  (entry, index) => (
+                    <div className="target-row" key={index}>
+                      <select
+                        id={index === 0 ? 'target' : undefined}
+                        aria-label={
+                          index === 0
+                            ? 'Produktionsziel'
+                            : `Produktionsziel ${index + 1}`
+                        }
+                        value={entry.itemId}
+                        disabled={pending}
+                        onChange={(e) => {
+                          if (index === 0) setTarget(e.target.value);
+                          else
+                            setAdditionalTargets((entries) =>
+                              entries.map((value, i) =>
+                                i === index - 1
+                                  ? { ...value, itemId: e.target.value }
+                                  : value,
+                              ),
+                            );
+                        }}
+                      >
+                        {!manufactured.some(
+                          (item) => item.id === entry.itemId,
+                        ) && (
+                          <option value={entry.itemId}>
+                            {itemName(entry.itemId)}
+                          </option>
+                        )}
+                        {manufactured.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        id={index === 0 ? 'rate' : undefined}
+                        aria-label={
+                          index === 0
+                            ? 'Zielrate pro Minute'
+                            : `Zielrate pro Minute ${index + 1}`
+                        }
+                        value={entry.rate}
+                        inputMode="decimal"
+                        title="Menge pro Minute; Dezimalzahl oder Bruch"
+                        disabled={pending || sizingMode === 'input'}
+                        onChange={(e) => {
+                          if (index === 0) setRate(e.target.value);
+                          else
+                            setAdditionalTargets((entries) =>
+                              entries.map((value, i) =>
+                                i === index - 1
+                                  ? { ...value, rate: e.target.value }
+                                  : value,
+                              ),
+                            );
+                        }}
+                      />
+                      <span className="rate-unit">/ min</span>
+                      <button
+                        type="button"
+                        aria-label={`Ziel ${index + 1} entfernen`}
+                        disabled={pending || additionalTargets.length === 0}
+                        onClick={() => {
+                          if (index === 0) {
+                            setTarget(additionalTargets[0]!.itemId);
+                            setRate(additionalTargets[0]!.rate);
+                            setAdditionalTargets((entries) => entries.slice(1));
+                          } else
+                            setAdditionalTargets((entries) =>
+                              entries.filter((_, i) => i !== index - 1),
+                            );
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ),
+                )}
                 <button
                   type="button"
+                  className="add-target"
                   disabled={
                     pending ||
                     additionalTargets.length >= INPUT_ENTRY_LIMIT - 1 ||
@@ -878,17 +899,111 @@ export function Workspace() {
                 </button>
               </div>
             </details>
-            <button className="primary" type="submit" disabled={pending}>
-              Plan berechnen
-            </button>
-            <button
-              type="button"
-              className="technology-button"
-              onClick={openProfile}
-            >
-              <Icon name="technology" />
-              Technologie
-            </button>
+            <div className="planning-actions">
+              <div
+                className={`sizing-expression${sizingMode === 'input' ? ' is-input' : ''}`}
+              >
+                <label className="sr-only" htmlFor="sizing-mode">
+                  Berechnungsmodus
+                </label>
+                <select
+                  id="sizing-mode"
+                  className="sizing-mode"
+                  value={sizingMode}
+                  onChange={(event) =>
+                    setSizingMode(event.target.value as 'target' | 'input')
+                  }
+                  disabled={pending}
+                >
+                  <option value="target">Zielmengen festlegen</option>
+                  <option value="input">Alle Ziele skalieren auf</option>
+                </select>
+                {sizingMode === 'input' && (
+                  <>
+                    <div className="sizing-amount">
+                      <label className="sr-only" htmlFor="input-rate">
+                        Inputrate pro Minute
+                      </label>
+                      <input
+                        id="input-rate"
+                        value={inputRate}
+                        onChange={(event) => setInputRate(event.target.value)}
+                        title="Dezimalzahl oder Bruch, z. B. 7,5 oder 15/2"
+                        inputMode="decimal"
+                        disabled={pending}
+                      />
+                      <span className="rate-unit">
+                        {catalog.items.find((item) => item.id === sizingInput)
+                          ?.transport === 'pipe'
+                          ? 'm³/min'
+                          : 'Stk./min'}
+                      </span>
+                    </div>
+                    <label className="sr-only" htmlFor="input-item">
+                      Verfügbarer Input
+                    </label>
+                    <select
+                      id="input-item"
+                      value={sizingInput}
+                      onChange={(event) => setInputItem(event.target.value)}
+                      disabled={pending || sizingInputs.length === 0}
+                    >
+                      {sizingInputs.length === 0 && (
+                        <option value="">Kein verfügbarer Input</option>
+                      )}
+                      {sizingInputs.map((entry) => (
+                        <option key={entry.itemId} value={entry.itemId}>
+                          {itemName(entry.itemId)}
+                        </option>
+                      ))}
+                    </select>
+                    <label className="sr-only" htmlFor="input-scope">
+                      Skalierungsbezug
+                    </label>
+                    <select
+                      id="input-scope"
+                      value={
+                        inputScope === 'factory'
+                          ? 'factory'
+                          : `stage:${sizingStage}`
+                      }
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setInputScope(
+                          value === 'factory' ? 'factory' : 'stage',
+                        );
+                        if (value !== 'factory')
+                          setInputStageItem(value.slice('stage:'.length));
+                      }}
+                      disabled={pending}
+                    >
+                      <option value="factory">Verbrauch gesamte Fabrik</option>
+                      {sizingPlan?.nodes
+                        .filter((node) => node.inputs.length > 0)
+                        .map((node) => (
+                          <option
+                            key={node.itemId}
+                            value={`stage:${node.itemId}`}
+                          >
+                            Eingang: {itemName(node.itemId)}
+                          </option>
+                        ))}
+                    </select>
+                  </>
+                )}
+              </div>
+              <button className="primary" type="submit" disabled={pending}>
+                Plan berechnen
+              </button>
+              <button
+                type="button"
+                className="technology-button"
+                onClick={openProfile}
+              >
+                <Icon name="technology" />
+                Technologie
+              </button>
+            </div>
           </form>
           <div className="header-actions">
             {(['navigation', 'graph', 'inspector'] as const).map((name) => (
@@ -979,7 +1094,7 @@ export function Workspace() {
                   <span>
                     {i + 1}. {itemName(n.itemId)}
                   </span>
-                  <strong>{n.rate} / min</strong>
+                  <strong>{formatRate(n.rate)} / min</strong>
                   <small>
                     {n.machineCount} × {itemName(n.machineId)}
                   </small>
@@ -990,7 +1105,7 @@ export function Workspace() {
                 {factory.plan.imports.map((i) => (
                   <li key={i.itemId}>
                     <span>{itemName(i.itemId)}</span>
-                    <strong>{i.rate} / min</strong>
+                    <strong>{formatRate(i.rate)} / min</strong>
                   </li>
                 ))}
               </ul>
@@ -1040,6 +1155,21 @@ export function Workspace() {
                     <option value="split">Verknüpft</option>
                   </select>
                 </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    aria-label="Bandmengen anzeigen"
+                    checked={preferences.beltRates}
+                    onChange={(event) =>
+                      setPreferences((p) =>
+                        updateViewPreferences(p, {
+                          beltRates: event.target.checked,
+                        }),
+                      )
+                    }
+                  />{' '}
+                  Bandmengen anzeigen
+                </label>
                 {width <= 640 && cameraControls}
                 <label>
                   <input
@@ -1076,7 +1206,13 @@ export function Workspace() {
                     }
                   }}
                   machine={Math.min(selectedMachine, stage.machineCount)}
-                  selectMachine={setSelectedMachine}
+                  showBeltRates={preferences.beltRates}
+                  selectMachine={(id) => {
+                    setSelectedMachine(id);
+                    setPreferences((p) =>
+                      updateViewPreferences(p, { panels: { inspector: true } }),
+                    );
+                  }}
                   motion={motion && visible}
                   compact={width <= 640}
                 />
@@ -1086,6 +1222,16 @@ export function Workspace() {
                   plan={factory.plan}
                   selected={selected}
                   select={selectStage}
+                  onSizeInput={(stageItemId, itemId) => {
+                    const entry = factory.plan.nodes
+                      .find((node) => node.itemId === stageItemId)
+                      ?.inputs.find((input) => input.itemId === itemId);
+                    setSizingMode('input');
+                    setInputScope('stage');
+                    setInputStageItem(stageItemId);
+                    setInputItem(itemId);
+                    if (entry) setInputRate(formatRateInput(entry.rate));
+                  }}
                 />
               )}
               {presentation.panels.graph && (
@@ -1120,13 +1266,46 @@ export function Workspace() {
                 </div>
               </div>
               <dl>
+                <dt>Aktives Rezept</dt>
+                <dd>
+                  {
+                    catalog.recipes.find(
+                      (recipe) => recipe.id === stage.recipeId,
+                    )!.name
+                  }
+                </dd>
                 <dt>Stufenrate</dt>
-                <dd>{stage.rate} / min</dd>
+                <dd>{formatRate(stage.rate)} / min</dd>
                 <dt>Maschinen</dt>
                 <dd>{stage.machineCount}</dd>
-                <dt>Auslastung</dt>
-                <dd>{stage.utilization}</dd>
+                <dt>Takt je Maschine</dt>
+                <dd>
+                  {formatPercent(stage.utilization)} · {clockStatus}
+                </dd>
               </dl>
+              <h3>Je Maschine</h3>
+              <ul className="imports" aria-label="Mengen je Maschine">
+                {[
+                  ...stage.inputs.map((input) => ({
+                    ...input,
+                    direction: 'EIN',
+                  })),
+                  { itemId: stage.itemId, rate: stage.rate, direction: 'AUS' },
+                ].map((flow) => (
+                  <li key={`${flow.direction}:${flow.itemId}`}>
+                    <span>
+                      {flow.direction} · {itemName(flow.itemId)}
+                    </span>
+                    <strong>
+                      {formatRate(perMachineRate(flow.rate))}{' '}
+                      {catalog.items.find((item) => item.id === flow.itemId)
+                        ?.transport === 'pipe'
+                        ? 'm³/min'
+                        : 'Stk./min'}
+                    </strong>
+                  </li>
+                ))}
+              </ul>
               {machineGeometry &&
                 [
                   { label: 'Maschinenmaße', size: machineGeometry.bounds.size },
@@ -1168,7 +1347,7 @@ export function Workspace() {
                     ))}
                 </select>
               </label>
-              <h3>Versorgung</h3>
+              <h3>Versorgung der Stufe</h3>
               <ul className="imports">
                 {[
                   ...stage.inputs,
@@ -1177,17 +1356,21 @@ export function Workspace() {
                   <li key={i.itemId}>
                     <span>{itemName(i.itemId)}</span>
                     <strong>
-                      {i.rate} / min ·{' '}
-                      {supplyLines(
-                        catalog,
-                        i.itemId,
-                        i.rate,
-                        factory.technology,
-                      )}{' '}
+                      {formatRate(i.rate)}{' '}
+                      {catalog.items.find((item) => item.id === i.itemId)!
+                        .transport === 'pipe'
+                        ? 'm³/min'
+                        : 'Stk./min'}{' '}
+                      ·{' '}
+                      {i.itemId === stage.itemId
+                        ? stageFloor.transport.outputLines
+                        : stageFloor.inputs.find(
+                            (input) => input.itemId === i.itemId,
+                          )!.lines}{' '}
                       {catalog.items.find((it) => it.id === i.itemId)!
                         .transport === 'pipe'
-                        ? 'Pipes'
-                        : 'Belts'}
+                        ? `Rohre Mk.${factory.technology.pipeTier}`
+                        : `Bänder Mk.${factory.technology.beltTier}`}
                     </strong>
                   </li>
                 ))}

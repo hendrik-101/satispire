@@ -49,3 +49,24 @@ it('rejects invalid layout fields rather than silently losing factory intent', (
   ])
     expect(() => planFileSchema.parse({ ...file, layout })).toThrow();
 });
+
+it('round-trips every target and selected recipe without collapsing shared dependencies', () => {
+  const production = {
+    targets: [
+      { itemId: 'example:plate', rate: '20' },
+      { itemId: 'example:rod', rate: '33/2' },
+      { itemId: 'example:screw', rate: '12' },
+    ],
+    recipes: {
+      'example:plate': 'example:alternate-plate',
+      'example:rod': 'example:rod-recipe',
+      'example:screw': 'example:cast-screw',
+      'example:ingot': 'example:pure-ingot',
+    },
+    imports: ['example:ore'],
+  };
+  const restored = planFileSchema.parse(
+    JSON.parse(JSON.stringify({ ...file, production })),
+  );
+  expect(restored.production).toEqual(production);
+});
