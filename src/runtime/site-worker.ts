@@ -34,7 +34,11 @@ export function createSitesWorker(assets: Readonly<Record<string, SiteAsset>>) {
         });
       if (path === '/api/session-config')
         return Response.json({ transport: 'http' }, { headers });
-      const asset = Object.hasOwn(assets, path) ? assets[path] : undefined;
+      const asset = Object.hasOwn(assets, path)
+        ? assets[path]
+        : /^\/room\/[a-f\d]{8}-(?:[a-f\d]{4}-){3}[a-f\d]{12}$/i.test(path)
+          ? assets['/room/:roomId']
+          : undefined;
       if (!asset) return new Response('Not Found', { status: 404, headers });
       return new Response(request.method === 'HEAD' ? null : asset.body, {
         headers: {

@@ -118,3 +118,41 @@ rows/variant cases and safeguards for concurrent and earlier collaborator edits.
 Final follow-up checks on production-code commit `2b32e31`: the production HTTP
 smoke passed and all 84 Chromium tests passed against the compiled server. This
 includes the four draft/rebase regressions and the unchanged offline workspace.
+
+## Integration with the current main branch
+
+Fetched `main` at `fdf68892c49f2465ef3f7a3e5b0e89746e4fc593` and reproduced the
+actual Git merge conflicts before resolving them. Merge commit `9bc584a` includes
+that main commit as its second parent. Both table sets and their separate
+capability contracts were retained; the merged workspace preserves main's readable
+belts, factory/stage sizing, decimal formatting and existing session controller.
+
+Existing root `?session=` links still open the session workspace. `/session`
+provides automatic session creation/restore, `/local` explicitly prevents both
+Convex selection and HTTP discovery, and `/room/<uuid>#key=...` uses only the room
+adapter. Shared-room mode never starts the legacy session controller or its
+implicit autosave. Two offline-isolation unit regressions and a saved-session
+route regression failed before the integration fixes and passed afterward.
+
+The static Site exporter originally embedded only `/`, so the new `/session`
+entry returned 404. It now prerenders known entry routes and a public room shell;
+the Worker allows the shell fallback only for UUID-shaped room paths. GET/HEAD
+and missing-path tests verify no database work or broad unknown-path fallback.
+The direct-room/reload browser regression confirms the real requested room ID is
+used rather than the build-time shell ID. Existing root session links are tested
+by reusing an existing HTTP session; no admission/rate limit was weakened.
+
+Validation: the compiled Node listener passed its production smoke and 129
+browser cases (five online-only cases skipped there). The Site/HTTP acceptance
+passed all six cases, covering separate-browser session synchronization, scoped
+cursors, an earlier plan being saved again, preserved drafts, retry after a
+transient write failure, existing root session links, and direct room reloads.
+The final `npm run check` passed all 505 unit/backend tests, formatting, lint,
+typechecking, CLI/MCP smoke and builds. Coverage passed with 95.86% lines and
+88.76% branches. The new public-shell routing test is included in that suite.
+
+A fresh integration review found no Important/Critical regression. The inherited
+room-adapter limitation remains: cursor presence is provided by the legacy session
+transport, not by the separate room-history adapter. The public static shell
+contains no room plan, participant capability or other private room data. No
+CodeRabbit was used for this integration.

@@ -92,3 +92,39 @@ it('requires edge-provided caller identity for new sessions and ignores body/for
     });
   }
 });
+
+it('serves the public room shell only for valid room paths and keeps unknown paths private', async () => {
+  const worker = createSitesWorker({
+    '/room/:roomId': { body: '<h1>Room shell</h1>', contentType: 'text/html' },
+  });
+  const env = {
+    DB: {
+      prepare() {
+        throw Error('No database access for public HTML');
+      },
+    },
+  };
+  const path = '/room/172be3fe-e426-46c2-84f4-765639fcebee';
+  const response = await worker.fetch(
+    new Request('https://site.example' + path),
+    env,
+  );
+  expect(response.status).toBe(200);
+  expect(await response.text()).toContain('Room shell');
+  const head = await worker.fetch(
+    new Request('https://site.example' + path, { method: 'HEAD' }),
+    env,
+  );
+  expect(head.status).toBe(200);
+  expect(await head.text()).toBe('');
+  for (const invalid of [
+    '/room/bad',
+    '/room/172be3fe-e426-46c2-84f4-765639fcebee/secret',
+    '/private.txt',
+    '/assets/missing.js',
+  ])
+    expect(
+      (await worker.fetch(new Request('https://site.example' + invalid), env))
+        .status,
+    ).toBe(404);
+});

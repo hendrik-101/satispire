@@ -120,3 +120,9 @@ For the existing personal ChatGPT Site, publish the Worker variant with its mana
 The Site adapter is verified in CI with `npm run test:browser:site`. This acceptance runs the built Worker over HTTP with actual SQLite and separate browser contexts; native Sites deployment and a public URL still require successful publication verification. The generic container's default session configuration remains local mode. The Sites HTTP/D1 adapter supports `/session` and existing `?session=` links; it does not implement the `/room/` full-plan history API. A Site must additionally configure a dedicated compatible Convex endpoint to offer those shared rooms.
 
 For public Sites creation, the Worker must receive Cloudflare's trusted CF-Connecting-IP header; absent caller identity fails closed for new sessions. Per-caller buckets expire after inactivity. Do not substitute caller-provided JSON, arbitrary forwarded-for values or a fixed global identifier in a public deployment. The fixed loopback preview identity is local-only. Optional Convex creation requires a configured trusted identity provider and an authenticated client; its anonymous creation action is not exposed by default. Capability-based joins/reads/edits keep their existing contract.
+
+The static Site export includes separate `/local` and `/session` entry documents
+and a public room HTML shell. The Worker accepts that shell only for UUID-shaped
+`/room/<roomId>` paths; unknown routes and missing assets still return 404. Room
+plans and membership are fetched by the browser through the configured Convex
+room backend, not embedded into the public HTML export.

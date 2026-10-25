@@ -72,6 +72,17 @@ test('a reusable session URL joins separate browsers, shares plans and restores 
     await expect(
       alice.getByLabel('Zielrate pro Minute', { exact: true }),
     ).toHaveValue('75');
+    await test.step('existing root session links restore the same HTTP session', async () => {
+      const rootLink = new URL(alice.url());
+      rootLink.pathname = '/';
+      await ready(alice, rootLink.href);
+      await expect(
+        alice.getByLabel('Zielrate pro Minute', { exact: true }),
+      ).toHaveValue('75');
+      await expect(
+        alice.getByRole('dialog', { name: 'Deine Räume' }),
+      ).toHaveCount(0);
+    });
   } finally {
     await first.close();
     await second.close();

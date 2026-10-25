@@ -15,14 +15,26 @@ const client = join(root, 'web-dist/client');
 const app = (
   await import(pathToFileURL(join(root, 'web-dist/server/server.js')).href)
 ).default;
-const response = await app.fetch(new Request('https://satispire.example/'));
-if (response.status !== 200) throw new Error('Workspace export failed');
-const html = await response.text();
-if (!html.includes('Satispire'))
-  throw new Error('Workspace missing from export');
-for (const match of html.matchAll(/(?:src|href)="(\/assets\/[^"?#]+)"/g))
-  await access(join(client, match[1]));
-const assets = { '/': { body: html, contentType: 'text/html; charset=utf-8' } };
+const assets = {};
+// Each known entry needs its own router hydration state in the immutable export.
+for (const [assetPath, renderPath] of [
+  ['/', '/'],
+  ['/local', '/local'],
+  ['/session', '/session'],
+  ['/room/:roomId', '/room/00000000-0000-4000-8000-000000000000'],
+]) {
+  const response = await app.fetch(
+    new Request('https://satispire.example' + renderPath),
+  );
+  if (response.status !== 200)
+    throw new Error('Workspace export failed: ' + assetPath);
+  const html = await response.text();
+  if (!html.includes('Satispire'))
+    throw new Error('Workspace missing from export: ' + assetPath);
+  for (const match of html.matchAll(/(?:src|href)="(\/assets\/[^"?#]+)"/g))
+    await access(join(client, match[1]));
+  assets[assetPath] = { body: html, contentType: 'text/html; charset=utf-8' };
+}
 const mime = {
   '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
