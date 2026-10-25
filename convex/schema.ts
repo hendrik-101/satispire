@@ -64,6 +64,44 @@ const state = v.object({
   ),
 });
 export default defineSchema({
+  plans: defineTable({ roomId: v.string(), plan: v.string() }).index(
+    'by_room',
+    ['roomId'],
+  ),
+  roomLinks: defineTable({ roomId: v.string(), digest: v.string() }).index(
+    'by_room',
+    ['roomId'],
+  ),
+  planHistory: defineTable({
+    roomId: v.string(),
+    revision: v.number(),
+    participantId: v.string(),
+    author: v.string(),
+    timestamp: v.number(),
+    summary: v.string(),
+    undoOf: v.union(v.string(), v.null()),
+    changes: v.array(
+      v.object({
+        field: v.union(
+          v.literal('targets'),
+          v.literal('recipes'),
+          v.literal('imports'),
+          v.literal('unlocks'),
+          v.literal('rows'),
+          v.literal('variant'),
+        ),
+        before: v.string(),
+        after: v.string(),
+      }),
+    ),
+  }).index('by_room_revision', ['roomId', 'revision']),
+  planReceipts: defineTable({
+    roomId: v.string(),
+    commandId: v.string(),
+    participantId: v.string(),
+    fingerprint: v.string(),
+    revision: v.number(),
+  }).index('by_room_command', ['roomId', 'commandId']),
   rooms: defineTable({ roomId: v.string(), state }).index('by_room', [
     'roomId',
   ]),

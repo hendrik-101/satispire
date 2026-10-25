@@ -67,12 +67,12 @@ const internalJoinRef = makeFunctionReference<
 >('rooms:internalJoin');
 
 /** Crypto randomness lives in actions, outside deterministic mutations. */
-function randomSecret(): string {
+export function randomSecret(): string {
   return Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) =>
     b.toString(16).padStart(2, '0'),
   ).join('');
 }
-async function hashSecret(secret: string): Promise<string> {
+export async function hashSecret(secret: string): Promise<string> {
   if (!/^[0-9a-f]{64}$/.test(secret)) throw new RoomError('forbidden');
   return Array.from(
     new Uint8Array(
@@ -89,7 +89,7 @@ async function loadRoom(ctx: GenericQueryCtx<DataModel>, roomId: string) {
   if (!room) throw new RoomError('forbidden');
   return room;
 }
-async function verified(
+export async function verified(
   ctx: GenericQueryCtx<DataModel>,
   roomId: string,
   capability: string,
@@ -255,6 +255,12 @@ export const command = mutationGeneric({
   },
   handler: async (ctx, args) => {
     const { room, context } = await verified(ctx, args.roomId, args.capability);
+    // Shared workspace edits must update the complete plan and history atomically.
+    const shared = await ctx.db
+      .query('plans')
+      .withIndex('by_room', (q) => q.eq('roomId', args.roomId))
+      .unique();
+    if (shared) throw new Error('shared-plan-command-required');
     const result = applyRoomCommand(room.state, context, {
       id: args.id,
       expectedRevision: args.expectedRevision,
