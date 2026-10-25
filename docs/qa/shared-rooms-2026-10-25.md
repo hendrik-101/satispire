@@ -114,3 +114,7 @@ submitted plan. An explicit render update clears the obsolete conflict notice.
 A concurrent foreign update or an already-stale draft never gains a fresh base
 through this path. All 16 focused room browser tests passed, including separate
 rows/variant cases and safeguards for concurrent and earlier collaborator edits.
+
+Final follow-up checks on production-code commit `2b32e31`: the production HTTP
+smoke passed and all 84 Chromium tests passed against the compiled server. This
+includes the four draft/rebase regressions and the unchanged offline workspace.
