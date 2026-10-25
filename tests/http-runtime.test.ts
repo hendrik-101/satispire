@@ -188,3 +188,16 @@ describe('HTTP runtime', () => {
     await expect(fetch(new URL('/healthz', base))).rejects.toThrow();
   });
 });
+test('exposes only the public backend URL through uncached runtime config', async () => {
+  server = await startHttpRuntime({
+    buildDirectory: directory,
+    port: 0,
+    gracefulShutdown: false,
+    convexUrl: 'https://example.convex.cloud',
+  });
+  const response = await fetch(new URL('/config.json', server.url!));
+  expect(response.headers.get('cache-control')).toBe('no-store');
+  expect(await response.json()).toEqual({
+    convexUrl: 'https://example.convex.cloud',
+  });
+});

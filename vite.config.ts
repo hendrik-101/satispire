@@ -9,5 +9,28 @@ export default defineConfig({
     strictPort: true,
     watch: { usePolling: true, interval: 500 },
   },
-  plugins: [tanstackStart({ srcDirectory: 'web' }), react()],
+  plugins: [
+    {
+      name: 'public-runtime-config',
+      configureServer(server) {
+        server.middlewares.use((request, response, next) => {
+          if (request.url !== '/config.json') return next();
+          if (request.method !== 'GET' && request.method !== 'HEAD') {
+            response.statusCode = 405;
+            response.end();
+            return;
+          }
+          response.setHeader('Content-Type', 'application/json');
+          response.setHeader('Cache-Control', 'no-store');
+          response.end(
+            request.method === 'HEAD'
+              ? undefined
+              : JSON.stringify({ convexUrl: process.env.CONVEX_URL || null }),
+          );
+        });
+      },
+    },
+    tanstackStart({ srcDirectory: 'web' }),
+    react(),
+  ],
 });

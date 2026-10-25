@@ -6,7 +6,8 @@ import {
 } from '../../src/domain/vanilla.js';
 import type { ProductionInput } from '../../src/domain/production.js';
 
-const url = process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173';
+const url =
+  (process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173') + '/local';
 const allRecipes = vanillaCatalog.recipes.map((recipe) => recipe.id);
 const allImports = vanillaCatalog.items
   .filter((item) => item.raw)

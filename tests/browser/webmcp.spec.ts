@@ -130,7 +130,9 @@ test('actual workspace registers Vanilla tools and disposes retained callbacks',
       },
     });
   });
-  await page.goto(process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173');
+  await page.goto(
+    (process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173') + '/local',
+  );
   await expect
     .poll(() =>
       page.evaluate(
@@ -215,7 +217,9 @@ test('host registration failure preserves the actual UI planning workflow', asyn
       },
     });
   });
-  await page.goto(process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173');
+  await page.goto(
+    (process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173') + '/local',
+  );
   await expect(page.locator('main.workspace')).toHaveAttribute(
     'data-ready',
     'true',

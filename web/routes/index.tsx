@@ -1,3 +1,3 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { Workspace } from '../workspace/Workspace';
-export const Route = createFileRoute('/')({ component: Workspace });
+import { RoomEntry } from '../workspace/RoomEntry';
+export const Route = createFileRoute('/')({ component: RoomEntry });

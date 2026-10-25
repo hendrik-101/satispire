@@ -5,6 +5,7 @@ import {
   reversePlan,
   initialSharedPlan,
 } from '../src/domain/shared-plan';
+import { availableChoices } from '../src/domain/vanilla';
 import { createUnlockProfile } from '../src/domain/session-unlocks';
 
 it('preserves the complete validated plan and reverses only the affected fields', () => {
@@ -74,4 +75,27 @@ it('rejects invalid production, catalog mismatches and divergent unlock technolo
   expect(() =>
     validateSharedPlan({ ...before, unlocks: createUnlockProfile(4) }),
   ).toThrow();
+});
+it('rejects undo when later targets depend on the technology being removed', () => {
+  const before = initialSharedPlan();
+  const unlocks = createUnlockProfile(4);
+  const after = validateSharedPlan({
+    ...before,
+    unlocks,
+    production: {
+      ...before.production,
+      technology: unlocks.technology,
+      recipes: availableChoices(unlocks.technology),
+    },
+  });
+  const later = validateSharedPlan({
+    ...after,
+    production: {
+      ...after.production,
+      targets: [{ itemId: 'Desc_SteelPipe_C', rate: '20' }],
+    },
+  });
+  expect(() => reversePlan(later, diffPlan(before, after))).toThrow(
+    'undo-conflict',
+  );
 });

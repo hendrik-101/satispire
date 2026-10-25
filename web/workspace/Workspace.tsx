@@ -11,7 +11,8 @@ import {
   type UnlockProfile,
 } from '../../src/domain/session-unlocks.js';
 import { loadUnlockProfile, saveUnlockProfile } from './unlock-storage';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import type { SharedPlan } from '../../src/domain/shared-plan';
 import {
   solveProduction,
   INPUT_ENTRY_LIMIT,
@@ -108,7 +109,14 @@ const message = (error: unknown) =>
   error instanceof Error
     ? error.message
     : 'Plan konnte nicht verarbeitet werden.';
-export function Workspace() {
+export interface SharedWorkspace {
+  plan: SharedPlan;
+  revision: number;
+  busy: boolean;
+  onEdit: (plan: SharedPlan, expectedRevision: number) => Promise<void>;
+  controls: ReactNode;
+}
+export function Workspace({ shared }: { shared?: SharedWorkspace } = {}) {
   const [sessionProfile, setSessionProfile] = useState(createUnlockProfile);
   const sessionRoom = useRef(
     createRoom({
@@ -160,13 +168,19 @@ export function Workspace() {
   const [profileOpen, setProfileOpen] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const sequence = useRef(0);
+  const draftDirty = useRef(false);
+  const draftRevision = useRef(shared?.revision ?? 0);
+  function markDraft() {
+    if (!draftDirty.current) draftRevision.current = shared?.revision ?? 0;
+    draftDirty.current = true;
+  }
   const profileRevision = useRef(0);
   const planMatchesSession =
     JSON.stringify(factory.technology) ===
     JSON.stringify(sessionProfile.technology);
   const presentation = effectivePresentation(preferences, width);
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || shared) return;
     const room = sessionRoom.current;
     const app = createLocalApplication(
       room,
@@ -207,11 +221,13 @@ export function Workspace() {
     };
   }, [ready]);
   useEffect(() => {
-    const restored = loadUnlockProfile(
-      sessionUnlockStorage,
-      browserUnlockStorage,
-      roomContext,
-    );
+    const restored =
+      shared?.plan.unlocks ??
+      loadUnlockProfile(
+        sessionUnlockStorage,
+        browserUnlockStorage,
+        roomContext,
+      );
     sessionRoom.current = createRoom({
       roomId: roomContext.roomId,
       ownerId: roomContext.participantId,
@@ -220,23 +236,37 @@ export function Workspace() {
     });
     setSessionProfile(restored);
     try {
-      const recipes = availableChoices(restored.technology, firstInput.imports);
-      const itemId = recipes[firstInput.targets[0]!.itemId]
-        ? firstInput.targets[0]!.itemId
-        : Object.keys(recipes)[0];
-      if (!itemId)
-        throw new Error('Keine berechenbaren Produktionsziele freigeschaltet.');
-      const input = {
-        ...firstInput,
-        recipes,
-        technology: restored.technology,
-        targets: [{ itemId, rate: '20' }],
-      };
-      const next = evaluate(input, restored.technology, 0, defaultBuildVariant);
-      setFactory(next);
-      setTarget(itemId);
-      setChoices(recipes);
-      selectStage(firstStage(next.plan));
+      if (shared) {
+        hydrateShared(shared.plan, true);
+      } else {
+        const recipes = availableChoices(
+          restored.technology,
+          firstInput.imports,
+        );
+        const itemId = recipes[firstInput.targets[0]!.itemId]
+          ? firstInput.targets[0]!.itemId
+          : Object.keys(recipes)[0];
+        if (!itemId)
+          throw new Error(
+            'Keine berechenbaren Produktionsziele freigeschaltet.',
+          );
+        const input = {
+          ...firstInput,
+          recipes,
+          technology: restored.technology,
+          targets: [{ itemId, rate: '20' }],
+        };
+        const next = evaluate(
+          input,
+          restored.technology,
+          0,
+          defaultBuildVariant,
+        );
+        setFactory(next);
+        setTarget(itemId);
+        setChoices(recipes);
+        selectStage(firstStage(next.plan));
+      }
     } catch (e) {
       setError('Gespeicherte Session-Unlocks: ' + message(e));
     }
@@ -262,6 +292,7 @@ export function Workspace() {
   }, []);
   useEffect(() => {
     if (!ready) return;
+    if (shared) return;
     const saved = saveUnlockProfile(
       sessionUnlockStorage,
       browserUnlockStorage,
@@ -326,6 +357,43 @@ export function Workspace() {
   useEffect(() => {
     if (profileOpen) dialog.current?.showModal();
   }, [profileOpen]);
+  function hydrateShared(plan: SharedPlan, resetDraft = false) {
+    const next = evaluate(
+      plan.production,
+      plan.unlocks.technology,
+      plan.layout.rows,
+      plan.layout.variant,
+      false,
+    );
+    setFactory(next);
+    setSessionProfile(plan.unlocks);
+    if (!next.plan.nodes.some((n) => n.itemId === selected))
+      selectStage(firstStage(next.plan));
+    if (resetDraft || !draftDirty.current) {
+      setTarget(plan.production.targets[0]!.itemId);
+      setRate(plan.production.targets[0]!.rate);
+      setAdditionalTargets(plan.production.targets.slice(1));
+      setChoices(plan.production.recipes);
+    }
+  }
+  useEffect(() => {
+    if (shared && ready) {
+      sequence.current++;
+      hydrateShared(shared.plan);
+    }
+  }, [shared?.plan]);
+  function planDocument(
+    next: typeof factory,
+    unlocks = sessionProfile,
+  ): SharedPlan {
+    return {
+      schemaVersion: 1,
+      catalogVersion: catalog.catalogVersion,
+      unlocks,
+      production: next.input,
+      layout: { rows: next.rows, variant: next.variant },
+    };
+  }
   const candidates = useMemo(
     () => feasibleRecipes(sessionProfile.technology, factory.input.imports),
     [sessionProfile.technology, factory.input.imports],
@@ -409,22 +477,24 @@ export function Workspace() {
     generateSupplyLayout(catalog, plan, technology, rows, normalized);
     return { input: resolved, plan, technology, rows, variant: normalized };
   }
-  function apply(
+  async function apply(
     input: ProductionInput,
     technology = sessionProfile.technology,
     rows = factory.rows,
     variant: BuildVariant = factory.variant,
+    expectedRevision = shared?.revision ?? 0,
   ) {
     sequence.current++;
     setPending(false);
     const next = evaluate(input, technology, rows, variant);
-    setFactory(next);
+    if (shared) await shared.onEdit(planDocument(next), expectedRevision);
+    else setFactory(next);
     setError('');
     if (!next.plan.nodes.some((n) => n.itemId === selected))
       selectStage(firstStage(next.plan));
     return next;
   }
-  function calculate() {
+  async function calculate() {
     sequence.current++;
     setPending(false);
     try {
@@ -451,7 +521,14 @@ export function Workspace() {
           ? { itemId: sizingInput, rate: inputRate }
           : undefined,
       );
-      const next = apply(result.input);
+      const next = await apply(
+        result.input,
+        sessionProfile.technology,
+        factory.rows,
+        factory.variant,
+        draftDirty.current ? draftRevision.current : (shared?.revision ?? 0),
+      );
+      draftDirty.current = false;
       setRate(next.input.targets[0]!.rate);
       setAdditionalTargets(next.input.targets.slice(1));
     } catch (e) {
@@ -482,7 +559,7 @@ export function Workspace() {
   }
   async function importPlan(file: File) {
     const id = ++sequence.current;
-    const expectedRevision = sessionRoom.current.revision;
+    const expectedRevision = shared?.revision ?? sessionRoom.current.revision;
     setPending(true);
     try {
       if (file.size > 1_000_000)
@@ -513,8 +590,16 @@ export function Workspace() {
         false,
       );
       if (id !== sequence.current) return;
-      await updateSessionProfile(importedProfile, expectedRevision);
-      setFactory(next);
+      if (shared)
+        await shared.onEdit(
+          planDocument(next, importedProfile),
+          expectedRevision,
+        );
+      else {
+        await updateSessionProfile(importedProfile, expectedRevision);
+        setFactory(next);
+      }
+      draftDirty.current = false;
       setTarget(input.targets[0]!.itemId);
       setRate(input.targets[0]!.rate);
       setAdditionalTargets(input.targets.slice(1));
@@ -572,7 +657,7 @@ export function Workspace() {
     (floor) => floor.itemId === stage.itemId,
   )!.machineGeometry;
   function openProfile() {
-    profileRevision.current = sessionRoom.current.revision;
+    profileRevision.current = shared?.revision ?? sessionRoom.current.revision;
     setProfileDraft(structuredClone(sessionProfile.technology));
     setSearch('');
     setTier(sessionProfile.hubTier ?? 'custom');
@@ -608,9 +693,16 @@ export function Workspace() {
         hubTier: tier === 'custom' ? null : tier,
         spaceElevatorPhase: phase,
       });
-      evaluate({ ...factory.input, recipes }, profileDraft);
-      await updateSessionProfile(profile, profileRevision.current);
-      apply({ ...factory.input, recipes }, profileDraft);
+      const next = evaluate({ ...factory.input, recipes }, profileDraft);
+      if (shared)
+        await shared.onEdit(
+          planDocument(next, profile),
+          profileRevision.current,
+        );
+      else {
+        await updateSessionProfile(profile, profileRevision.current);
+        await apply({ ...factory.input, recipes }, profileDraft);
+      }
       setChoices({
         ...recipes,
         ...Object.fromEntries(
@@ -650,11 +742,11 @@ export function Workspace() {
           value={factory.rows}
           onChange={(e) => {
             try {
-              apply(
+              void apply(
                 factory.input,
                 sessionProfile.technology,
                 Number(e.target.value),
-              );
+              ).catch((err) => setError(message(err)));
             } catch (err) {
               setError(message(err));
             }
@@ -690,7 +782,10 @@ export function Workspace() {
   );
   return (
     <main className="workspace" data-ready={ready ? 'true' : 'false'}>
-      <fieldset className="workspace hydration-boundary" disabled={!ready}>
+      <fieldset
+        className="workspace hydration-boundary"
+        disabled={!ready || shared?.busy}
+      >
         <header className="app-header">
           <h1>Satispire</h1>
           <span className="project-name">Meine Fabrik</span>
@@ -699,10 +794,11 @@ export function Workspace() {
           </span>
           <form
             className="planning-controls"
+            onChange={markDraft}
             data-sizing-mode={sizingMode}
             onSubmit={(e) => {
               e.preventDefault();
-              calculate();
+              void calculate();
             }}
           >
             <label className="sr-only" htmlFor="target">
@@ -836,11 +932,12 @@ export function Workspace() {
                       type="button"
                       aria-label={`Ziel ${index + 2} entfernen`}
                       disabled={pending}
-                      onClick={() =>
+                      onClick={() => {
+                        markDraft();
                         setAdditionalTargets((entries) =>
                           entries.filter((_, i) => i !== index),
-                        )
-                      }
+                        );
+                      }}
                     >
                       ×
                     </button>
@@ -860,6 +957,7 @@ export function Workspace() {
                     )
                   }
                   onClick={() => {
+                    markDraft();
                     const item = manufactured.find(
                       (item) =>
                         item.id !== target &&
@@ -934,15 +1032,19 @@ export function Workspace() {
                 }}
               />
             </label>
-            <button
-              className="icon-button"
-              aria-label="Plan exportieren"
-              title="Plan exportieren"
-              onClick={exportPlan}
-              disabled={!planMatchesSession}
-            >
-              <Icon name="export" />
-            </button>
+            {shared ? (
+              shared.controls
+            ) : (
+              <button
+                className="icon-button"
+                aria-label="Plan exportieren"
+                title="Plan exportieren"
+                onClick={exportPlan}
+                disabled={!planMatchesSession}
+              >
+                <Icon name="export" />
+              </button>
+            )}
           </div>
         </header>
 
@@ -951,6 +1053,22 @@ export function Workspace() {
             {error}
           </div>
         )}
+        {shared &&
+          draftDirty.current &&
+          draftRevision.current !== shared.revision && (
+            <div className="error-banner" role="status">
+              Der Raum hat neuere Änderungen. Dein Entwurf bleibt erhalten.
+              <button
+                onClick={() => {
+                  draftDirty.current = false;
+                  hydrateShared(shared.plan, true);
+                  setError('');
+                }}
+              >
+                Aktuellen Stand übernehmen
+              </button>
+            </div>
+          )}
         {storageNotice && (
           <div role="status" className="error-banner">
             {storageNotice}
@@ -1065,12 +1183,12 @@ export function Workspace() {
                   variant={factory.variant}
                   changeVariant={(variant) => {
                     try {
-                      apply(
+                      void apply(
                         factory.input,
                         sessionProfile.technology,
                         factory.rows,
                         variant,
-                      );
+                      ).catch((e) => setError(message(e)));
                     } catch (e) {
                       setError(message(e));
                     }
@@ -1152,12 +1270,13 @@ export function Workspace() {
                 <select
                   aria-label="Rezept für diese Stufe"
                   value={choices[stage.itemId] ?? stage.recipeId}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    markDraft();
                     setChoices((c) => ({
                       ...c,
                       [stage.itemId]: e.target.value,
-                    }))
-                  }
+                    }));
+                  }}
                 >
                   {candidates
                     .filter((r) => r.outputs[0]!.itemId === stage.itemId)

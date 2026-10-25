@@ -242,3 +242,29 @@ it('keeps viewer access read-only and prevents legacy commands bypassing plan hi
   ).rejects.toThrow('shared-plan-command-required');
   expect((await t.query(roomApi.view, auth(owner))).revision).toBe(0);
 });
+it('denies a stale membership capability after the participant is removed', async () => {
+  const { t, owner } = await setup();
+  const member = await t.action(roomApi.join, {
+    roomId: owner.roomId,
+    shareSecret: owner.shareSecret,
+    name: 'Removed',
+  });
+  await t.run(async (ctx) => {
+    const room = await ctx.db
+      .query('rooms')
+      .withIndex('by_room', (q) => q.eq('roomId', owner.roomId))
+      .unique();
+    const state = room!.state;
+    delete state.participants[member.participantId];
+    await ctx.db.patch(room!._id, { state });
+  });
+  await expect(t.query(roomApi.view, auth(member))).rejects.toThrow(
+    'forbidden',
+  );
+  await expect(
+    t.query(roomApi.history, {
+      ...auth(member),
+      paginationOpts: { numItems: 10, cursor: null },
+    }),
+  ).rejects.toThrow('forbidden');
+});
