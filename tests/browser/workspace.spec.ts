@@ -94,6 +94,10 @@ test('mobile canvas has compact controls and secondary settings in a sheet', asy
   await page.setViewportSize({ width: 390, height: 844 });
   await ready(page);
   const drawing = page.locator('.drawing');
+  await page.locator('.target-editor summary').click();
+  await expect(
+    page.getByLabel('Produktionsziel', { exact: true }),
+  ).toBeHidden();
   expect((await drawing.boundingBox())!.y).toBeLessThan(190);
   await expect(page.getByLabel('Zoom', { exact: true })).toBeHidden();
   await page.locator('.view-options summary').click();
@@ -155,6 +159,13 @@ test('mobile camera reveals keyboard-selected machines and recovers after zoom a
   expect(machineBox.x + machineBox.width / 2).toBeLessThan(
     sceneBox.x + sceneBox.width,
   );
+  await expect(
+    page.getByRole('complementary', { name: 'Stufeninspector' }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Inspector', exact: true }).click();
+  await expect(
+    page.getByRole('complementary', { name: 'Stufeninspector' }),
+  ).toHaveCount(0);
   const initialView = await scene.getAttribute('viewBox');
   await page.getByRole('button', { name: 'Vergrößern', exact: true }).click();
   await expect(scene).not.toHaveAttribute('viewBox', initialView!);
@@ -231,7 +242,7 @@ test('fixed Vanilla workflow, repeated calculations and error recovery', async (
     .click();
   await expect(page.getByRole('alert')).toHaveCount(0);
   await expect(
-    page.getByText('1/3 / min', { exact: true }).first(),
+    page.getByText('≈ 0,333 / min', { exact: true }).first(),
   ).toBeVisible();
 });
 test('technology applies atomically and interrupted changes preserve the plan', async ({
@@ -299,7 +310,7 @@ test('exports and reimports multiple targets with matching version; rejects inva
     page.getByText('45 / min', { exact: true }).first(),
   ).toBeVisible();
 });
-test('changing an imported primary target replaces matching secondary targets', async ({
+test('changing a target combines matching output rows without dropping their demand', async ({
   page,
 }) => {
   await ready(page);
@@ -348,12 +359,13 @@ test('changing an imported primary target replaces matching secondary targets', 
     );
     expect(document.production.targets).toEqual([
       { itemId: 'Desc_IronRod_C', rate: '10' },
+      { itemId: 'Desc_IronRod_C', rate: '15' },
       { itemId: 'Desc_IronScrew_C', rate: '40' },
     ]);
     await expect(
       page.getByLabel('Stufe auswählen', { exact: true }),
     ).toHaveValue('Desc_IronIngot_C');
-    await expect(page.getByLabel('Etagenansicht')).toContainText('20 / min');
+    await expect(page.getByLabel('Etagenansicht')).toContainText('35 / min');
   }
   const screenshot = test.info().outputPath('imported-target-replacement.png');
   await page.screenshot({ path: screenshot, fullPage: true });
@@ -513,7 +525,9 @@ test('explicit alternate unlock changes the solved chain and exact resource dema
       .getByLabel('Stufe auswählen')
       .locator('option[value="Desc_IronRod_C"]'),
   ).toHaveCount(0);
-  await expect(page.getByText(/25\/2 \/ min/).first()).toBeVisible();
+  await expect(
+    page.getByText('12,5 Stk./min', { exact: true }).first(),
+  ).toBeVisible();
 });
 
 test('view presets change content, preserve graph toggle and narrow split fallback', async ({
@@ -615,7 +629,7 @@ test('unlocked silicon alternate exposes a supported circuit board chain', async
     .getByLabel('Stufe auswählen', { exact: true })
     .selectOption('Desc_CircuitBoard_C');
   await expect(
-    page.getByText('15/2 / min', { exact: true }).first(),
+    page.getByText('7,5 / min', { exact: true }).first(),
   ).toBeVisible();
 });
 

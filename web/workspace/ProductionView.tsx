@@ -5,20 +5,24 @@ import type {
 import { RemoteCursors } from './RemoteCursors.js';
 import type { ProductionPlan } from '../../src/domain/production.js';
 import { itemName } from '../../src/domain/vanilla.js';
+import { formatRate } from './format-rate.js';
 
 export function ProductionView({
   plan,
   selected,
   select,
+  onSizeInput,
   peers = [],
   onPresence,
 }: {
   plan: ProductionPlan;
   selected: string;
   select: (id: string) => void;
+  onSizeInput?: (stageItemId: string, itemId: string) => void;
   peers?: SessionPresence[];
   onPresence?: (cursor: SessionPresenceInput['cursor']) => void;
 }) {
+  const stage = plan.nodes.find((node) => node.itemId === selected);
   return (
     <section
       className="production-panel"
@@ -57,7 +61,9 @@ export function ProductionView({
                   {itemName(node.itemId)}
                 </button>
               </th>
-              <td>{node.rate}</td>
+              <td title={`Exakt: ${node.rate} / min`}>
+                {formatRate(node.rate)}
+              </td>
               <td>
                 {node.machineCount} × {itemName(node.machineId)}
               </td>
@@ -65,6 +71,30 @@ export function ProductionView({
           ))}
         </tbody>
       </table>
+      {stage && onSizeInput && stage.inputs.length > 0 && (
+        <div className="production-input-sizing">
+          <h3>Gewählte Stufe: {itemName(stage.itemId)}</h3>
+          <dl>
+            {stage.inputs.map((input) => (
+              <div key={input.itemId}>
+                <dt>{itemName(input.itemId)}</dt>
+                <dd>
+                  <span title={`Exakt: ${input.rate} / min`}>
+                    {formatRate(input.rate)} / min
+                  </span>{' '}
+                  <button
+                    type="button"
+                    onClick={() => onSizeInput(stage.itemId, input.itemId)}
+                    aria-label={`Auf diese Eingangsmenge skalieren: ${itemName(stage.itemId)}, ${itemName(input.itemId)}`}
+                  >
+                    Auf diese Eingangsmenge skalieren
+                  </button>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
       <RemoteCursors peers={peers} />
     </section>
   );

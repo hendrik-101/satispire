@@ -50,6 +50,17 @@ function applyFactor(
   return solveExactProduction(catalog, input, factor);
 }
 
+/** Applies an already computed exact factor without reparsing it as user input. */
+export function scaleProductionByFactor(
+  catalog: Catalog,
+  input: ProductionInput,
+  factor: Rational,
+): ProductionPlan {
+  if (factor.compare(ZERO) <= 0)
+    throw new Error('Production scale factor must be positive');
+  return applyFactor(catalog, input, factor);
+}
+
 /** Applies an exact factor to all targets, anchored to total demand for one item. */
 export function scaleProduction(
   catalog: Catalog,

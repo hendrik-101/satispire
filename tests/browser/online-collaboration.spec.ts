@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 const url = process.env.SATISPIRE_BASE_URL ?? 'http://127.0.0.1:4173';
 test.skip(
   process.env.SATISPIRE_TEST_ONLINE !== '1',
@@ -132,36 +133,6 @@ test('remote cursors use diagram coordinates, are scoped to floors and clear on 
   }
 });
 
-test('adding an uncalculated target survives a remote plan update', async ({
-  browser,
-}) => {
-  const first = await browser.newContext();
-  const second = await browser.newContext();
-  try {
-    const alice = await first.newPage();
-    const bob = await second.newPage();
-    await ready(alice);
-    await ready(bob, alice.url());
-    await bob.locator('.target-editor summary').click();
-    await bob
-      .getByRole('button', { name: 'Ziel hinzufügen', exact: true })
-      .click();
-    await expect(
-      bob.getByLabel('Produktionsziel 2', { exact: true }),
-    ).toBeVisible();
-    await rate(alice, '35');
-    await expect(
-      bob.getByLabel('Produktionsziel 2', { exact: true }),
-    ).toBeVisible();
-    await expect(
-      bob.getByLabel('Zielrate pro Minute 2', { exact: true }),
-    ).toHaveValue('20');
-  } finally {
-    await first.close();
-    await second.close();
-  }
-});
-
 test('an earlier plan can be saved again after another participant changes it', async ({
   browser,
 }) => {
@@ -188,6 +159,91 @@ test('an earlier plan can be saved again after another participant changes it', 
     await expect(
       alice.getByLabel('Zielrate pro Minute', { exact: true }),
     ).toHaveValue('75');
+  } finally {
+    await first.close();
+    await second.close();
+  }
+});
+
+test('uncalculated targets and sizing drafts survive remote updates; export resumes synchronization', async ({
+  browser,
+}) => {
+  const first = await browser.newContext();
+  const second = await browser.newContext();
+  try {
+    const alice = await first.newPage();
+    const bob = await second.newPage();
+    await ready(alice);
+    await ready(bob, alice.url());
+    await bob
+      .getByLabel('Stufe auswählen', { exact: true })
+      .selectOption('Desc_IronPlate_C');
+    await bob
+      .getByRole('button', { name: 'Ziel hinzufügen', exact: true })
+      .click();
+    await rate(alice, '30');
+    await expect(bob.locator('.canvas-summary')).toContainText('30 / min');
+    await expect(
+      bob.getByLabel('Zielrate pro Minute 2', { exact: true }),
+    ).toHaveValue('20');
+    await bob
+      .getByLabel('Produktionsziel 2', { exact: true })
+      .selectOption('Desc_IronRod_C');
+    await bob.getByLabel('Zielrate pro Minute 2', { exact: true }).fill('5');
+    await bob.getByLabel('Berechnungsmodus').selectOption('input');
+    await bob
+      .getByLabel('Skalierungsbezug')
+      .selectOption('stage:Desc_IronPlate_C');
+    await bob
+      .getByLabel('Verfügbarer Input', { exact: true })
+      .selectOption('Desc_IronIngot_C');
+    await bob.getByLabel('Inputrate pro Minute').fill('90');
+    await rate(alice, '35');
+    await expect(bob.locator('.canvas-summary')).toContainText('35 / min');
+    await expect(bob.getByLabel('Berechnungsmodus')).toHaveValue('input');
+    await expect(bob.getByLabel('Skalierungsbezug')).toHaveValue(
+      'stage:Desc_IronPlate_C',
+    );
+    await expect(bob.getByLabel('Inputrate pro Minute')).toHaveValue('90');
+    await expect(
+      bob.getByLabel('Zielrate pro Minute', { exact: true }),
+    ).toHaveValue('20');
+    await expect(
+      bob.getByLabel('Zielrate pro Minute 2', { exact: true }),
+    ).toHaveValue('5');
+    const download = bob.waitForEvent('download');
+    await bob
+      .getByRole('button', { name: 'Plan exportieren', exact: true })
+      .click();
+    const exported = JSON.parse(
+      await readFile((await (await download).path())!, 'utf8'),
+    );
+    expect(exported.production.targets).toEqual([
+      { itemId: 'Desc_IronPlate_C', rate: '60' },
+      { itemId: 'Desc_IronRod_C', rate: '15' },
+    ]);
+    await expect(
+      alice.getByLabel('Zielrate pro Minute', { exact: true }),
+    ).toHaveValue('60');
+    await expect(
+      alice.getByLabel('Zielrate pro Minute 2', { exact: true }),
+    ).toHaveValue('15');
+    await rate(alice, '42,5');
+    await expect(
+      bob.getByLabel('Zielrate pro Minute', { exact: true }),
+    ).toHaveValue('42,5');
+    await expect(bob.getByLabel('Berechnungsmodus')).toHaveValue('target');
+    await bob.reload();
+    await expect(bob.locator('main.workspace')).toHaveAttribute(
+      'data-ready',
+      'true',
+    );
+    await expect(
+      bob.getByLabel('Zielrate pro Minute', { exact: true }),
+    ).toHaveValue('42,5');
+    await expect(
+      bob.getByLabel('Zielrate pro Minute 2', { exact: true }),
+    ).toHaveValue('15');
   } finally {
     await first.close();
     await second.close();
