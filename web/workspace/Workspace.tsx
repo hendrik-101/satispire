@@ -12,7 +12,12 @@ import {
 } from '../../src/domain/session-unlocks.js';
 import { loadUnlockProfile, saveUnlockProfile } from './unlock-storage';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { SharedPlan } from '../../src/domain/shared-plan';
+import {
+  canonical,
+  diffPlan,
+  type SharedPlan,
+} from '../../src/domain/shared-plan';
+import type { RoomPlan } from '../../src/room-api';
 import {
   solveProduction,
   INPUT_ENTRY_LIMIT,
@@ -113,7 +118,7 @@ export interface SharedWorkspace {
   plan: SharedPlan;
   revision: number;
   busy: boolean;
-  onEdit: (plan: SharedPlan, expectedRevision: number) => Promise<void>;
+  onEdit: (plan: SharedPlan, expectedRevision: number) => Promise<RoomPlan>;
   controls: ReactNode;
 }
 export function Workspace({ shared }: { shared?: SharedWorkspace } = {}) {
@@ -170,6 +175,7 @@ export function Workspace({ shared }: { shared?: SharedWorkspace } = {}) {
   const sequence = useRef(0);
   const draftDirty = useRef(false);
   const draftRevision = useRef(shared?.revision ?? 0);
+  const [, refreshDraftStatus] = useState(0);
   function markDraft() {
     if (!draftDirty.current) draftRevision.current = shared?.revision ?? 0;
     draftDirty.current = true;
@@ -488,8 +494,29 @@ export function Workspace({ shared }: { shared?: SharedWorkspace } = {}) {
     sequence.current++;
     setPending(false);
     const next = evaluate(input, technology, rows, variant);
-    if (shared) await shared.onEdit(planDocument(next), expectedRevision);
-    else setFactory(next);
+    if (shared) {
+      const document = planDocument(next);
+      const independent = diffPlan(planDocument(factory), document).every(
+        (change) => change.field === 'rows' || change.field === 'variant',
+      );
+      const preservedDraft =
+        draftDirty.current && draftRevision.current === expectedRevision;
+      const saved = await shared.onEdit(document, expectedRevision);
+      // Rebase only across our own acknowledged layout edit. A newer snapshot,
+      // or an already-stale draft, still requires explicit conflict resolution.
+      if (
+        independent &&
+        preservedDraft &&
+        draftDirty.current &&
+        draftRevision.current === expectedRevision &&
+        saved.revision >= expectedRevision &&
+        saved.revision <= expectedRevision + 1 &&
+        canonical(saved.plan) === canonical(document)
+      ) {
+        draftRevision.current = saved.revision;
+        refreshDraftStatus((version) => version + 1);
+      }
+    } else setFactory(next);
     setError('');
     if (!next.plan.nodes.some((n) => n.itemId === selected))
       selectStage(firstStage(next.plan));

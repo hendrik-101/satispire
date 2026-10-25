@@ -400,3 +400,110 @@ test('a delayed save acknowledgement cannot put an older target back into the cu
   ).toBeEnabled();
   expect(fixture.state().plan.production.targets[0]!.rate).toBe('80');
 });
+
+for (const change of ['rows', 'variant'] as const) {
+  test(`preserves a target draft across its own independent ${change} edit`, async ({
+    page,
+  }) => {
+    const fixture = roomWireFixture();
+    await fixture.install(page);
+    await page.goto(
+      base + '/room/' + fixture.roomId + '#key=' + fixture.shareSecret,
+    );
+    await expect(page.locator('main.workspace')).toHaveAttribute(
+      'data-ready',
+      'true',
+    );
+    await page.getByLabel('Zielrate pro Minute', { exact: true }).fill('99');
+    if (change === 'rows')
+      await page.getByLabel('Reihen', { exact: true }).selectOption('2');
+    else {
+      await page.locator('.variant-control summary').click();
+      await page
+        .getByLabel('Bauvariante', { exact: true })
+        .selectOption('east-west');
+    }
+    await expect.poll(() => fixture.state().revision).toBe(1);
+    await expect(
+      page.getByRole('button', { name: 'Plan berechnen', exact: true }),
+    ).toBeEnabled();
+    await expect(
+      page.getByLabel('Zielrate pro Minute', { exact: true }),
+    ).toHaveValue('99');
+    await page
+      .getByRole('button', { name: 'Plan berechnen', exact: true })
+      .click();
+    await expect
+      .poll(() => fixture.state().plan.production.targets[0]!.rate)
+      .toBe('99');
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    expect(
+      change === 'rows'
+        ? fixture.state().plan.layout.rows
+        : fixture.state().plan.layout.variant.inputSide,
+    ).toBe(change === 'rows' ? 2 : 'east');
+  });
+}
+
+test('does not rebase a target draft onto a collaborator edit delivered with its own layout acknowledgement', async ({
+  page,
+}) => {
+  const fixture = roomWireFixture();
+  await fixture.install(page);
+  await page.goto(
+    base + '/room/' + fixture.roomId + '#key=' + fixture.shareSecret,
+  );
+  await expect(page.locator('main.workspace')).toHaveAttribute(
+    'data-ready',
+    'true',
+  );
+  await page.getByLabel('Zielrate pro Minute', { exact: true }).fill('99');
+  fixture.holdNextMutationReply();
+  await page.getByLabel('Reihen', { exact: true }).selectOption('2');
+  await expect.poll(() => fixture.state().revision).toBe(1);
+  const newer = fixture.state().plan;
+  newer.production.targets[0]!.rate = '80';
+  fixture.remoteEdit(newer);
+  fixture.releaseMutationReply();
+  await expect(page.locator('main.workspace')).toContainText('120 / min');
+  await expect(
+    page.getByRole('button', { name: 'Plan berechnen', exact: true }),
+  ).toBeEnabled();
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await expect(page.getByRole('alert')).toContainText('inzwischen geändert');
+  expect(fixture.state().plan.production.targets[0]!.rate).toBe('80');
+  await expect(
+    page.getByLabel('Zielrate pro Minute', { exact: true }),
+  ).toHaveValue('99');
+});
+
+test('an independent own edit cannot clear an earlier collaborator conflict', async ({
+  page,
+}) => {
+  const fixture = roomWireFixture();
+  await fixture.install(page);
+  await page.goto(
+    base + '/room/' + fixture.roomId + '#key=' + fixture.shareSecret,
+  );
+  await expect(page.locator('main.workspace')).toHaveAttribute(
+    'data-ready',
+    'true',
+  );
+  await page.getByLabel('Zielrate pro Minute', { exact: true }).fill('99');
+  const newer = fixture.state().plan;
+  newer.production.targets[0]!.rate = '40';
+  fixture.remoteEdit(newer);
+  await expect(page.locator('main.workspace')).toContainText('60 / min');
+  await page.getByLabel('Reihen', { exact: true }).selectOption('2');
+  await expect.poll(() => fixture.state().revision).toBe(2);
+  await expect(
+    page.getByRole('button', { name: 'Plan berechnen', exact: true }),
+  ).toBeEnabled();
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await expect(page.getByRole('alert')).toContainText('inzwischen geändert');
+  expect(fixture.state().plan.production.targets[0]!.rate).toBe('40');
+});

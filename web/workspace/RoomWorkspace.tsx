@@ -119,6 +119,7 @@ export function RoomWorkspace({ roomId }: { roomId: string }) {
         setRoom((current) =>
           !current || next.revision >= current.revision ? next : current,
         );
+      return next;
     } catch (e) {
       throw new Error(roomError(e));
     } finally {

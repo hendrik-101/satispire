@@ -99,3 +99,18 @@ The optional CodeRabbit CLI is not installed in this executor. Its installer
 request to `https://cli.coderabbit.ai/install.sh` returned HTTP 403 through the
 configured proxy, so no CodeRabbit result is claimed. Enabling that additional
 review requires allowing the installer service and then authenticating the CLI.
+
+## Hosted review follow-up: preserved drafts
+
+The hosted Codex code review on `87e9e7f` identified one P2 issue: an unsubmitted
+target draft became stale after the same participant saved a row or variant
+change. Both flows were reproduced with failing browser regressions.
+
+The workspace now receives the acknowledged room snapshot from its edit callback.
+It advances a preserved draft's revision only for an independent layout edit,
+when the draft previously matched the edit's base, the returned revision is at
+most that one local increment, and the returned complete plan exactly matches the
+submitted plan. An explicit render update clears the obsolete conflict notice.
+A concurrent foreign update or an already-stale draft never gains a fresh base
+through this path. All 16 focused room browser tests passed, including separate
+rows/variant cases and safeguards for concurrent and earlier collaborator edits.

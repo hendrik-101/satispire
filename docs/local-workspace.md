@@ -42,7 +42,10 @@ rows/variants and unlocks. Accepted edits appear live for participants. Drafts,
 selection, zoom and panels stay personal. Incoming room updates do not create
 history entries. A draft based on an older revision cannot silently replace
 someone else's newer edit; the draft remains visible and **Aktuellen Stand
-übernehmen** explicitly replaces it with the accepted room state.
+übernehmen** explicitly replaces it with the accepted room state. A successful
+independent row/variant edit by the same participant advances a current draft's
+base revision when the acknowledged snapshot contains exactly that local edit.
+It cannot clear an earlier or concurrently received collaborator conflict.
 
 **Historie** lists author, time and changed fields. **Rückgängig** appends a
 compensating edit without removing existing entries. Unrelated later changes
