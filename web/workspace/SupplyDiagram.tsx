@@ -3,7 +3,7 @@ import { supplySceneMetrics, type FlowLabel } from './supply-scene.js';
 import type { generateSupplyLayout } from '../../src/domain/supply-layout.js';
 import type { Catalog } from '../../src/domain/catalog.js';
 import type { TechnologyProfile } from '../../src/domain/technology.js';
-import { itemName } from '../../src/domain/vanilla.js';
+import { localizedName as itemName } from './labels.js';
 import { resourceColor } from './resource-colors.js';
 import { ResourceIcon } from './ResourceIcon.js';
 import { formatRate } from './format-rate.js';
@@ -141,13 +141,92 @@ export function SupplyDiagram({
         className="block-boundary"
         x={shift}
         y={shift}
-        width={floor.width}
-        height={floor.depth}
+        width={layout.footprint.width}
+        height={layout.footprint.depth}
         rx="1"
         fill="#28303822"
         stroke="#48545e"
         strokeWidth="0.15"
       />
+      {layout.transfers
+        .filter(
+          (transfer) =>
+            transfer.fromFloor === floor.index ||
+            transfer.toFloor === floor.index,
+        )
+        .map((transfer) => {
+          const label =
+            transfer.fromFloor === floor.index
+              ? outputLabel
+              : labels[
+                  floor.inputs.findIndex(
+                    (input) => input.itemId === transfer.fromItemId,
+                  )
+                ]!;
+          return (
+            <line
+              key={`reference:${transfer.id}`}
+              data-shaft-reference={transfer.id}
+              x1={label.x + label.width / 2}
+              y1={label.y + label.height / 2}
+              x2={transfer.x + shift}
+              y2={transfer.y + shift}
+              stroke={resourceColor(transfer.fromItemId)}
+              strokeOpacity={0.45}
+              strokeWidth={0.2}
+              strokeDasharray="1 1"
+              pointerEvents="none"
+            >
+              <title>Schachtzuordnung · keine zusätzliche Bandverbindung</title>
+            </line>
+          );
+        })}
+      {layout.transfers
+        .filter((transfer) => transfer.span.includes(floor.index))
+        .map((transfer) => {
+          const unit =
+            catalog.items.find((item) => item.id === transfer.fromItemId)
+              ?.transport === 'pipe'
+              ? 'm³/min'
+              : 'Stk./min';
+          const description = `${itemName(transfer.fromItemId)} · ${formatRate(transfer.rate)} ${unit} · Etage ${transfer.fromFloor + 1} → Etage ${transfer.toFloor + 1}`;
+          return (
+            <g
+              key={transfer.id}
+              data-shaft-id={transfer.id}
+              transform={`translate(${transfer.x + shift} ${transfer.y + shift})`}
+              role="img"
+              tabIndex={0}
+              aria-label={`Schacht: ${description}`}
+            >
+              <title>{`Schacht: ${description}`}</title>
+              <rect
+                x={-1.8}
+                y={-1.8}
+                width={3.6}
+                height={3.6}
+                rx={0.3}
+                fill="#21272c"
+                stroke={resourceColor(transfer.fromItemId)}
+                strokeWidth={0.3}
+              />
+              <path
+                d="M -0.8 0.8 L 0 -0.8 L 0.8 0.8 M 0 -0.8 V 1.2"
+                fill="none"
+                stroke={resourceColor(transfer.fromItemId)}
+                strokeWidth={0.3}
+              />
+              <text
+                x={3}
+                y={0.5}
+                fontSize={1.4}
+                fill={resourceColor(transfer.fromItemId)}
+              >
+                {itemName(transfer.fromItemId)}
+              </text>
+            </g>
+          );
+        })}
       {floor.inputs.map((feed, i) => (
         <g
           key={feed.itemId}

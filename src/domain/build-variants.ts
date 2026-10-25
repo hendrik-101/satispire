@@ -94,16 +94,32 @@ export function deriveBuildVariants(
     placed.add(next);
   }
   const indices = new Map(ordered.map((id, index) => [id, index]));
+  const resolvedOutputs = new Map<string, BuildSide>();
   const floors = ordered.map((itemId, index) => {
     const override = overrides.get(itemId);
-    const swap = variant.pattern === 'alternating' && index % 2 === 1;
+    const parents = nodes
+      .get(itemId)!
+      .inputs.filter((input) => nodes.has(input.itemId));
+    const cost = (side: BuildSide) =>
+      parents.reduce(
+        (sum, input) =>
+          sum + distance(resolvedOutputs.get(input.itemId)!, side),
+        0,
+      );
+    // Prefer the configured pair on ties; unrelated stage insertion cannot flip a branch.
+    const swapped =
+      variant.pattern === 'alternating' &&
+      cost(variant.outputSide) < cost(variant.inputSide);
     const inputSide =
-      override?.inputSide ?? (swap ? variant.outputSide : variant.inputSide);
+      override?.inputSide ?? (swapped ? variant.outputSide : variant.inputSide);
     const outputSide =
-      override?.outputSide ?? (swap ? variant.inputSide : variant.outputSide);
+      override?.outputSide ??
+      (swapped ? variant.inputSide : variant.outputSide);
+    resolvedOutputs.set(itemId, outputSide);
     return {
       itemId,
       index,
+      swapped,
       inputSide,
       outputSide,
       inputs: [...nodes.get(itemId)!.inputs]

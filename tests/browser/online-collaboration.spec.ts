@@ -12,14 +12,14 @@ async function ready(page: Page, link = url) {
     'data-ready',
     'true',
   );
-  await expect(page.getByLabel('Session-Status')).toHaveText('Gespeichert');
+  await expect(page.getByLabel('Sitzungsstatus')).toHaveText('Gespeichert');
 }
 async function rate(page: Page, value: string) {
   await page.getByLabel('Zielrate pro Minute', { exact: true }).fill(value);
   await page
     .getByRole('button', { name: 'Plan berechnen', exact: true })
     .click();
-  await expect(page.getByLabel('Session-Status')).toHaveText('Gespeichert');
+  await expect(page.getByLabel('Sitzungsstatus')).toHaveText('Gespeichert');
 }
 
 test('a reusable session URL joins separate browsers, shares plans and restores after reload', async ({
@@ -105,7 +105,7 @@ test('remote cursors use diagram coordinates, are scoped to floors and clear on 
         .selectOption('Desc_IronPlate_C');
     await bob.getByRole('button', { name: 'Vergrößern', exact: true }).click();
     const drawing = alice.getByRole('group', {
-      name: 'Blockschema Iron Plate',
+      name: 'Blockschema Eisenplatte',
       exact: true,
     });
     const bounds = (await drawing.boundingBox())!;
@@ -207,16 +207,16 @@ test('uncalculated targets and sizing drafts survive remote updates; export resu
       .getByLabel('Skalierungsbezug')
       .selectOption('stage:Desc_IronPlate_C');
     await bob
-      .getByLabel('Verfügbarer Input', { exact: true })
+      .getByLabel('Verfügbares Material', { exact: true })
       .selectOption('Desc_IronIngot_C');
-    await bob.getByLabel('Inputrate pro Minute').fill('90');
+    await bob.getByLabel('Eingangsmenge pro Minute').fill('90');
     await rate(alice, '35');
     await expect(bob.locator('.canvas-summary')).toContainText('35 / min');
     await expect(bob.getByLabel('Berechnungsmodus')).toHaveValue('input');
     await expect(bob.getByLabel('Skalierungsbezug')).toHaveValue(
       'stage:Desc_IronPlate_C',
     );
-    await expect(bob.getByLabel('Inputrate pro Minute')).toHaveValue('90');
+    await expect(bob.getByLabel('Eingangsmenge pro Minute')).toHaveValue('90');
     await expect(
       bob.getByLabel('Zielrate pro Minute', { exact: true }),
     ).toHaveValue('20');

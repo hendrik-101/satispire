@@ -53,9 +53,9 @@ test('sizes a draft target by its input, preserves invalid plans and switches ba
     .selectOption('Desc_ModularFrame_C');
   await page.getByLabel('Berechnungsmodus').selectOption('input');
   await page
-    .getByLabel('Verfügbarer Input', { exact: true })
+    .getByLabel('Verfügbares Material', { exact: true })
     .selectOption('Desc_OreIron_C');
-  await page.getByLabel('Inputrate pro Minute').fill('180');
+  await page.getByLabel('Eingangsmenge pro Minute').fill('180');
   await page
     .getByRole('button', { name: 'Plan berechnen', exact: true })
     .click();
@@ -63,7 +63,7 @@ test('sizes a draft target by its input, preserves invalid plans and switches ba
   expect(await exportedTargets(page)).toEqual([
     { itemId: 'Desc_ModularFrame_C', rate: '15/2' },
   ]);
-  await page.getByLabel('Inputrate pro Minute').fill('0');
+  await page.getByLabel('Eingangsmenge pro Minute').fill('0');
   await page
     .getByRole('button', { name: 'Plan berechnen', exact: true })
     .click();
@@ -71,7 +71,7 @@ test('sizes a draft target by its input, preserves invalid plans and switches ba
   expect(await exportedTargets(page)).toEqual([
     { itemId: 'Desc_ModularFrame_C', rate: '15/2' },
   ]);
-  await page.getByLabel('Inputrate pro Minute').fill('7,5');
+  await page.getByLabel('Eingangsmenge pro Minute').fill('7,5');
   await page
     .getByRole('button', { name: 'Plan berechnen', exact: true })
     .click();
@@ -99,14 +99,14 @@ test('updates input choices for a new target and stays usable on mobile', async 
     .getByLabel('Produktionsziel', { exact: true })
     .selectOption('Desc_Wire_C');
   await expect(
-    page.getByLabel('Verfügbarer Input', { exact: true }),
+    page.getByLabel('Verfügbares Material', { exact: true }),
   ).toHaveValue('Desc_OreCopper_C');
   await expect(
     page
-      .getByLabel('Verfügbarer Input', { exact: true })
+      .getByLabel('Verfügbares Material', { exact: true })
       .locator('option[value="Desc_OreIron_C"]'),
   ).toHaveCount(0);
-  await page.getByLabel('Inputrate pro Minute').fill('180');
+  await page.getByLabel('Eingangsmenge pro Minute').fill('180');
   await page
     .getByRole('button', { name: 'Plan berechnen', exact: true })
     .click();
@@ -152,7 +152,7 @@ test('input sizing retains duplicate primary demand from imported plans', async 
     'Desc_ModularFrame_C',
   );
   await page.getByLabel('Berechnungsmodus').selectOption('input');
-  await page.getByLabel('Inputrate pro Minute').fill('120');
+  await page.getByLabel('Eingangsmenge pro Minute').fill('120');
   for (let calculation = 0; calculation < 2; calculation++) {
     await page
       .getByRole('button', { name: 'Plan berechnen', exact: true })
@@ -198,9 +198,9 @@ test('sizes total factory consumption or one stage input without changing target
     .selectOption('Desc_SteelPlate_C');
   await page.getByLabel('Berechnungsmodus').selectOption('input');
   await page
-    .getByLabel('Verfügbarer Input', { exact: true })
+    .getByLabel('Verfügbares Material', { exact: true })
     .selectOption('Desc_SteelIngot_C');
-  await page.getByLabel('Inputrate pro Minute').fill('240');
+  await page.getByLabel('Eingangsmenge pro Minute').fill('240');
   await page
     .getByRole('button', { name: 'Plan berechnen', exact: true })
     .click();
@@ -213,7 +213,7 @@ test('sizes total factory consumption or one stage input without changing target
     .getByLabel('Skalierungsbezug')
     .selectOption('stage:Desc_SteelPlate_C');
   await page
-    .getByLabel('Verfügbarer Input', { exact: true })
+    .getByLabel('Verfügbares Material', { exact: true })
     .selectOption('Desc_SteelIngot_C');
   await page
     .getByRole('button', { name: 'Plan berechnen', exact: true })

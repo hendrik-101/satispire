@@ -47,13 +47,13 @@ test('selects the first floor after target replacement and keeps inspector synch
   );
   await expect(page.getByTestId('floor-scene')).toHaveAttribute(
     'aria-label',
-    'Blockschema Iron Ingot',
+    'Blockschema Eisenbarren',
   );
-  await page.getByRole('button', { name: 'Inspector', exact: true }).click();
+  await page.getByRole('button', { name: 'Details', exact: true }).click();
   await expect(
     page
       .getByLabel('Stufeninspector')
-      .getByRole('heading', { name: 'Iron Ingot', exact: true }),
+      .getByRole('heading', { name: 'Eisenbarren', exact: true }),
   ).toBeVisible();
 });
 test('restricted Iron Ore imports do not offer Steel Rod without Coal', async ({
@@ -84,7 +84,7 @@ test('restricted Iron Ore imports do not offer Steel Rod without Coal', async ({
   await page
     .getByLabel('Stufe auswählen', { exact: true })
     .selectOption('Desc_IronRod_C');
-  await page.getByRole('button', { name: 'Inspector', exact: true }).click();
+  await page.getByRole('button', { name: 'Details', exact: true }).click();
   await expect(
     page
       .getByLabel('Rezept für diese Stufe')
@@ -180,12 +180,12 @@ test('drops recipe drafts whose dependency machine is removed by the profile', a
   await expect(page.getByLabel('Produktionsziel')).toHaveValue(
     'Desc_IronRod_C',
   );
-  await page.getByRole('button', { name: 'Inspector', exact: true }).click();
+  await page.getByRole('button', { name: 'Details', exact: true }).click();
   await page
     .getByLabel('Rezept für diese Stufe')
     .selectOption('Recipe_Alternate_SteelRod_C');
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
-  await page.getByLabel('Maschine Foundry', { exact: true }).uncheck();
+  await page.getByLabel('Maschine Gießerei', { exact: true }).uncheck();
   await page
     .getByRole('button', { name: 'Profil anwenden', exact: true })
     .click();
@@ -204,7 +204,7 @@ test('drops recipe drafts whose dependency machine is removed by the profile', a
   await expect(page.getByRole('alert')).toHaveCount(0);
   await expect(page.getByTestId('floor-scene')).toHaveAttribute(
     'aria-label',
-    'Blockschema Iron Rod',
+    'Blockschema Eisenstange',
   );
   await page.screenshot({
     path: test.info().outputPath('dependency-draft.png'),

@@ -1,4 +1,4 @@
-import { itemName } from '../../src/domain/vanilla.js';
+import { localizedName as itemName } from './labels.js';
 import { resourceColor } from './resource-colors.js';
 
 /** Original resource pictograms authored for this project; no game assets. */

@@ -50,7 +50,6 @@ test('alternates two dependency floors, changes same-side and vertical variants,
   await expect(scene).toHaveAttribute('data-output-side', 'west');
   await page.getByLabel('Reihen', { exact: true }).selectOption('2');
   const sameSide = await exported(page);
-  await page.locator('.variant-control summary').click();
   expect(sameSide.layout).toMatchObject({
     rows: 2,
     variant: { pattern: 'fixed', inputSide: 'west', outputSide: 'west' },
@@ -230,13 +229,13 @@ test('mixed raw/manufactured targets keep canvas, selector and inspector on the 
   );
   await expect(page.getByTestId('floor-scene')).toHaveAttribute(
     'aria-label',
-    'Blockschema Cable',
+    'Blockschema Kabel',
   );
-  await page.getByRole('button', { name: 'Inspector', exact: true }).click();
+  await page.getByRole('button', { name: 'Details', exact: true }).click();
   await expect(
     page
       .getByLabel('Stufeninspector')
-      .getByRole('heading', { name: 'Cable', exact: true }),
+      .getByRole('heading', { name: 'Kabel', exact: true }),
   ).toBeVisible();
 });
 test('north-facing output exits above the machines instead of crossing the block interior', async ({
@@ -284,25 +283,36 @@ test('north-facing output exits above the machines instead of crossing the block
   });
   expect(clean).toBe(true);
 });
-test('mobile fit keeps a single machine readable while retaining its transfer', async ({
+test('mobile shared fit retains transfers and zoom makes machines readable', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await ready(page);
   const glyph = page.getByRole('button', {
-    name: 'Constructor 1',
+    name: 'Konstruktor 1',
     exact: true,
   });
+  const fittedWidth = (await glyph.boundingBox())!.width;
+  expect(fittedWidth).toBeGreaterThan(0);
+  await page.getByRole('button', { name: 'Vergrößern', exact: true }).click();
+  expect((await glyph.boundingBox())!.width).toBeCloseTo(fittedWidth * 1.5, 1);
+  await page.getByRole('button', { name: 'Vergrößern', exact: true }).click();
   expect((await glyph.boundingBox())!.width).toBeGreaterThanOrEqual(40);
 });
-test('side controls edit the effective input on an alternating odd floor', async ({
+test('side controls separate standard directions from the current floor', async ({
   page,
 }) => {
   await ready(page);
   await page.locator('.variant-control summary').click();
-  await expect(page.getByLabel('Eingangsseite')).toHaveValue('east');
-  await expect(page.getByLabel('Ausgangsseite')).toHaveValue('west');
-  await page.getByLabel('Eingangsseite').selectOption('north');
+  await expect(
+    page.getByLabel('Standard-Eingangsseite', { exact: true }),
+  ).toHaveValue('west');
+  await expect(
+    page.getByLabel('Standard-Ausgangsseite', { exact: true }),
+  ).toHaveValue('east');
+  await page
+    .getByLabel('Standard-Ausgangsseite', { exact: true })
+    .selectOption('north');
   const scene = page.getByTestId('floor-scene');
   await expect(scene).toHaveAttribute('data-input-side', 'north');
   await expect(scene).toHaveAttribute('data-output-side', 'west');

@@ -12,7 +12,7 @@ const sides: { value: BuildSide; label: string }[] = [
 const presets = [
   {
     id: 'alternating',
-    label: 'Links → rechts · wechselnd',
+    label: 'Links → rechts · nach Materialfluss',
     inputSide: 'west',
     outputSide: 'east',
     pattern: 'alternating',
@@ -33,14 +33,14 @@ const presets = [
   },
   {
     id: 'north-south',
-    label: 'Oben → unten · wechselnd',
+    label: 'Oben → unten · nach Materialfluss',
     inputSide: 'north',
     outputSide: 'south',
     pattern: 'alternating',
   },
   {
     id: 'east-west',
-    label: 'Rechts → links · wechselnd',
+    label: 'Rechts → links · nach Materialfluss',
     inputSide: 'east',
     outputSide: 'west',
     pattern: 'alternating',
@@ -49,20 +49,17 @@ const presets = [
 export function VariantControl({
   variant,
   itemId,
-  index,
+  inputSide,
+  outputSide,
   onChange,
 }: {
   variant: BuildVariant;
   itemId: string;
-  index: number;
+  inputSide: BuildSide;
+  outputSide: BuildSide;
   onChange: (variant: BuildVariant) => void;
 }) {
   const override = variant.overrides.find((o) => o.itemId === itemId);
-  const swapped = variant.pattern === 'alternating' && index % 2 === 1;
-  const inputSide =
-    override?.inputSide ?? (swapped ? variant.outputSide : variant.inputSide);
-  const outputSide =
-    override?.outputSide ?? (swapped ? variant.inputSide : variant.outputSide);
   const update = (key: 'inputSide' | 'outputSide', value: BuildSide) => {
     if (override)
       onChange({
@@ -71,14 +68,7 @@ export function VariantControl({
           o.itemId === itemId ? { ...o, [key]: value } : o,
         ),
       });
-    else {
-      const baseKey = swapped
-        ? key === 'inputSide'
-          ? 'outputSide'
-          : 'inputSide'
-        : key;
-      onChange({ ...variant, [baseKey]: value });
-    }
+    else onChange({ ...variant, [key]: value });
   };
   const preset =
     presets.find(
@@ -142,12 +132,16 @@ export function VariantControl({
         </label>
         {(['inputSide', 'outputSide'] as const).map((key) => (
           <label key={key}>
-            {key === 'inputSide' ? 'Eingangsseite' : 'Ausgangsseite'}
+            {`${override ? '' : 'Standard-'}${key === 'inputSide' ? 'Eingangsseite' : 'Ausgangsseite'}`}
             <select
-              aria-label={
-                key === 'inputSide' ? 'Eingangsseite' : 'Ausgangsseite'
+              aria-label={`${override ? '' : 'Standard-'}${key === 'inputSide' ? 'Eingangsseite' : 'Ausgangsseite'}`}
+              value={
+                override
+                  ? key === 'inputSide'
+                    ? inputSide
+                    : outputSide
+                  : variant[key]
               }
-              value={key === 'inputSide' ? inputSide : outputSide}
               onChange={(e) => update(key, e.target.value as BuildSide)}
             >
               {sides.map((s) => (
@@ -170,7 +164,7 @@ export function VariantControl({
               })
             }
           >
-            <option value="alternating">Abwechselnd</option>
+            <option value="alternating">Nach Materialfluss</option>
             <option value="fixed">Gleichbleibend</option>
           </select>
         </label>

@@ -108,3 +108,36 @@ test('foundation subdivisions follow zoom while retaining their world origin', (
   expect(renderGrid(16)).toContain('data-grid-step="0.5"');
   expect(renderGrid(16)).toContain('patternUnits="userSpaceOnUse" x="0" y="0"');
 });
+
+test('reserved shafts keep their shared coordinates and identify material across their span', () => {
+  for (const floor of layout.floors) {
+    const markup = render(floor);
+    for (const transfer of layout.transfers) {
+      if (!transfer.span.includes(floor.index)) continue;
+      expect(markup).toContain(`data-shaft-id="${transfer.id}"`);
+      expect(markup).toContain(
+        `transform="translate(${transfer.x + 17} ${transfer.y + 17})"`,
+      );
+      expect(markup).toContain(
+        `Etage ${transfer.fromFloor + 1} → Etage ${transfer.toFloor + 1}`,
+      );
+    }
+    expect(markup).toContain(
+      `width="${layout.footprint.width}" height="${layout.footprint.depth}"`,
+    );
+  }
+});
+
+test('shaft references connect incident cards without becoming counted belts', () => {
+  for (const floor of layout.floors) {
+    const markup = render(floor);
+    const references = markup.match(/data-shaft-reference=/g) ?? [];
+    expect(references).toHaveLength(
+      layout.transfers.filter(
+        (transfer) =>
+          transfer.fromFloor === floor.index ||
+          transfer.toFloor === floor.index,
+      ).length,
+    );
+  }
+});

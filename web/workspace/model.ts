@@ -43,7 +43,7 @@ export function calculateProduction(
   if (anchor) {
     if (!plan.imports.some((entry) => entry.itemId === anchor.itemId))
       throw new Error(
-        'Bitte einen Input der gewählten Produktionskette wählen.',
+        'Bitte einen Eingang der gewählten Produktionskette wählen.',
       );
     plan = scaleProduction(catalog, next, {
       ...anchor,

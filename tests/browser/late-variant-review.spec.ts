@@ -36,7 +36,7 @@ test('mobile variant controls remain inside the floor for a Particle Accelerator
   });
   await expect(page.getByRole('alert')).toHaveCount(0);
   await expect(page.locator('.canvas-heading h2')).toHaveText(
-    'Particle Accelerator',
+    'Teilchenbeschleuniger',
   );
   await page.locator('.variant-control summary').click();
   for (const width of [390, 320]) {

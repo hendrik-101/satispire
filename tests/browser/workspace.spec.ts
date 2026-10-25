@@ -52,17 +52,17 @@ test('industrial canvas selection links the machine, graph and inspector', async
   await page
     .getByRole('button', { name: 'Plan berechnen', exact: true })
     .click();
-  await page.getByRole('button', { name: 'Inspector', exact: true }).click();
+  await page.getByRole('button', { name: 'Details', exact: true }).click();
   await page.getByRole('button', { name: 'Graph', exact: true }).click();
   const machine = page.getByRole('button', {
-    name: 'Constructor 2',
+    name: 'Konstruktor 2',
     exact: true,
   });
   await machine.focus();
   await page.keyboard.press('Enter');
   await expect(machine).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel('Stufeninspector')).toContainText(
-    'Constructor 2',
+    'Konstruktor 2',
   );
   await expect(
     page.getByRole('group', { name: 'Maschinenmaße' }),
@@ -78,15 +78,17 @@ test('industrial canvas selection links the machine, graph and inspector', async
     '2026 Aadit Sachdev',
   );
   await expect(page.locator('.graph-node.selected')).toContainText(
-    'Iron Plate',
+    'Eisenplatte',
   );
-  await page.locator('.graph-node').filter({ hasText: 'Iron Ingot' }).click();
-  await expect(page.getByLabel('Stufeninspector')).toContainText('Smelter 1');
+  await page.locator('.graph-node').filter({ hasText: 'Eisenbarren' }).click();
+  await expect(page.getByLabel('Stufeninspector')).toContainText(
+    'Schmelzofen 1',
+  );
   await expect(
     page.getByRole('group', { name: 'Maschinenmaße' }),
   ).toContainText('8,575 m');
   await expect(
-    page.getByRole('button', { name: 'Smelter 1', exact: true }),
+    page.getByRole('button', { name: 'Schmelzofen 1', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
 });
 test('mobile canvas has compact controls and secondary settings in a sheet', async ({
@@ -100,12 +102,10 @@ test('mobile canvas has compact controls and secondary settings in a sheet', asy
     page.getByLabel('Produktionsziel', { exact: true }),
   ).toBeHidden();
   expect((await drawing.boundingBox())!.y).toBeLessThan(190);
-  await expect(page.getByLabel('Zoom', { exact: true })).toBeHidden();
+  await page.getByRole('button', { name: 'Vergrößern', exact: true }).click();
+  await expect(page.getByLabel('Aktueller Zoom')).toHaveText('150 %');
   await page.locator('.view-options summary').click();
-  await page.getByLabel('Zoom', { exact: true }).selectOption('1.25');
-  await expect(page.getByLabel('Zoom', { exact: true })).toHaveValue('1.25');
   await page.keyboard.press('Escape');
-  await expect(page.getByLabel('Zoom', { exact: true })).toBeHidden();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -137,7 +137,7 @@ test('mobile camera reveals keyboard-selected machines and recovers after zoom a
   await page.keyboard.press('Escape');
   const scene = page.getByTestId('floor-scene');
   const machine = page.getByRole('button', {
-    name: 'Constructor 6',
+    name: 'Konstruktor 6',
     exact: true,
   });
   const sceneBox = (await scene.boundingBox())!;
@@ -163,7 +163,7 @@ test('mobile camera reveals keyboard-selected machines and recovers after zoom a
   await expect(
     page.getByRole('complementary', { name: 'Stufeninspector' }),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Inspector', exact: true }).click();
+  await page.getByRole('button', { name: 'Details', exact: true }).click();
   await expect(
     page.getByRole('complementary', { name: 'Stufeninspector' }),
   ).toHaveCount(0);
@@ -202,7 +202,7 @@ test('assembler schema exposes separate connected resource feeds', async ({
     .getByLabel('Stufe auswählen', { exact: true })
     .selectOption('Desc_IronPlateReinforced_C');
   await expect(
-    page.getByRole('button', { name: 'Assembler 1', exact: true }),
+    page.getByRole('button', { name: 'Montagemaschine 1', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
   await expect(
     page.getByTestId('floor-scene').locator('[data-feed]'),
@@ -251,15 +251,15 @@ test('technology applies atomically and interrupted changes preserve the plan', 
 }) => {
   await ready(page);
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
-  await page.getByLabel('Maschine Constructor', { exact: true }).uncheck();
+  await page.getByLabel('Maschine Konstruktor', { exact: true }).uncheck();
   await page.getByRole('button', { name: 'Profil anwenden' }).click();
   await expect(page.getByRole('alert')).toBeVisible();
   await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
   await expect(
-    page.getByLabel('Maschine Constructor', { exact: true }),
+    page.getByLabel('Maschine Konstruktor', { exact: true }),
   ).toBeChecked();
-  await page.getByLabel('Maximales Belt-Tier').selectOption('1');
+  await page.getByLabel('Maximale Förderbandstufe').selectOption('1');
   await page.getByRole('button', { name: 'Profil anwenden' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('alert')).toHaveCount(0);
@@ -381,7 +381,7 @@ test('panel toggles preserve draft and zoom; narrow keyboard and reduced motion'
   await ready(page);
   await page.getByRole('button', { name: 'Graph', exact: true }).click();
   await page.getByLabel('Zielrate pro Minute').fill('37');
-  await page.getByLabel('Zoom', { exact: true }).selectOption('1.25');
+  await page.getByRole('button', { name: 'Vergrößern', exact: true }).click();
   const selected = await page
     .getByLabel('Stufe auswählen', { exact: true })
     .inputValue();
@@ -390,9 +390,9 @@ test('panel toggles preserve draft and zoom; narrow keyboard and reduced motion'
   await expect(page.getByLabel('Stufe auswählen', { exact: true })).toHaveValue(
     selected,
   );
-  await expect(page.getByLabel('Zoom', { exact: true })).toHaveValue('1.25');
+  await expect(page.getByLabel('Aktueller Zoom')).toHaveText('120 %');
   await page.reload();
-  await expect(page.getByLabel('Zoom', { exact: true })).toHaveValue('1.25');
+  await expect(page.getByLabel('Aktueller Zoom')).toHaveText('120 %');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByLabel('Zielrate pro Minute').focus();
   await page.keyboard.press('Control+A');
@@ -490,9 +490,9 @@ test('explicit alternate unlock changes the solved chain and exact resource dema
 }) => {
   await ready(page);
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
-  await page.getByLabel('Rezepte suchen').fill('Cast Screws');
+  await page.getByLabel('Rezepte suchen').fill('Gegossene Schrauben');
   await page
-    .getByLabel('Rezept Alternate: Cast Screws', { exact: true })
+    .getByLabel('Rezept Alternativ: Gegossene Schrauben', { exact: true })
     .check();
   await page.getByRole('button', { name: 'Profil anwenden' }).click();
   await page.getByLabel('Produktionsziel').selectOption('Desc_IronScrew_C');
@@ -503,12 +503,12 @@ test('explicit alternate unlock changes the solved chain and exact resource dema
   await page
     .getByLabel('Stufe auswählen', { exact: true })
     .selectOption('Desc_IronScrew_C');
-  await page.getByRole('button', { name: 'Inspector', exact: true }).click();
+  await page.getByRole('button', { name: 'Details', exact: true }).click();
   await page
     .getByLabel('Rezept für diese Stufe')
     .selectOption('Recipe_Alternate_Screw_C');
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
-  await page.getByLabel('Maximales Belt-Tier').selectOption('1');
+  await page.getByLabel('Maximale Förderbandstufe').selectOption('1');
   await page.getByRole('button', { name: 'Profil anwenden' }).click();
   await expect(
     page
@@ -596,15 +596,15 @@ test('responsive navigation and custom transport shortcuts remain consistent', a
   await page.setViewportSize({ width: 1440, height: 960 });
   await expect(page.getByLabel('Stufennavigation')).toBeVisible();
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
-  await page.getByLabel('HUB-Tier').selectOption('6');
-  await page.getByLabel('Maximales Belt-Tier').selectOption('1');
-  await expect(page.getByLabel('HUB-Tier')).toHaveValue('custom');
-  await page.getByLabel('HUB-Tier').selectOption('6');
-  await expect(page.getByLabel('Maximales Belt-Tier')).toHaveValue('4');
-  await page.getByLabel('Maximales Pipe-Tier').selectOption('1');
-  await expect(page.getByLabel('HUB-Tier')).toHaveValue('custom');
-  await page.getByLabel('HUB-Tier').selectOption('6');
-  await expect(page.getByLabel('Maximales Pipe-Tier')).toHaveValue('2');
+  await page.getByLabel('HUB-Stufe').selectOption('6');
+  await page.getByLabel('Maximale Förderbandstufe').selectOption('1');
+  await expect(page.getByLabel('HUB-Stufe')).toHaveValue('custom');
+  await page.getByLabel('HUB-Stufe').selectOption('6');
+  await expect(page.getByLabel('Maximale Förderbandstufe')).toHaveValue('4');
+  await page.getByLabel('Maximale Rohrstufe').selectOption('1');
+  await expect(page.getByLabel('HUB-Stufe')).toHaveValue('custom');
+  await page.getByLabel('HUB-Stufe').selectOption('6');
+  await expect(page.getByLabel('Maximale Rohrstufe')).toHaveValue('2');
 });
 
 test('unlocked silicon alternate exposes a supported circuit board chain', async ({
@@ -612,12 +612,12 @@ test('unlocked silicon alternate exposes a supported circuit board chain', async
 }) => {
   await ready(page);
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
-  await page.getByLabel('HUB-Tier').selectOption('5');
-  await page.getByLabel('Rezepte suchen').fill('Silica');
-  await page.getByLabel('Rezept Silica', { exact: true }).check();
-  await page.getByLabel('Rezepte suchen').fill('Silicon Circuit Board');
+  await page.getByLabel('HUB-Stufe').selectOption('5');
+  await page.getByLabel('Rezepte suchen').fill('Siliziumdioxid');
+  await page.getByLabel('Rezept Siliziumdioxid', { exact: true }).check();
+  await page.getByLabel('Rezepte suchen').fill('Siliziumplatine');
   await page
-    .getByLabel('Rezept Alternate: Silicon Circuit Board', { exact: true })
+    .getByLabel('Rezept Alternativ: Siliziumplatine', { exact: true })
     .check();
   await page.getByRole('button', { name: 'Profil anwenden' }).click();
   await page.getByLabel('Produktionsziel').selectOption('Desc_CircuitBoard_C');
@@ -658,11 +658,13 @@ test('profile reseeds inactive automatic choices without overriding a supported 
     .getByRole('button', { name: 'Plan berechnen', exact: true })
     .click();
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
-  await page.getByLabel('HUB-Tier').selectOption('4');
-  await page.getByLabel('Rezepte suchen').fill('Steel Rod');
-  await page.getByLabel('Rezept Alternate: Steel Rod', { exact: true }).check();
-  await page.getByLabel('Rezepte suchen').fill('Iron Ingot');
-  await page.getByLabel('Rezept Iron Ingot', { exact: true }).uncheck();
+  await page.getByLabel('HUB-Stufe').selectOption('4');
+  await page.getByLabel('Rezepte suchen').fill('Stahlstange');
+  await page
+    .getByLabel('Rezept Alternativ: Stahlstange', { exact: true })
+    .check();
+  await page.getByLabel('Rezepte suchen').fill('Eisenbarren');
+  await page.getByLabel('Rezept Eisenbarren', { exact: true }).uncheck();
   await page.getByRole('button', { name: 'Profil anwenden' }).click();
   await expect(page.getByRole('alert')).toHaveCount(0);
   await page.getByLabel('Produktionsziel').selectOption('Desc_IronRod_C');
@@ -705,8 +707,10 @@ test('minimal imports restrict targets and enable alternatives using permitted r
       .locator('option[value="Desc_CopperSheet_C"]'),
   ).toHaveCount(0);
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
-  await page.getByLabel('Rezepte suchen').fill('Iron Wire');
-  await page.getByLabel('Rezept Alternate: Iron Wire', { exact: true }).check();
+  await page.getByLabel('Rezepte suchen').fill('Eisendraht');
+  await page
+    .getByLabel('Rezept Alternativ: Eisendraht', { exact: true })
+    .check();
   await page.getByRole('button', { name: 'Profil anwenden' }).click();
   await page.getByLabel('Produktionsziel').selectOption('Desc_Wire_C');
   await page

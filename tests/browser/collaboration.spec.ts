@@ -20,7 +20,7 @@ test('a calculated plan survives F5 in the same unique session', async ({
   await page
     .getByRole('button', { name: 'Plan berechnen', exact: true })
     .click();
-  await expect(page.getByLabel('Session-Status')).toContainText('Gespeichert');
+  await expect(page.getByLabel('Sitzungsstatus')).toContainText('Gespeichert');
   await page.reload();
   await expect(page.locator('main.workspace')).toHaveAttribute(
     'data-ready',
@@ -58,6 +58,6 @@ test('an unknown local session link does not masquerade as a new plan', async ({
     'Local fallback acceptance only',
   );
   await page.goto(url + '?session=' + 'a'.repeat(64));
-  await expect(page.getByRole('alert')).toContainText('Session');
-  await expect(page.getByLabel('Session-Status')).toContainText('Lokal');
+  await expect(page.getByRole('alert')).toContainText('Sitzung');
+  await expect(page.getByLabel('Sitzungsstatus')).toContainText('Lokal');
 });

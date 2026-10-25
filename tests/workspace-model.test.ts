@@ -104,7 +104,7 @@ test('rejects an anchor outside the external inputs of the current chain', () =>
         modularFrames.targets[0]!,
         { itemId, rate: '180' },
       ),
-    ).toThrow(/Input/);
+    ).toThrow(/Eingang/);
   }
 });
 

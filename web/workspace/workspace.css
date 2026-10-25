@@ -378,6 +378,12 @@ input[type='checkbox'] {
   display: flex;
   gap: 4px;
 }
+.floor-canvas-tools output {
+  align-self: center;
+  padding: 4px;
+  font-size: 12px;
+  background: #20282e;
+}
 .floor-canvas-tools button {
   background: #20282e;
   border-color: #39434c;
@@ -410,9 +416,13 @@ input[type='checkbox'] {
   color: #b4bec7;
   font-size: 12px;
   pointer-events: none;
+  max-width: calc(100% - 40px);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 12px;
 }
 .canvas-grid-key span {
-  margin-left: 12px;
+  margin-left: 0;
 }
 .drawing > svg {
   width: 100%;
@@ -618,7 +628,8 @@ input[type='checkbox'] {
 }
 .graph-scroll {
   overflow: auto;
-  max-height: 175px;
+  max-height: min(42dvh, 440px);
+  min-height: min(300px, 42dvh);
   scrollbar-width: thin;
 }
 .process-graph {
@@ -683,20 +694,20 @@ input[type='checkbox'] {
   height: 100%;
 }
 .graph-edge {
-  stroke: #697d8a;
   stroke-width: 2;
+  opacity: 0.7;
   fill: none;
 }
 .graph-edge.active {
-  stroke: #c49563;
+  stroke-width: 3;
+  opacity: 1;
 }
 .graph-port {
   fill: #20272d;
-  stroke: #9aadb8;
   stroke-width: 1.5;
 }
 .graph-port.active {
-  stroke: #e7ad74;
+  stroke-width: 2.5;
 }
 .edge-label {
   font-size: 12px;
@@ -903,7 +914,8 @@ input[type='checkbox'] {
     width: 100%;
   }
   .graph-scroll {
-    max-height: 200px;
+    max-height: min(40dvh, 360px);
+    min-height: min(240px, 40dvh);
   }
   .machine-options {
     grid-template-columns: repeat(2, 1fr);
@@ -1028,7 +1040,7 @@ input[type='checkbox'] {
     min-height: 34px;
   }
   .drawing {
-    padding: 64px 14px 110px;
+    padding: 64px 14px 180px;
     min-height: 430px;
   }
   .canvas-summary {
@@ -1172,7 +1184,8 @@ input[type='checkbox'] {
   min-width: 0;
 }
 .target-editor > summary {
-  display: none;
+  display: list-item;
+  font-weight: 600;
   cursor: pointer;
   padding: 6px 0;
 }

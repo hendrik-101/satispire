@@ -1,9 +1,11 @@
+import { Rational } from './rational.js';
 import { deriveBuildVariants } from './build-variants.js';
 import type { Catalog } from './catalog.js';
 import type { ProductionPlan } from './production.js';
 import { getMachineGeometry } from './machine-geometry.js';
 import { generateBeltRouting } from './belt-routing.js';
 import {
+  transportCapacity,
   validateTechnology,
   requireTechnology,
   type TechnologyProfile,
@@ -29,9 +31,30 @@ export function generateSupplyLayout(
   const build = deriveBuildVariants(plan, variant);
   const arrangements = build.floors.map((orientation) => {
     const node = plan.nodes.find((n) => n.itemId === orientation.itemId)!;
+    const capacityPerRow = Math.min(
+      node.machineCount,
+      ...[...node.inputs, { itemId: node.itemId, rate: node.rate }].map(
+        (flow) => {
+          const perMachine = Rational.parseCanonical(flow.rate).divide(
+            Rational.fromBigInts(BigInt(node.machineCount)),
+          );
+          const ratio = transportCapacity(
+            catalog,
+            flow.itemId,
+            technology,
+          ).divide(perMachine);
+          const rounded = ratio.ceil();
+          const fit =
+            ratio.compare(Rational.fromBigInts(rounded)) === 0
+              ? rounded
+              : rounded - 1n;
+          return Math.max(1, Number(fit));
+        },
+      ),
+    );
     const rowCount = Math.min(
       node.machineCount,
-      rows || Math.max(1, Math.ceil(Math.sqrt(node.machineCount))),
+      rows || Math.ceil(node.machineCount / capacityPerRow),
     );
     const rowCounts = Array.from(
       { length: rowCount },

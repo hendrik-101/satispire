@@ -4,7 +4,7 @@ import type {
 } from '../../src/session-plan.js';
 import { RemoteCursors } from './RemoteCursors.js';
 import type { ProductionPlan } from '../../src/domain/production.js';
-import { itemName } from '../../src/domain/vanilla.js';
+import { localizedName as itemName } from './labels.js';
 import { formatRate } from './format-rate.js';
 
 export function ProductionView({
