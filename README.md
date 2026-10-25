@@ -2,7 +2,7 @@
 
 Parametric production and multistory factory planning for Satisfactory. Independent fan project, not affiliated with Coffee Stain.
 
-This first executable slice provides an exact production solver, synthetic machineblock/floor generation, a JSON CLI, shared authorized commands, classic MCP and feature-detected WebMCP adapters. The user approved a floor-centered workspace with optional graph and panels. The TanStack Start workspace targets **Satisfactory 1.2**, using a pinned **1.2.4.0 / CL 502094** production snapshot, optional panels and a schematic block canvas. See [local workspace](docs/local-workspace.md) and [catalog provenance and limits](docs/data/vanilla.md). Convex transaction functions are present and tested with `convex-test`; no online backend is assumed or provisioned.
+This first executable slice provides an exact production solver, synthetic machineblock/floor generation, a JSON CLI, shared authorized commands, classic MCP and feature-detected WebMCP adapters. The user approved a floor-centered workspace with optional graph and panels. The TanStack Start workspace targets **Satisfactory 1.2**, using a pinned **1.2.4.0 / CL 502094** production snapshot, optional panels and a schematic block canvas. See [local workspace](docs/local-workspace.md) and [catalog provenance and limits](docs/data/vanilla.md). Shared rooms now persist complete plans and reversible history through Convex. The home page lists recently visited rooms by their outputs; `/local` keeps offline planning available. Convex functions are tested with `convex-test`; no hosted backend is assumed or provisioned.
 
 ## Run
 
@@ -42,7 +42,7 @@ Build with `npm run build`. Configure a compatible classic MCP client to launch 
 
 WebMCP detects `document.modelContext`; the normal application calls remain available when it is missing. Native Claude WebMCP support is not established. Both adapters call the same authorization and planner functions.
 
-Convex functions implement anonymous capabilities, invitations, roles and transactional revision/idempotency checks. [Collaboration contract](docs/collaboration-contract.md) lists deployment and lifecycle gaps before online exposure. Cursor visibility is scoped to view/floor; presenter following is voluntary and reversible. There is no forced fullscreen or eight-person hard cap.
+Convex functions implement anonymous capabilities, reusable room links, invitations, roles, transactional revision/idempotency checks and paginated compensating history. Configure the public backend URL as described in [deployment](docs/deployment.md#shared-room-backend-configuration). [Collaboration contract](docs/collaboration-contract.md) lists deployment and lifecycle gaps before online exposure. Cursor visibility is scoped to view/floor; presenter following is voluntary and reversible. There is no forced fullscreen or eight-person hard cap.
 
 [Architecture and scope](docs/architecture.md) describe the staged implementation. [Personal view preferences](docs/view-preferences.md) define presets, responsive panel presentation and temporary camera following separately from shared factory data. [Contributing](CONTRIBUTING.md) describes the Draft review policy. This slice is not a claim that issues #1–#12 or the full web MVP are complete. Merge and deployment are separate coordinated decisions.
 

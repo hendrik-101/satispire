@@ -156,7 +156,8 @@ export const redeem = internalMutationGeneric({
 export const view = queryGeneric({
   args: authArgs,
   handler: async (ctx, args) => {
-    const { room } = await verified(ctx, args.roomId, args.capability);
+    const { room, context } = await verified(ctx, args.roomId, args.capability);
+    authorizeRoom(room.state, context);
     const record = await ctx.db
       .query('plans')
       .withIndex('by_room', (q) => q.eq('roomId', args.roomId))
@@ -276,7 +277,8 @@ export const undo = mutationGeneric({
 export const history = queryGeneric({
   args: { ...authArgs, paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
-    await verified(ctx, args.roomId, args.capability);
+    const { room, context } = await verified(ctx, args.roomId, args.capability);
+    authorizeRoom(room.state, context);
     if (args.paginationOpts.numItems < 1 || args.paginationOpts.numItems > 50)
       throw new Error('invalid-page-size');
     const result = await ctx.db

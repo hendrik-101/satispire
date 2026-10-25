@@ -1,6 +1,6 @@
 # Satispire test runtime and deployment guide
 
-This delivery runs the existing client-local workspace. It does not deploy Convex, online rooms or a remote MCP server. Classic MCP stays stdio; WebMCP stays feature-detected in the browser. Plans remain client-side and exportable. No VPS/DNS/tunnel/credential changes or registry push are performed by these files. Runtime PR16 was squash-merged as 5302272 after successful gates; publication changes remain a separate follow-up.
+This delivery supports the offline `/local` workspace and Convex-backed shared rooms at `/room/<roomId>`. It does not provision or deploy Convex or a remote MCP server. Classic MCP stays stdio; local WebMCP stays feature-detected. Shared room plans and history persist in the configured Convex backend. No VPS/DNS/tunnel/credential changes or registry push are performed by these files. Runtime PR16 was squash-merged as 5302272 after successful gates; publication changes remain a separate follow-up.
 
 ## Local production start
 
@@ -79,3 +79,30 @@ The user prefers squash. Pinned sources are PR13 `484d9fb5fd8e6aef7f47061a83b0dd
 After explicit integration permission: squash PR13 to main, recreate PR14 on that resulting main using only the pinned PR13→PR14 net patch, verify its staged/final tree equals PR14, squash it, then recreate PR15 using only PR14→PR15 and verify exact equality. Apply this runtime follow-up likewise using PR15→its accepted final head. Use scratch integration branches first. Preserve old heads and remote-head leases; any authorized update to an existing child branch uses `--force-with-lease=<branch>:<recorded-old-sha>`, never blind force, followed by retargeting/diff inspection and actual new-head CI. The recipe was rehearsed independently, then PR13–15 were integrated after explicit authorization; see the [runtime QA record](qa/http-runtime-2026-10-12.md) for exact commits and tree checks. Runtime PR16 was subsequently squash-merged as 5302272, preserving the reviewed tree and passing Main CI and an actual compiled HTTP smoke. Preserve review links and tree-equivalence evidence; do not trigger another manual review solely for an unchanged file tree.
 
 PR15 contains base-repair merge commits 622740b, 6f61628 and 636affb. A naive ordinary rebase/cherry-pick can drop their resolutions or replay repairs already included in the squash base. The net patch preserves the final intended child difference. If main gains unrelated changes, exact pinned-tree equality no longer proves safe integration: stop and reconcile explicitly rather than discarding those changes.
+
+## Shared room backend configuration
+
+Provision and deploy the checked-in Convex functions only through a separately
+authorized backend deployment. No credentials or deployment URL are included in
+this repository. Start the immutable Node image with `CONVEX_URL` set to the
+backend's public client URL (for example `https://<deployment>.convex.cloud`).
+`deploy/compose.test.yml` passes this optional variable through. The runtime
+validates HTTP(S), rejects embedded credentials, queries and fragments, and exposes
+only `{ "convexUrl": ... }` through uncached GET/HEAD `/config.json`. Do not set
+this variable to a deploy key or admin credential. This is public configuration,
+not an authentication secret, and does not require rebuilding the image.
+
+For Vite development, `CONVEX_URL` also supplies `/config.json`; alternatively,
+`VITE_CONVEX_URL` can provide a build-time public URL. Backend capabilities are
+obtained from registered create/join functions, not from deployment credentials.
+Without a configured URL the entry dialog and cached room labels still render,
+but create/join reports that online rooms are unavailable. `/local` remains
+usable. No shared-room save is simulated in browser storage.
+
+The HTTP listener still rejects application write methods; Convex handles its own
+transactions and WebSocket subscriptions. Browser acceptance must verify two
+independent memberships, reusable join links, URL/Share equality, output-labelled
+rejoin, reconnect, revision conflicts, history pagination and undo against the
+actual chosen deployment before a hosted rollout is accepted. Local convex-test
+and controlled-wire browser tests establish implementation behavior, not hosted
+credentials, connectivity or durable backend operations.

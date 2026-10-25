@@ -2,7 +2,7 @@
 
 Session-wide unlocks are an optional `RoomState.unlocks` profile, independent of participant identity. `rooms:create` accepts the creator's browser profile as `unlocks` and snapshots it; omission uses the tier 2 default. Invites and joins preserve that snapshot. Every verified member may submit a `set-unlocks` command through `rooms:command`, including viewers; other edit commands retain their existing role restrictions. Unlock changes increment the shared revision and participate in command receipts and stale-edit rejection. Existing stored rooms without an unlock profile remain readable. The local workspace implements the same session state; online UI subscription/provisioning remains subject to the deployment limitations below.
 
-This checkout contains a pure room reducer and registered Convex functions, tested through `convex-test`. It has no deployed Convex URL, online transport integration, connection liveness, or online workspace UI. The local application adapter is a single-process test/CLI service. Neither adapter constitutes a delivered online collaboration MVP.
+This checkout contains a pure room reducer, registered Convex functions and a browser room client with live plan subscriptions and connection state. Functions are tested through `convex-test`; browser tests use the real Convex client with a controlled external wire fixture. No deployed Convex URL or live-hosted acceptance is assumed. The local application adapter is a single-process test/CLI service. Neither adapter constitutes a delivered online collaboration MVP.
 
 ## Identity and capabilities
 
@@ -43,3 +43,47 @@ These are backend contracts, not verified keyboard, screen-reader, responsive-la
 `tests/convex.test.ts` invokes actual registered actions, queries, and mutations through the library's simulated backend. A virtual test-only generated-path marker supplies the module loader's directory detection; it is not a checked-in generated API. Tests exercise capability hashing, role denial, cross-room denial, invite replay/revocation, nine memberships, revision/idempotency failures, atomic invalid-command rejection, presence scope, and opt-in/escape following. They verify registered function logic, not a live Convex deployment or production network behavior.
 
 Online release still requires a provisioned deployment and transport verification, token storage/recovery/revocation policy, invitation expiry/rate controls, session disconnect/presence expiry, and storage sizing. This first slice stores a room's intent, membership, invitations, and receipts in one document; receipt retention and room-document growth must be designed against deployment limits before production exposure. Existing capabilities have no public rotation or removal endpoint in this slice.
+
+## Shared workspace plans
+
+`plans:create` validates the complete Vanilla plan, creates an owner membership,
+and initializes separate `plans` and `roomLinks` records. `plans:join` redeems a
+reusable, cryptographically random editor link into a fresh private membership.
+Existing single-use `rooms:invite` invitations remain separate. Owner capabilities
+and reusable editor secrets are distinct; only SHA-256 digests are stored.
+The canonical room URL carries the reusable secret in its fragment, which HTTP
+requests and referrers do not transmit. Browser membership stays out of URLs.
+The invitation grants editing access to anyone possessing it; do not add URL
+fragment capture to analytics or logging.
+
+`plans:view` and `plans:history` check both the capability and current membership.
+`plans:edit` and `plans:undo` additionally require edit authority. Shared full-plan
+changes include unlocks; legacy viewer `set-unlocks` permissions remain confined
+to legacy rooms. `rooms:command` refuses rooms containing a full shared plan so
+it cannot bypass full validation or history. Read-only legacy room views are not
+the shared workspace's complete plan interface.
+
+Full plan state is catalog-bound, validated by the production solver and supply
+layout generator, and limited to 180,000 UTF-8 bytes. Technology and session
+unlocks must agree. Targets, recipes, imports, unlocks (including technology),
+rows and layout variant are the atomic history fields. Derived geometry is not
+stored. Failed/unchanged requests and personal navigation add no history entry.
+
+Each accepted edit updates the plan, room revision, unlock snapshot, history and
+receipt transactionally. Command IDs bind actor, original expected revision and
+payload fingerprint. Duplicate identical requests return the original revision;
+conflicting IDs, stale revisions and unauthorized callers write nothing. Separate
+indexed `planHistory` and `planReceipts` tables avoid unbounded per-room history
+arrays. `plans:history` paginates by room/revision, at most 50 entries per request.
+
+Undo checks current affected-field values against the entry's after-values,
+restores its before-values and revalidates the entire resulting plan. A later
+change to another field survives; overlapping edits or now-invalid dependencies
+return `undo-conflict`. The compensating edit is another immutable history entry
+with `undoOf`, actor, server timestamp and a new revision, and can itself be
+undone. Cross-room history IDs never confer access. No history retention cleanup
+silently discards earlier edits.
+
+Hosted release still requires a configured Convex deployment, actual transport
+acceptance and the operational lifecycle work described above. No backend,
+credentials or external infrastructure was provisioned by this implementation.
