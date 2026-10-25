@@ -2,7 +2,7 @@
 
 Parametric production and multistory factory planning for Satisfactory. Independent fan project, not affiliated with Coffee Stain.
 
-This first executable slice provides an exact production solver, synthetic machineblock/floor generation, a JSON CLI, shared authorized commands, classic MCP and feature-detected WebMCP adapters. The user approved a floor-centered workspace with optional graph and panels. The TanStack Start workspace targets **Satisfactory 1.2**, using a pinned **1.2.4.0 / CL 502094** production snapshot, optional panels and a schematic block canvas. See [local workspace](docs/local-workspace.md) and [catalog provenance and limits](docs/data/vanilla.md). Convex transaction functions are present and tested with `convex-test`; no online backend is assumed or provisioned.
+This first executable slice provides an exact production solver, synthetic machineblock/floor generation, a JSON CLI, shared authorized commands, classic MCP and feature-detected WebMCP adapters. The user approved a floor-centered workspace with optional graph and panels. The TanStack Start workspace targets **Satisfactory 1.2**, using a pinned **1.2.4.0 / CL 502094** production snapshot, optional panels and a schematic block canvas. See [local workspace](docs/local-workspace.md) and [catalog provenance and limits](docs/data/vanilla.md). Convex transaction functions and the online session UI are implemented; an online deployment must be configured explicitly. Without one, complete local sessions persist in browser storage across reloads.
 
 ## Run
 
@@ -38,11 +38,15 @@ The versioned normalized contract and limitations are in [data-contract](docs/da
 
 ## MCP and collaboration
 
+Opening the workspace creates or restores an unlisted session URL. The complete last calculated plan, recipe choices, targets, unlocks, rows and build variants survive F5. Without `VITE_CONVEX_URL` this is explicitly a local browser session; its link cannot transfer data to another device.
+
+Online sessions support a Sites Worker with its managed D1 database, or a dedicated Convex backend configured through the public `VITE_CONVEX_URL` during build/startup. The browser discovers the Site transport through `/api/session-config`; ordinary static and HTTP builds retain explicit local persistence. Anyone with an online session link can join and edit; private participant credentials are stored separately in that browser. Plans update through reactive subscriptions with revision conflict checks. Live cursors use diagram coordinates and appear only on the same view/floor, expiring after disconnect. See [session setup and behavior](docs/local-workspace.md#durable-sessions-and-online-collaboration).
+
 Build with `npm run build`. Configure a compatible classic MCP client to launch `node /absolute/checkout/dist/adapters/stdio.js` with room ID `local`. The stdio process has a private local owner session; it opens no network listener and does not connect to online rooms. State lasts for the process lifetime. Call `read_room`, `apply_command`, `solve_production` and `generate_floors`. See [MCP contract](docs/mcp.md) for input examples and errors.
 
 WebMCP detects `document.modelContext`; the normal application calls remain available when it is missing. Native Claude WebMCP support is not established. Both adapters call the same authorization and planner functions.
 
-Convex functions implement anonymous capabilities, invitations, roles and transactional revision/idempotency checks. [Collaboration contract](docs/collaboration-contract.md) lists deployment and lifecycle gaps before online exposure. Cursor visibility is scoped to view/floor; presenter following is voluntary and reversible. There is no forced fullscreen or eight-person hard cap.
+The older room API implements anonymous capabilities, single-use role invitations and transactional revision/idempotency checks. The first-feature session API adds reusable share links and complete plan persistence. [Collaboration contract](docs/collaboration-contract.md) distinguishes both interfaces and their deployment requirements. Cursor visibility is scoped to view/floor; presenter following in the older room API is voluntary and reversible and is not exposed in the first-feature session UI. There is no forced fullscreen or eight-person hard cap.
 
 [Architecture and scope](docs/architecture.md) describe the staged implementation. [Personal view preferences](docs/view-preferences.md) define presets, responsive panel presentation and temporary camera following separately from shared factory data. [Contributing](CONTRIBUTING.md) describes the Draft review policy. This slice is not a claim that issues #1–#12 or the full web MVP are complete. Merge and deployment are separate coordinated decisions.
 

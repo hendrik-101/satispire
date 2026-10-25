@@ -1,0 +1,17 @@
+# Durable sessions and first collaboration feature
+
+The user requests automatic navigation into a unique session, persistence of the last calculated recipe/plan across reload, joining through the address-bar link and live cursors on the same view/floor. They authorized implementation through PR, merge and publication and asked to proceed without another design interview.
+
+Use the existing Convex platform for online persistence and reactive subscriptions. A separate first-feature session document stores the complete existing PlanFile (production inputs, recipe choices, imports, unlocks, rows and build variant), never generated geometry. Session identifiers are random 256-bit bearer invitations: anyone possessing the link may join and edit. Each participant receives a separate private capability stored only in that browser. This intentional reusable link differs from the older rooms API's single-use role invitations; that API remains compatible. No listing or guessable numeric identifiers.
+
+Changes use expectedRevision and command IDs, with bounded retry receipts and explicit conflicts. Server validation checks schema, catalog, solver and layout. Presence lives separately from plans, expires after 15 seconds without heartbeat, and is scoped by view plus floor/item ID. Use SVG world coordinates where a diagram supports pan/zoom; do not transmit viewport pixels. Never force following or share personal camera/panel preferences.
+
+When no public Convex URL is configured, local sessions persist by unique ID in browser storage and restore after F5; the UI explicitly identifies local storage and does not claim that local links allow remote collaboration. Unknown local links must not silently show a fresh unrelated plan. Online provisioning uses VITE_CONVEX_URL at build time. No credentials are embedded.
+
+Alternatives: a second custom HTTP/WebSocket/database backend would duplicate the chosen Convex platform; browser-only storage cannot deliver remote collaboration. Therefore Convex with an explicit local fallback is the selected implementation call.
+
+Verification covers full-plan reload, a second participant, stale edits/retries, malformed inputs, capability isolation, expired/scoped cursors and storage failures. Existing planner and WebMCP behavior stays covered. Delivery follows CONTRIBUTING.md: Draft PR, code/security review, Ready, CodeRabbit request, successful CI, squash merge and successful main artifact. Live publication additionally requires an actual deployment target/backend and verified access; none is present in this executor at start. The user has been asked for that missing configuration while implementation continues.
+
+## Publication target clarification
+
+The user identified the existing ChatGPT Site as the actual publication target, and requested coordination with chat `01a172d2-7e0f-77c5-8846-fa74d1762067`. That Site was a static export with no Convex configuration. Add a Sites-native D1/HTTP adapter behind the same client interface, while retaining the tested optional Convex adapter. This changes the earlier alternative assessment: a same-origin Worker adapter is necessary to deliver working collaboration on the chosen managed host without asking for unrelated backend credentials. Native Site identity and audience are preserved. Thread read/coordination tools were attempted but unavailable on this executor; an asynchronous relay request remains pending.

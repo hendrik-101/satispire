@@ -29,7 +29,9 @@
     "test:runtime": "node scripts/runtime-smoke.mjs",
     "test:container": "node scripts/container-smoke.mjs",
     "test:artifact": "node scripts/artifact-smoke.mjs",
-    "test:browser:runtime": "playwright test --config playwright.runtime.config.ts"
+    "test:browser:runtime": "playwright test --config playwright.runtime.config.ts",
+    "build:site": "npm run build:web && node scripts/build-site.mjs",
+    "test:browser:site": "npm run build:site && playwright test --config playwright.site.config.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
@@ -49,6 +51,7 @@
     "@vitejs/plugin-react": "6.1.2",
     "@vitest/coverage-v8": "4.1.12",
     "convex-test": "0.0.61",
+    "esbuild": "0.27.0",
     "eslint": "9.39.5",
     "prettier": "3.6.2",
     "tsx": "4.23.15",

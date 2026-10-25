@@ -128,7 +128,7 @@ test('shared locks mark the old plan and disable export until recalculation unde
   await expect(
     page.getByRole('button', { name: 'Plan exportieren', exact: true }),
   ).toBeDisabled();
-  await expect(page.getByRole('status')).toContainText(
+  await expect(page.locator('.error-banner[role="status"]')).toContainText(
     'frühere Session-Unlocks',
   );
   await page.getByLabel('Reihen', { exact: true }).selectOption('2');
@@ -154,7 +154,7 @@ test('blocked browser storage retains applied session settings and shows a notic
     };
   });
   await ready(page);
-  await expect(page.getByRole('status')).toContainText(
+  await expect(page.locator('.error-banner[role="status"]')).toContainText(
     'Browser-Speicherung eingeschränkt',
   );
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
