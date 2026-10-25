@@ -30,6 +30,14 @@ export interface SessionClient {
   ): () => void;
   close(): Promise<void>;
 }
+/** A failed HTTP exchange that can be repeated using the original idempotent command. */
+export class RetryableHttpSessionError extends Error {
+  readonly retryable = true;
+}
+class HttpResponseError extends Error {}
+const retryableStatus = (status: number) =>
+  status === 408 || status === 429 || status >= 500;
+
 interface Poll {
   pause(): void;
   resume(): void;
@@ -81,6 +89,7 @@ export class HttpSessionClient implements SessionClient {
       ? name.slice('sessions:'.length)
       : '';
     if (!operations.has(op)) throw new Error('Unsupported session operation.');
+    const payload = JSON.stringify(args);
     this.requests.add(controller);
     const timeout = setTimeout(
       () => controller.abort('session-timeout'),
@@ -94,10 +103,22 @@ export class HttpSessionClient implements SessionClient {
         cache: 'no-store',
         keepalive: op === 'presence',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(args),
+        body: payload,
         signal: controller.signal,
       });
-      const body: unknown = await response.json();
+      let body: unknown;
+      try {
+        body = await response.json();
+      } catch (error) {
+        if (controller.signal.aborted) throw error;
+        const ErrorType =
+          response.ok || retryableStatus(response.status)
+            ? RetryableHttpSessionError
+            : HttpResponseError;
+        throw new ErrorType(
+          'Session request returned invalid JSON (' + response.status + ').',
+        );
+      }
       if (!response.ok) {
         const error = (body as { error?: unknown })?.error;
         const code =
@@ -106,18 +127,36 @@ export class HttpSessionClient implements SessionClient {
             : error && typeof error === 'object' && 'code' in error
               ? error.code
               : null;
-        throw new Error(
+        const message =
           typeof code === 'string'
             ? code
-            : 'Session request failed (' + response.status + ').',
-        );
+            : 'Session request failed (' + response.status + ').';
+        const permanent =
+          /conflict|forbidden|invalid|validation|command-id-reused/.test(
+            message,
+          );
+        const ErrorType =
+          retryableStatus(response.status) && !permanent
+            ? RetryableHttpSessionError
+            : HttpResponseError;
+        throw new ErrorType(message);
       }
       this.connection(true);
       return body as FunctionReturnType<F>;
     } catch (error) {
       const timedOut = controller.signal.reason === 'session-timeout';
       if (timedOut || !controller.signal.aborted) this.connection(false);
-      throw timedOut ? new Error('Session request timed out.') : error;
+      if (timedOut)
+        throw new RetryableHttpSessionError('Session request timed out.');
+      if (
+        controller.signal.aborted ||
+        error instanceof HttpResponseError ||
+        error instanceof RetryableHttpSessionError
+      )
+        throw error;
+      throw new RetryableHttpSessionError(
+        error instanceof Error ? error.message : 'Session request failed.',
+      );
     } finally {
       clearTimeout(timeout);
       this.requests.delete(controller);

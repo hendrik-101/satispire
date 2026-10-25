@@ -1,5 +1,6 @@
 import {
   HttpSessionClient,
+  RetryableHttpSessionError,
   type SessionClient,
 } from './http-session-client.js';
 import { ConvexClient } from 'convex/browser';
@@ -117,6 +118,7 @@ export function createSessionController(options: Options): SessionController {
   let failure: Error | null = null;
   let pending = 0;
   let queue = Promise.resolve();
+  let cancelRetry: (() => void) | null = null;
   let deferredSnapshot: SessionSnapshot | null = null;
   const clientId = crypto.randomUUID();
   const unsubscribers: (() => void)[] = [];
@@ -164,6 +166,13 @@ export function createSessionController(options: Options): SessionController {
     const e =
       error instanceof Error ? error : new Error('Sitzung nicht erreichbar.');
     if (failure && e !== failure) return e;
+    if (pending && e instanceof RetryableHttpSessionError) {
+      status(
+        'connecting',
+        'Änderungen noch nicht gespeichert · Verbindung wird wiederhergestellt …',
+      );
+      return e;
+    }
     status(
       /conflict/.test(e.message) ? 'conflict' : 'error',
       /conflict/.test(e.message)
@@ -298,6 +307,44 @@ export function createSessionController(options: Options): SessionController {
     url.hash = '';
     link = url.href;
     window.history.replaceState(null, '', link);
+  };
+  const retryAfter = (delay: number) =>
+    new Promise<void>((resolve, reject) => {
+      if (closed) {
+        reject(new Error('Sitzung wurde geschlossen.'));
+        return;
+      }
+      const timer = setTimeout(() => {
+        cancelRetry = null;
+        resolve();
+      }, delay);
+      cancelRetry = () => {
+        clearTimeout(timer);
+        cancelRetry = null;
+        reject(new Error('Sitzung wurde geschlossen.'));
+      };
+    });
+  const commitOnline = async (plan: SessionPlan) => {
+    // Reuse the complete command after an uncertain acknowledgement. The backend's
+    // receipt recognizes an already applied write before checking its old revision.
+    const command = {
+      ...auth(),
+      id: crypto.randomUUID(),
+      expectedRevision: writeRevision,
+      plan,
+    };
+    let attempt = 0;
+    for (;;) {
+      if (closed) throw new Error('Sitzung wurde geschlossen.');
+      try {
+        return await client!.mutation(commitRef, command);
+      } catch (error) {
+        if (closed || !http || !(error instanceof RetryableHttpSessionError))
+          throw error;
+        fail(error);
+        await retryAfter(Math.min(5000, 250 * 2 ** Math.min(attempt++, 5)));
+      }
+    }
   };
   const start = async (): Promise<SessionSnapshot> => {
     status(
@@ -484,12 +531,7 @@ export function createSessionController(options: Options): SessionController {
           if (closed) throw new Error('Sitzung wurde geschlossen.');
           let next: SessionSnapshot;
           if (client) {
-            const result = await client.mutation(commitRef, {
-              ...auth(),
-              id: crypto.randomUUID(),
-              expectedRevision: writeRevision,
-              plan: value,
-            });
+            const result = await commitOnline(value);
             next = { revision: result.revision, plan: value };
           } else {
             const saved = getStored('local.' + sessionId);
@@ -554,6 +596,7 @@ export function createSessionController(options: Options): SessionController {
       clearPresence();
       closed = true;
       discovery?.abort();
+      cancelRetry?.();
       if (presenceTimer) clearTimeout(presenceTimer);
       if (heartbeat) clearInterval(heartbeat);
       if (peerExpiry) clearTimeout(peerExpiry);

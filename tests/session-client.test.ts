@@ -524,3 +524,166 @@ it('keeps genuine config service failures visible instead of claiming a saved lo
   expect(snapshots).toHaveLength(0);
   expect(c.sessionId).toBeNull();
 });
+
+function installHttpBackend(
+  commit: (body: Record<string, unknown>) => Response | Promise<Response>,
+) {
+  let revision = 0;
+  const fetcher = vi.mocked(fetch);
+  fetcher.mockImplementation(async (input, init) => {
+    const path = String(input);
+    if (path === '/api/sessions/commit')
+      return commit(JSON.parse(String(init!.body)) as Record<string, unknown>);
+    const value =
+      path === '/api/session-config'
+        ? { transport: 'http' }
+        : path === '/api/sessions/create'
+          ? membership
+          : path === '/api/sessions/read'
+            ? { revision, plan: initialPlan }
+            : [];
+    return new Response(JSON.stringify(value), {
+      headers: { 'content-type': 'application/json' },
+    });
+  });
+  return {
+    fetcher,
+    setRevision: (next: number) => {
+      revision = next;
+    },
+  };
+}
+
+it('retries an HTTP save whose acknowledgement was lost with the same command and defers its polled snapshot', async () => {
+  const commands: Record<string, unknown>[] = [];
+  const backend = installHttpBackend(async (body) => {
+    commands.push(body);
+    backend.setRevision(1);
+    if (commands.length === 1)
+      throw new TypeError('Failed to fetch after applying command');
+    return new Response(JSON.stringify({ revision: 1, duplicate: true }), {
+      headers: { 'content-type': 'application/json' },
+    });
+  });
+  const { c, snapshots, statuses } = controller();
+  await c.start();
+  const saving = c.commit(editedPlan);
+  void saving.catch(() => {});
+  await vi.advanceTimersByTimeAsync(0);
+  expect(commands).toHaveLength(1);
+  expect(snapshots).toHaveLength(1);
+  expect(statuses.at(-1)?.state).toBe('connecting');
+  const reload = new Event('beforeunload', { cancelable: true });
+  events.dispatchEvent(reload);
+  expect(reload.defaultPrevented).toBe(true);
+  await vi.advanceTimersByTimeAsync(250);
+  await saving;
+  expect(commands).toHaveLength(2);
+  expect(commands[1]).toEqual(commands[0]);
+  expect(snapshots).toEqual([
+    { revision: 0, plan: initialPlan },
+    { revision: 1, plan: editedPlan },
+  ]);
+  expect(statuses.at(-1)?.state).toBe('saved');
+});
+
+it('recovers from a brief HTTP outage and then sends the next queued plan against the acknowledged revision', async () => {
+  const commands: Record<string, unknown>[] = [];
+  installHttpBackend(async (body) => {
+    commands.push(body);
+    if (commands.length <= 2)
+      return new Response('<html>Unavailable</html>', { status: 503 });
+    return new Response(
+      JSON.stringify({
+        revision: Number(body.expectedRevision) + 1,
+        duplicate: false,
+      }),
+      { headers: { 'content-type': 'application/json' } },
+    );
+  });
+  const { c, snapshots } = controller();
+  await c.start();
+  const first = c.commit(editedPlan);
+  const second = c.commit(initialPlan);
+  void first.catch(() => {});
+  void second.catch(() => {});
+  await vi.advanceTimersByTimeAsync(0);
+  expect(commands).toHaveLength(1);
+  await vi.advanceTimersByTimeAsync(250);
+  expect(commands).toHaveLength(2);
+  await vi.advanceTimersByTimeAsync(500);
+  await first;
+  await second;
+  expect(commands).toHaveLength(4);
+  expect(commands[0]).toEqual(commands[1]);
+  expect(commands[1]).toEqual(commands[2]);
+  expect(commands[3]!.expectedRevision).toBe(1);
+  expect(commands[3]!.id).not.toBe(commands[0]!.id);
+  expect(snapshots.at(-1)).toEqual({ revision: 2, plan: initialPlan });
+});
+
+it('keeps actual HTTP conflicts latched without retrying or publishing newer snapshots over local intent', async () => {
+  const commands: Record<string, unknown>[] = [];
+  const backend = installHttpBackend((body) => {
+    commands.push(body);
+    return new Response(
+      JSON.stringify({ error: { code: 'revision-conflict' } }),
+      { status: 409 },
+    );
+  });
+  const { c, snapshots, statuses } = controller();
+  await c.start();
+  await expect(c.commit(editedPlan)).rejects.toThrow('revision-conflict');
+  backend.setRevision(2);
+  await vi.advanceTimersByTimeAsync(5000);
+  await expect(c.commit(initialPlan)).rejects.toThrow('revision-conflict');
+  expect(commands).toHaveLength(1);
+  expect(snapshots).toHaveLength(1);
+  expect(statuses.at(-1)?.state).toBe('conflict');
+});
+
+it('cancels a pending HTTP save retry and its serialized queue when closed', async () => {
+  const commands: Record<string, unknown>[] = [];
+  installHttpBackend((body) => {
+    commands.push(body);
+    throw new TypeError('offline');
+  });
+  const { c, statuses } = controller();
+  await c.start();
+  const first = c.commit(editedPlan);
+  const second = c.commit(initialPlan);
+  void first.catch(() => {});
+  void second.catch(() => {});
+  await vi.advanceTimersByTimeAsync(0);
+  expect(statuses.at(-1)?.state).toBe('connecting');
+  c.close();
+  await expect(first).rejects.toThrow();
+  await expect(second).rejects.toThrow();
+  const count = statuses.length;
+  await vi.advanceTimersByTimeAsync(30000);
+  expect(commands).toHaveLength(1);
+  expect(statuses).toHaveLength(count);
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+it('does not register a retry after a status callback synchronously closes the controller', async () => {
+  installHttpBackend(() => {
+    throw new TypeError('offline');
+  });
+  const c = createSessionController({
+    initialPlan,
+    onSnapshot: () => {},
+    onPresence: () => {},
+    onStatus: (status) => {
+      if (status.message.includes('Änderungen noch nicht gespeichert'))
+        c.close();
+    },
+  });
+  controllers.push(c);
+  await c.start();
+  const saving = c.commit(editedPlan);
+  void saving.catch(() => {});
+  await vi.advanceTimersByTimeAsync(0);
+  expect(vi.getTimerCount()).toBe(0);
+  await expect(saving).rejects.toThrow();
+});

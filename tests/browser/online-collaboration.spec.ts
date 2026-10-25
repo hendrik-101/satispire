@@ -193,3 +193,47 @@ test('an earlier plan can be saved again after another participant changes it', 
     await second.close();
   }
 });
+
+test('a temporary HTTP save failure recovers without reloading or losing the result', async ({
+  browser,
+}) => {
+  test.skip(
+    Boolean(process.env.VITE_CONVEX_URL),
+    'Site HTTP transport acceptance',
+  );
+  const first = await browser.newContext();
+  const second = await browser.newContext();
+  try {
+    const alice = await first.newPage();
+    const bob = await second.newPage();
+    await ready(alice);
+    await ready(bob, alice.url());
+    let failed = false;
+    await alice.route('**/api/sessions/commit', async (route) => {
+      if (!failed) {
+        failed = true;
+        await route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: { code: 'temporarily-unavailable' } }),
+        });
+      } else await route.continue();
+    });
+    await rate(alice, '75');
+    expect(failed).toBe(true);
+    await expect(
+      bob.getByLabel('Zielrate pro Minute', { exact: true }),
+    ).toHaveValue('75');
+    await rate(alice, '90');
+    await expect(
+      bob.getByLabel('Zielrate pro Minute', { exact: true }),
+    ).toHaveValue('90');
+    await alice.reload();
+    await expect(
+      alice.getByLabel('Zielrate pro Minute', { exact: true }),
+    ).toHaveValue('90');
+  } finally {
+    await first.close();
+    await second.close();
+  }
+});

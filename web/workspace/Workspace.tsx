@@ -245,7 +245,15 @@ export function Workspace() {
       unlocks: restored,
     });
     setSessionProfile(restored);
-    let initialPlan: SessionPlan | undefined;
+    // Existing sessions must be read independently of the browser's unlock defaults.
+    // A new session may retain a last valid seed plan as visibly outdated.
+    let initialPlan: SessionPlan = planFileSchema.parse({
+      schemaVersion: 1,
+      catalogVersion: catalog.catalogVersion,
+      production: firstInput,
+      unlocks: restored,
+      layout: { rows: 0, variant: defaultBuildVariant },
+    });
     let disposed = false;
     try {
       const recipes = availableChoices(restored.technology, firstInput.imports);
@@ -272,8 +280,8 @@ export function Workspace() {
       setTarget(itemId);
       setChoices(recipes);
       selectStage(firstStage(next.plan));
-    } catch (e) {
-      setError('Gespeicherte Session-Unlocks: ' + message(e));
+    } catch {
+      // Empty/infeasible unlock defaults must not prevent restoring a saved plan.
     }
     try {
       const saved = localStorage.getItem(KEY);
@@ -286,7 +294,7 @@ export function Workspace() {
     const visibility = () => setVisible(!document.hidden);
     resize();
     visibility();
-    if (initialPlan) {
+    {
       const receive = (snapshot: SessionSnapshot) => {
         if (disposed) return;
         const document = planFileSchema.parse(snapshot.plan);
@@ -377,7 +385,7 @@ export function Workspace() {
             setReady(true);
           }
         });
-    } else setReady(true);
+    }
     window.addEventListener('resize', resize);
     document.addEventListener('visibilitychange', visibility);
     return () => {

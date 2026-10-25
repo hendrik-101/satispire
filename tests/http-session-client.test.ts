@@ -212,3 +212,51 @@ it('times out a stalled read, reports disconnection and retries without overlapp
   expect(updates).toHaveBeenCalledWith({ revision: 5 });
   expect(statuses.mock.calls.at(-1)![0].isWebSocketConnected).toBe(true);
 });
+
+it.each([
+  { status: 503, body: '<html>Gateway unavailable</html>' },
+  { status: 408, body: JSON.stringify({ error: 'request-timeout' }) },
+  { status: 429, body: JSON.stringify({ error: { code: 'rate-limited' } }) },
+])(
+  'marks HTTP $status failures as retryable even when the response is HTML',
+  async ({ status, body }) => {
+    fetcher.mockResolvedValueOnce(new Response(body, { status }));
+    await expect(
+      client().mutation(commit, { expectedRevision: 0, id: 'command' }),
+    ).rejects.toMatchObject({ retryable: true });
+  },
+);
+
+it('marks network and request timeout failures as retryable, while conflict and forbidden responses stay permanent', async () => {
+  const c = client();
+  fetcher.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+  await expect(
+    c.mutation(commit, { expectedRevision: 0, id: 'command' }),
+  ).rejects.toMatchObject({ retryable: true });
+  for (const [status, code] of [
+    [409, 'revision-conflict'],
+    [403, 'forbidden'],
+    [400, 'invalid-plan'],
+  ] as const) {
+    fetcher.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: { code } }), { status }),
+    );
+    const error = await c
+      .mutation(commit, { expectedRevision: 0, id: 'command' })
+      .catch((e: unknown) => e);
+    expect(error).toMatchObject({ message: code });
+    expect(error).not.toHaveProperty('retryable', true);
+  }
+  fetcher.mockImplementationOnce(
+    (_input, init: RequestInit) =>
+      new Promise((_resolve, reject) => {
+        init.signal!.addEventListener('abort', () =>
+          reject(init.signal!.reason),
+        );
+      }),
+  );
+  const pending = c.mutation(commit, { expectedRevision: 0, id: 'command' });
+  const rejected = expect(pending).rejects.toMatchObject({ retryable: true });
+  await vi.advanceTimersByTimeAsync(15000);
+  await rejected;
+});
