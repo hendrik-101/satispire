@@ -21,8 +21,46 @@ Applied profiles are versioned and catalog-bound. `sessionStorage` stores the lo
 
 The canvas dominates the initial view. Navigation, production graph and inspector are optional. Stage selection, zoom and panel preferences remain personal; no panel toggle recalculates production. Plan import/export preserves every target, recipe override, allowed raw import and applied technology profile. Import seeds other default recipe choices so the user can subsequently change targets. Unsupported catalog versions, oversized files, raw-only layouts and unsupported chains fail before replacing the current plan. New synchronous layout edits invalidate a pending file import; late file reads cannot overwrite newer intent.
 
-Rows can be automatic or selected. Supply/manifold blocks show all supported machine instances and exact line counts; all schematic floors share their area. The inspector displays licensed upstream machine bounds and hard-clearance dimensions for five machines, plus source attribution and complete MIT notices. Source-local conveyor ports are separate metadata; canvas routing, physical packing and height-fit remain schematic or unsupported. Other machines retain unknown geometry. Optional selected-edge flow indicators pause for hidden tabs and reduced motion. No online backend, collaboration provisioning, VPS or production deployment is claimed.
+Rows can be automatic or selected. Supply/manifold blocks show all supported machine instances and exact line counts; all schematic floors share their area. The inspector displays licensed upstream machine bounds and hard-clearance dimensions for five machines, plus source attribution and complete MIT notices. Source-local conveyor ports are separate metadata; canvas routing, physical packing and height-fit remain schematic or unsupported. Other machines retain unknown geometry. Optional selected-edge flow indicators pause for hidden tabs and reduced motion. Online mode is available when a Convex deployment is configured; local mode does not send data to an online backend. Provisioning and live publication require deployment access.
 
 Plan files bind the exact catalog version. Older 1.0 plans are rejected with the current 1.2.4.0 version shown, preserving the last valid plan; they are not silently reinterpreted. Planning uses default 1× recipe costs and explicitly rejects unsupported recipe-cost/world modifiers.
 
 Run `npm run check`, `npm run test:coverage` and `PLAYWRIGHT_CHROMIUM_PATH=/usr/bin/chromium npm run test:browser`. Capture repeatable screenshots with `node scripts/browser-qa.mjs` while the dev server is running. Browser QA covers repeated calculations, invalid-demand recovery, atomic profile application/cancel, multi-target import/export, alternate recipes, interrupted imports, mobile keyboard operation and reduced motion. Compiled CLI output is `dist`; client/server web output is `web-dist`.
+
+## Durable sessions and online collaboration
+
+The root page restores the latest session in this browser or creates a random session identifier and updates the address to `?session=<identifier>`. A successful calculation, plan import, layout edit or applied unlock change saves the complete session plan. F5 restores calculated targets and recipe choices; uncalculated form drafts remain personal and are not saved as shared intent. Personal panels, selection and camera do not move other participants.
+
+Without a hosted session API or `VITE_CONVEX_URL`, the header says **Lokal** and saves to browser localStorage keyed by session. Unknown local links display an error instead of silently creating unrelated content. These links work only in the browser that stores that session. Blocked storage is reported and the current view remains usable; it cannot promise recovery after reload.
+
+The published ChatGPT Site uses its managed D1/HTTP adapter and supports anonymous session creation. The optional Convex backend requires trusted authenticated identity for creation; existing link/capability-based joins remain anonymous-compatible. An operator must integrate the identity provider for new Convex sessions or provision a session through an authenticated client first. Merely setting a client URL does not provision identity. To connect the browser to an existing dedicated Convex backend, supply its **public client URL** to Vite:
+
+```sh
+VITE_CONVEX_URL=https://your-convex-client-endpoint npm run dev
+# For the compiled runtime, supply the same public URL at build time:
+VITE_CONVEX_URL=https://your-convex-client-endpoint APP_REVISION=$(git rev-parse HEAD) npm run build:runtime
+```
+
+`VITE_CONVEX_URL` is public configuration, never an admin credential. HTTPS is required except for loopback development endpoints. Existing Convex deploy credentials belong in the deployment environment, never in `VITE_` variables or committed files. Do not point Satispire at another application's backend. Restart/rebuild after changing the client URL.
+
+An online URL is a reusable, unlisted invitation. Anyone possessing it may join, read and change this session; share it only with intended collaborators. Each browser receives a separate private membership credential, which never enters the URL. The header's copy control copies the address-bar session link. Joined sessions keep the creator's saved plan and unlocks rather than replacing them with the joining browser's defaults.
+
+The status distinguishes pending writes, confirmed saves, connection loss, storage failures and conflicts. Concurrent stale writes are rejected; the unsaved local result stays visible with a conflict message until reload. Pending online saves trigger the browser's leave-page confirmation. The Site HTTP transport automatically retries temporary connection/server failures with the same command ID, revision and plan, so a lost acknowledgement cannot double-apply a change. A remote update refreshes the calculated result while preserving an uncommitted local form draft.
+
+Cursors are separate from plan updates. They appear only on the same floor/item or production view, respect independent pan/zoom, clear on pointer leave or hidden tabs, and expire after 15 seconds without heartbeat. No presenter/camera following is introduced. The server retains 128 retry receipts per session, permits 128 browser memberships and eight simultaneous cursor clients per membership. New-session creation is limited to five attempts per minute per trusted caller and 512 durable sessions per deployment; existing sessions remain accessible at those limits. Saved plans are not automatically deleted. This is separate from the older rooms API's uncapped participant model.
+
+Online browser acceptance uses a real running Convex backend (not a browser mock):
+
+```sh
+VITE_CONVEX_URL=http://127.0.0.1:3210 SATISPIRE_TEST_ONLINE=1 PLAYWRIGHT_CHROMIUM_PATH=/usr/bin/chromium npx playwright test tests/browser/online-collaboration.spec.ts
+```
+
+The ordinary browser suite exercises explicit local persistence; `tests/sessions.test.ts` exercises registered server functions and authorization through convex-test. A successful local online test does not prove external HTTPS deployment.
+
+### ChatGPT Sites hosting
+
+The Sites Worker serves the same exported workspace plus same-origin JSON session operations backed by the Site's managed D1 database. `GET /api/session-config` advertises this transport; private membership credentials remain in POST bodies. Separate plan and presence polling pauses for hidden tabs and prevents overlapping requests. Plan writes retain the same revision and idempotency contracts as Convex. The Worker uses the checked-in schema migration and never creates schema while handling requests.
+
+`npm run build:site` produces the generic Worker in `site-dist/server/index.js` with embedded immutable assets; it does not register or publish a Site. Personal deployment identity and binding configuration stay in the existing Site source repository. The build accepts `--manifest <hosting.json>` and `--migrations <generated-drizzle-directory>` for its existing identity and generated schema metadata when packaging for native Sites publication. Never substitute a new project ID for the existing Site.
+
+`npm run test:browser:site` builds this Worker and runs the online browser suite through a real HTTP listener backed by SQLite. This exercises actual fetches and SQL, separate browser identities, reload, scoped world-coordinate cursors and collaborative draft races. Hosted D1 migration and public networking are additionally verified during publication.

@@ -1,3 +1,8 @@
+import type {
+  SessionPresence,
+  SessionPresenceInput,
+} from '../../src/session-plan.js';
+import { RemoteCursors } from './RemoteCursors.js';
 import type { ProductionPlan } from '../../src/domain/production.js';
 import { itemName } from '../../src/domain/vanilla.js';
 import { formatRate } from './format-rate.js';
@@ -7,15 +12,38 @@ export function ProductionView({
   selected,
   select,
   onSizeInput,
+  peers = [],
+  onPresence,
 }: {
   plan: ProductionPlan;
   selected: string;
   select: (id: string) => void;
   onSizeInput?: (stageItemId: string, itemId: string) => void;
+  peers?: SessionPresence[];
+  onPresence?: (cursor: SessionPresenceInput['cursor']) => void;
 }) {
   const stage = plan.nodes.find((node) => node.itemId === selected);
   return (
-    <section className="production-panel" aria-label="Produktionsübersicht">
+    <section
+      className="production-panel"
+      aria-label="Produktionsübersicht"
+      onPointerLeave={() => onPresence?.(null)}
+      onPointerCancel={() => onPresence?.(null)}
+      onPointerMove={(event) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        if (rect.width && rect.height)
+          onPresence?.({
+            x: Math.max(
+              0,
+              Math.min(1, (event.clientX - rect.left) / rect.width),
+            ),
+            y: Math.max(
+              0,
+              Math.min(1, (event.clientY - rect.top) / rect.height),
+            ),
+          });
+      }}
+    >
       <h2>Produktion</h2>
       <table>
         <thead>
@@ -67,6 +95,7 @@ export function ProductionView({
           </dl>
         </div>
       )}
+      <RemoteCursors peers={peers} />
     </section>
   );
 }

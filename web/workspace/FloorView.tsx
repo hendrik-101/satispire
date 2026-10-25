@@ -1,3 +1,8 @@
+import type {
+  SessionPresence,
+  SessionPresenceInput,
+} from '../../src/session-plan.js';
+import { RemoteCursors } from './RemoteCursors.js';
 import { supplySceneMetrics } from './supply-scene.js';
 import { type BuildVariant } from '../../src/domain/build-variants.js';
 import { VariantControl } from './VariantControl.js';
@@ -27,6 +32,8 @@ export function FloorView({
   motion = false,
   compact = false,
   showBeltRates = false,
+  peers = [],
+  onPresence,
 }: {
   catalog: Catalog;
   plan: ProductionPlan;
@@ -41,6 +48,8 @@ export function FloorView({
   motion?: boolean;
   compact?: boolean;
   showBeltRates?: boolean;
+  peers?: SessionPresence[];
+  onPresence?: (cursor: SessionPresenceInput['cursor']) => void;
 }) {
   const layout = useMemo(
     () => generateSupplyLayout(catalog, plan, technology, rows, variant),
@@ -177,7 +186,18 @@ export function FloorView({
               cameraY: camera.y,
             };
           }}
+          onPointerLeave={() => onPresence?.(null)}
           onPointerMove={(event) => {
+            if (onPresence) {
+              const matrix = event.currentTarget.getScreenCTM();
+              if (matrix) {
+                const point = event.currentTarget.createSVGPoint();
+                point.x = event.clientX;
+                point.y = event.clientY;
+                const world = point.matrixTransform(matrix.inverse());
+                onPresence({ x: world.x, y: world.y });
+              }
+            }
             const start = drag.current;
             if (!start) return;
             const rect = event.currentTarget.getBoundingClientRect();
@@ -195,6 +215,7 @@ export function FloorView({
             drag.current = null;
           }}
           onPointerCancel={() => {
+            onPresence?.(null);
             drag.current = null;
           }}
         >
@@ -292,6 +313,7 @@ export function FloorView({
               </svg>
             </g>
           ))}
+          <RemoteCursors peers={peers} svg />
         </svg>
       </div>
       <div className="canvas-summary">

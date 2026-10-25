@@ -128,7 +128,7 @@ test('shared locks mark the old plan and disable export until recalculation unde
   await expect(
     page.getByRole('button', { name: 'Plan exportieren', exact: true }),
   ).toBeDisabled();
-  await expect(page.getByRole('status')).toContainText(
+  await expect(page.locator('.error-banner[role="status"]')).toContainText(
     'frühere Session-Unlocks',
   );
   await page.getByLabel('Reihen', { exact: true }).selectOption('2');
@@ -154,7 +154,7 @@ test('blocked browser storage retains applied session settings and shows a notic
     };
   });
   await ready(page);
-  await expect(page.getByRole('status')).toContainText(
+  await expect(page.locator('.error-banner[role="status"]')).toContainText(
     'Browser-Speicherung eingeschränkt',
   );
   await page.getByRole('button', { name: 'Technologie', exact: true }).click();
@@ -286,4 +286,62 @@ test('applied session unlocks survive reload and initialize a fresh session from
   await expect(
     page.getByLabel('Abgeschlossene Space-Elevator-Phase'),
   ).toHaveValue('1');
+});
+
+test('an existing calculated session restores even when browser defaults unlock no recipes', async ({
+  page,
+}) => {
+  await installSessionTools(page);
+  await ready(page);
+  await page
+    .getByLabel('Produktionsziel', { exact: true })
+    .selectOption('Desc_IronRod_C');
+  await page.getByLabel('Zielrate pro Minute', { exact: true }).fill('75');
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  const profile = createUnlockProfile(2);
+  profile.hubTier = null;
+  profile.technology.availableMachines = [];
+  profile.technology.unlockedRecipes = [];
+  const result = await page.evaluate(async (profile) => {
+    const tools = (
+      window as unknown as { workspaceTools: Map<string, WebTool> }
+    ).workspaceTools;
+    return tools.get('apply_command')!.execute({
+      roomId: 'local',
+      command: {
+        id: 'lock-everything',
+        expectedRevision: 0,
+        command: { type: 'set-unlocks', profile },
+      },
+    });
+  }, profile);
+  expect(result.ok).toBe(true);
+  await expect(page.getByLabel('Session-Status')).toContainText('Gespeichert');
+  const link = page.url();
+  await page.reload();
+  await expect(page.locator('main.workspace')).toHaveAttribute(
+    'data-ready',
+    'true',
+  );
+  expect(page.url()).toBe(link);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Plan exportieren', exact: true }),
+  ).toBeDisabled();
+  await page.getByRole('button', { name: 'Technologie', exact: true }).click();
+  await page.getByLabel('HUB-Tier').selectOption('2');
+  await page.getByRole('button', { name: 'Profil anwenden' }).click();
+  await expect(page.getByLabel('Produktionsziel', { exact: true })).toHaveValue(
+    'Desc_IronRod_C',
+  );
+  await expect(
+    page.getByLabel('Zielrate pro Minute', { exact: true }),
+  ).toHaveValue('75');
+  await expect(page.getByLabel('Session-Status')).toContainText('Gespeichert');
+  await page.reload();
+  await expect(
+    page.getByLabel('Zielrate pro Minute', { exact: true }),
+  ).toHaveValue('75');
 });

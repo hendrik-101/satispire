@@ -4,6 +4,7 @@ export default tseslint.config(
     ignores: [
       'dist/**',
       'web-dist/**',
+      'site-dist/**',
       '.tanstack/**',
       'coverage/**',
       'node_modules/**',

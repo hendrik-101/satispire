@@ -5,6 +5,16 @@ import {
   type BuildVariant,
 } from '../../src/domain/build-variants.js';
 import { planFileSchema } from '../../src/plan-file.js';
+import type {
+  SessionPlan,
+  SessionSnapshot,
+  SessionPresence,
+} from '../../src/session-plan.js';
+import {
+  createSessionController,
+  type SessionController,
+  type SessionStatus,
+} from './session';
 import {
   createUnlockProfile,
   validateUnlockProfile,
@@ -125,6 +135,22 @@ export function Workspace() {
     null,
   );
   const [storageNotice, setStorageNotice] = useState('');
+  const controller = useRef<SessionController | null>(null);
+  const lastSnapshot = useRef<string | null>(null);
+  const lastIntent = useRef<string | null>(null);
+  const submittedPlans = useRef(new Map<string, number>());
+  const draftsDirty = useRef(false);
+  const hydratingSnapshot = useRef(false);
+  const [sessionEpoch, setSessionEpoch] = useState(0);
+  const [peers, setPeers] = useState<SessionPresence[]>([]);
+  const [sessionStatus, setSessionStatus] = useState<SessionStatus>({
+    mode: 'local',
+    state: 'connecting',
+    message: 'Session wird geöffnet …',
+    sessionId: null,
+    link: null,
+    revision: null,
+  });
   const [factory, setFactory] = useState(() => ({
     input: firstInput,
     plan: solveProduction(catalog, firstInput),
@@ -211,7 +237,7 @@ export function Workspace() {
       dispose();
       application.current = null;
     };
-  }, [ready]);
+  }, [ready, sessionEpoch]);
   useEffect(() => {
     const restored = loadUnlockProfile(
       sessionUnlockStorage,
@@ -225,6 +251,16 @@ export function Workspace() {
       unlocks: restored,
     });
     setSessionProfile(restored);
+    // Existing sessions must be read independently of the browser's unlock defaults.
+    // A new session may retain a last valid seed plan as visibly outdated.
+    let initialPlan: SessionPlan = planFileSchema.parse({
+      schemaVersion: 1,
+      catalogVersion: catalog.catalogVersion,
+      production: firstInput,
+      unlocks: restored,
+      layout: { rows: 0, variant: defaultBuildVariant },
+    });
+    let disposed = false;
     try {
       const recipes = availableChoices(restored.technology, firstInput.imports);
       const itemId = recipes[firstInput.targets[0]!.itemId]
@@ -239,12 +275,19 @@ export function Workspace() {
         targets: [{ itemId, rate: '20' }],
       };
       const next = evaluate(input, restored.technology, 0, defaultBuildVariant);
+      initialPlan = planFileSchema.parse({
+        schemaVersion: 1,
+        catalogVersion: catalog.catalogVersion,
+        production: next.input,
+        unlocks: restored,
+        layout: { rows: next.rows, variant: next.variant },
+      });
       setFactory(next);
       setTarget(itemId);
       setChoices(recipes);
       selectStage(firstStage(next.plan));
-    } catch (e) {
-      setError('Gespeicherte Session-Unlocks: ' + message(e));
+    } catch {
+      // Empty/infeasible unlock defaults must not prevent restoring a saved plan.
     }
     try {
       const saved = localStorage.getItem(KEY);
@@ -257,10 +300,102 @@ export function Workspace() {
     const visibility = () => setVisible(!document.hidden);
     resize();
     visibility();
-    setReady(true);
+    {
+      const receive = (snapshot: SessionSnapshot) => {
+        if (disposed) return;
+        const document = planFileSchema.parse(snapshot.plan);
+        const serialized = JSON.stringify(document);
+        const ownAcknowledgement =
+          lastSnapshot.current !== null &&
+          submittedPlans.current.has(serialized);
+        if (ownAcknowledgement) {
+          const remaining = (submittedPlans.current.get(serialized) ?? 1) - 1;
+          if (remaining) submittedPlans.current.set(serialized, remaining);
+          else submittedPlans.current.delete(serialized);
+          lastSnapshot.current = serialized;
+          return;
+        }
+        const profile =
+          document.unlocks ??
+          validateUnlockProfile({
+            ...createUnlockProfile(),
+            hubTier: null,
+            technology:
+              document.production.technology ??
+              createUnlockProfile().technology,
+          });
+        const technology = document.production.technology ?? profile.technology;
+        const next = evaluate(
+          document.production,
+          technology,
+          document.layout.rows,
+          document.layout.variant,
+          false,
+        );
+        lastSnapshot.current = serialized;
+        lastIntent.current = serialized;
+        sequence.current++;
+        setPending(false);
+        hydratingSnapshot.current = true;
+        sessionRoom.current = {
+          ...createRoom({
+            roomId: roomContext.roomId,
+            ownerId: roomContext.participantId,
+            ownerName: 'Owner',
+            unlocks: profile,
+          }),
+          revision: snapshot.revision,
+        };
+        setSessionProfile(profile);
+        setFactory(next);
+        if (!draftsDirty.current) {
+          updateTargetRows(next.input.targets);
+          setChoices({
+            ...availableChoices(technology, next.input.imports),
+            ...next.input.recipes,
+          });
+          setSizingMode('target');
+          setInputItem('');
+        }
+        setSelected((previous) =>
+          next.plan.nodes.some((n) => n.itemId === previous)
+            ? previous
+            : firstStage(next.plan),
+        );
+        setSessionEpoch((epoch) => epoch + 1);
+      };
+      const session = createSessionController({
+        initialPlan,
+        onSnapshot: receive,
+        onStatus: (status) => {
+          if (!disposed) setSessionStatus(status);
+        },
+        onPresence: (next) => {
+          if (!disposed) setPeers(next);
+        },
+      });
+      controller.current = session;
+      void session
+        .start()
+        .then((snapshot) => {
+          if (!disposed) {
+            if (lastSnapshot.current === null) receive(snapshot);
+            setReady(true);
+          }
+        })
+        .catch((e: unknown) => {
+          if (!disposed) {
+            setError('Session: ' + message(e));
+            setReady(true);
+          }
+        });
+    }
     window.addEventListener('resize', resize);
     document.addEventListener('visibilitychange', visibility);
     return () => {
+      disposed = true;
+      controller.current?.close();
+      controller.current = null;
       window.removeEventListener('resize', resize);
       document.removeEventListener('visibilitychange', visibility);
       sequence.current++;
@@ -279,6 +414,10 @@ export function Workspace() {
         ? ''
         : 'Browser-Speicherung eingeschränkt. Die Unlocks gelten weiterhin für die laufende Session.',
     );
+    if (hydratingSnapshot.current) {
+      hydratingSnapshot.current = false;
+      return;
+    }
     if (
       JSON.stringify(sessionProfile.technology) ===
       JSON.stringify(factory.technology)
@@ -321,6 +460,33 @@ export function Workspace() {
       );
     }
   }, [ready, sessionProfile]);
+  useEffect(() => {
+    const session = controller.current;
+    if (!ready || !session || lastSnapshot.current === null) return;
+    const document = planFileSchema.parse({
+      schemaVersion: 1,
+      catalogVersion: catalog.catalogVersion,
+      production: factory.input,
+      unlocks: sessionProfile,
+      layout: { rows: factory.rows, variant: factory.variant },
+    });
+    const serialized = JSON.stringify(document);
+    if (serialized === lastIntent.current) return;
+    lastIntent.current = serialized;
+    submittedPlans.current.set(
+      serialized,
+      (submittedPlans.current.get(serialized) ?? 0) + 1,
+    );
+    void session.commit(document).catch((e: unknown) => setError(message(e)));
+  }, [ready, factory, sessionProfile]);
+  useEffect(() => {
+    if (!ready) return;
+    controller.current?.setPresence({
+      view: presentation.preset === 'production' ? 'production' : 'layout',
+      floor: presentation.preset === 'production' ? 'production' : selected,
+      cursor: null,
+    });
+  }, [ready, presentation.preset, selected]);
   useEffect(() => {
     if (ready)
       try {
@@ -502,6 +668,7 @@ export function Workspace() {
       const result = resolveDraft();
       const next = apply(result.input);
       updateTargetRows(next.input.targets);
+      draftsDirty.current = false;
     } catch (e) {
       setError(message(e));
     }
@@ -562,6 +729,7 @@ export function Workspace() {
       );
       if (id !== sequence.current) return;
       await updateSessionProfile(importedProfile, expectedRevision);
+      draftsDirty.current = false;
       setFactory(next);
       updateTargetRows(input.targets);
       setSizingMode('target');
@@ -587,6 +755,7 @@ export function Workspace() {
     try {
       exported = apply(resolveDraft().input);
       updateTargetRows(exported.input.targets);
+      draftsDirty.current = false;
     } catch (e) {
       setError(
         `Entwurf ungültig: ${message(e)} Exportiert wurde der letzte gültige Plan.`,
@@ -762,12 +931,50 @@ export function Workspace() {
       <fieldset className="workspace hydration-boundary" disabled={!ready}>
         <header className="app-header">
           <h1>Satispire</h1>
-          <span className="project-name">Meine Fabrik</span>
+          <span
+            className="project-name"
+            title={sessionStatus.sessionId ?? undefined}
+          >
+            {sessionStatus.sessionId
+              ? `Session ${sessionStatus.sessionId.slice(0, 8)}`
+              : 'Meine Fabrik'}
+          </span>
+          <span
+            className="session-status"
+            aria-label="Session-Status"
+            role="status"
+            title={sessionStatus.message}
+          >
+            {sessionStatus.mode === 'local' ? 'Lokal · ' : ''}
+            {sessionStatus.state === 'saved' || sessionStatus.state === 'ready'
+              ? 'Gespeichert'
+              : sessionStatus.message}
+          </span>
+          {sessionStatus.mode === 'online' && sessionStatus.link && (
+            <button
+              type="button"
+              className="session-share"
+              onClick={() => {
+                void navigator.clipboard
+                  .writeText(sessionStatus.link!)
+                  .catch(() =>
+                    setError(
+                      'Der Session-Link steht in der Adresszeile und kann dort kopiert werden.',
+                    ),
+                  );
+              }}
+            >
+              Session-Link kopieren
+            </button>
+          )}
           <span className="catalog-version" title={catalog.catalogVersion}>
             Vanilla {catalog.provenance.manifest!.gameVersion}
           </span>
           <form
             className="planning-controls"
+            onChangeCapture={() => {
+              draftsDirty.current = true;
+            }}
             data-sizing-mode={sizingMode}
             onSubmit={(e) => {
               e.preventDefault();
@@ -851,6 +1058,7 @@ export function Workspace() {
                         aria-label={`Ziel ${index + 1} entfernen`}
                         disabled={pending || additionalTargets.length === 0}
                         onClick={() => {
+                          draftsDirty.current = true;
                           if (index === 0) {
                             setTarget(additionalTargets[0]!.itemId);
                             setRate(additionalTargets[0]!.rate);
@@ -881,6 +1089,7 @@ export function Workspace() {
                     )
                   }
                   onClick={() => {
+                    draftsDirty.current = true;
                     const item = manufactured.find(
                       (item) =>
                         item.id !== target &&
@@ -1215,6 +1424,16 @@ export function Workspace() {
                   }}
                   motion={motion && visible}
                   compact={width <= 640}
+                  peers={peers.filter(
+                    (peer) => peer.view === 'layout' && peer.floor === selected,
+                  )}
+                  onPresence={(cursor) =>
+                    controller.current?.setPresence({
+                      view: 'layout',
+                      floor: selected,
+                      cursor,
+                    })
+                  }
                 />
               )}
               {presentation.preset !== 'floors' && (
@@ -1223,6 +1442,7 @@ export function Workspace() {
                   selected={selected}
                   select={selectStage}
                   onSizeInput={(stageItemId, itemId) => {
+                    draftsDirty.current = true;
                     const entry = factory.plan.nodes
                       .find((node) => node.itemId === stageItemId)
                       ?.inputs.find((input) => input.itemId === itemId);
@@ -1232,6 +1452,17 @@ export function Workspace() {
                     setInputItem(itemId);
                     if (entry) setInputRate(formatRateInput(entry.rate));
                   }}
+                  peers={peers.filter(
+                    (peer) =>
+                      peer.view === 'production' && peer.floor === 'production',
+                  )}
+                  onPresence={(cursor) =>
+                    controller.current?.setPresence({
+                      view: 'production',
+                      floor: 'production',
+                      cursor,
+                    })
+                  }
                 />
               )}
               {presentation.panels.graph && (
@@ -1331,12 +1562,13 @@ export function Workspace() {
                 <select
                   aria-label="Rezept für diese Stufe"
                   value={choices[stage.itemId] ?? stage.recipeId}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    draftsDirty.current = true;
                     setChoices((c) => ({
                       ...c,
                       [stage.itemId]: e.target.value,
-                    }))
-                  }
+                    }));
+                  }}
                 >
                   {candidates
                     .filter((r) => r.outputs[0]!.itemId === stage.itemId)
