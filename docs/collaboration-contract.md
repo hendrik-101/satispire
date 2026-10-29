@@ -119,3 +119,28 @@ Both first-feature session adapters allow at most five creation attempts per 60 
 The Site Worker and Node SSR responses set CSP `frame-ancestors` to self plus the exact HTTPS ChatGPT hosts `chatgpt.com` and `chat.openai.com`. This preserves the intended trusted host while blocking unrelated pages from framing a restored session. Neither wildcard Site domains nor untrusted third-party origins are admitted.
 
 Caller admission records expire after inactivity (five minutes), independently of saved plans. Existing singleton admission migration history is retained; new per-caller tables are added with append-only migrations. The local loopback preview supplies a fixed trusted caller at its server boundary, overwriting any browser-supplied header.
+
+## Shared rooms on the Site database
+
+The Sites Worker advertises `{ "transport": "http" }` at `/api/room-config`.
+The room browser client retains explicitly configured Convex deployments and
+otherwise selects this same-origin transport. POST JSON operations at
+`/api/rooms/{create,join,view,edit,undo,history}` preserve the complete room
+contract, including reusable hash-only share links, separate membership
+capabilities, immutable history and field-aware compensating undo.
+
+Separate `site_room_*` tables retain all receipts and paginate history by room
+and revision. A native D1 batch commits the compare-and-swap plan update,
+history entry and receipt atomically. A per-write random marker prevents losing
+concurrent batches from appending records, including no-op edits. Identical
+retries return their original result; reused IDs and stale writes cannot
+replace saved plans. HTTP polling supplies room snapshots without requiring a
+separate backend or new credentials. Hidden/unmounted subscriptions stop their
+requests, and network failures back off without redeeming new memberships.
+
+Room creation independently enforces five attempts per minute per hashed trusted
+edge caller, 512 durable rooms and 128 memberships per room. POST bodies are
+limited to 300 KiB and validated shared plans to 180,000 UTF-8 bytes. The
+append-only room migration coexists with existing session tables and data.
+The built-Worker browser acceptance uses real SQLite and independent contexts,
+without mocked Convex or HTTP responses.

@@ -33,6 +33,12 @@ it('serves an immutable exported workspace and advertises the hosted session tra
     env,
   );
   expect(await config.json()).toEqual({ transport: 'http' });
+  const roomConfig = await worker.fetch(
+    new Request('https://site.example/api/room-config'),
+    env,
+  );
+  expect(roomConfig.status).toBe(200);
+  expect(await roomConfig.json()).toEqual({ transport: 'http' });
   const asset = await worker.fetch(
     new Request('https://site.example/assets/app-hash.js'),
     env,
@@ -95,7 +101,10 @@ it('requires edge-provided caller identity for new sessions and ignores body/for
 
 it('serves the public room shell only for valid room paths and keeps unknown paths private', async () => {
   const worker = createSitesWorker({
-    '/room/:roomId': { body: '<h1>Room shell</h1>', contentType: 'text/html' },
+    '/room/:roomId': {
+      body: '<h1>Room shell</h1><script>window.route="00000000-0000-4000-8000-000000000000"</script>',
+      contentType: 'text/html',
+    },
   });
   const env = {
     DB: {
@@ -110,7 +119,10 @@ it('serves the public room shell only for valid room paths and keeps unknown pat
     env,
   );
   expect(response.status).toBe(200);
-  expect(await response.text()).toContain('Room shell');
+  const html = await response.text();
+  expect(html).toContain('Room shell');
+  expect(html).toContain('172be3fe-e426-46c2-84f4-765639fcebee');
+  expect(html).not.toContain('00000000-0000-4000-8000-000000000000');
   const head = await worker.fetch(
     new Request('https://site.example' + path, { method: 'HEAD' }),
     env,

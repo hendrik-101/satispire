@@ -91,11 +91,16 @@ if (migrationArg >= 0)
   await cp(resolve(process.argv[migrationArg + 1]), join(output, 'drizzle'), {
     recursive: true,
   });
-else
+else {
   await cp(
     join(root, 'deploy/session-migration.sql'),
     join(output, 'drizzle/0000_sessions.sql'),
   );
+  await cp(
+    join(root, 'deploy/room-migration.sql'),
+    join(output, 'drizzle/0001_rooms.sql'),
+  );
+}
 const manifestArg = process.argv.indexOf('--manifest');
 if (manifestArg >= 0) {
   const manifest = JSON.parse(

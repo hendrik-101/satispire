@@ -4,7 +4,11 @@ process.env.SATISPIRE_BASE_URL = 'http://127.0.0.1:4178';
 process.env.SATISPIRE_TEST_ONLINE = '1';
 export default defineConfig({
   ...base,
-  testMatch: ['online-collaboration.spec.ts', 'site-room-routing.spec.ts'],
+  testMatch: [
+    'online-collaboration.spec.ts',
+    'site-room-routing.spec.ts',
+    'site-db-rooms.spec.ts',
+  ],
   webServer: {
     command: 'npx tsx scripts/preview-site.ts',
     url: 'http://127.0.0.1:4178/api/session-config',
