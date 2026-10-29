@@ -6,6 +6,10 @@ Read `CONTRIBUTING.md` before changing code; it defines checks, attribution, Dra
 
 For repository changes, commit and push the work and create or update a Draft pull request by default, unless the user explicitly asks otherwise. Include the PR link in the final response. Do not stop after local edits or successful checks. Merge and deployment still require separate authorization.
 
+## Reviews
+
+Use Codex code and Security reviews against the current head, together with the required CI checks. CodeRabbit is not used in this project: do not install it, authenticate it, request reviews or retry its integration. Its availability is not a review or merge gate. This policy supersedes CodeRabbit instructions in older plans, specifications and verification notes; those remain historical records.
+
 ## Agent skills
 
 ### Issue tracker
