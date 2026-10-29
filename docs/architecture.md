@@ -15,7 +15,7 @@ Anonymous membership and invite tokens are bearer capabilities. Production trans
 1. Pin runtime/toolchain, write failing domain tests, implement exact numbers and validate a versioned synthetic catalog.
 2. Solve selected production graphs and generate machineblock/multistory layouts with independent fixtures and deterministic tests.
 3. Introduce role/revision/idempotency commands, actual classic MCP calls and feature-detected WebMCP with shared errors and authorization tests.
-4. Provide a runnable JSON CLI, reproducible build and CI. Review the immutable candidate while the PR stays Draft; no CodeRabbit during Draft and no merge without the parent thread's integration decision.
+4. Provide a runnable JSON CLI, reproducible build and CI. Complete Codex code and Security reviews of the immutable candidate while the PR stays Draft; merge requires the parent thread's integration decision.
 5. After the selected design and a verified Convex deployment are available, connect the real workspace and online collaboration. Do not declare the complete web MVP delivered by a core-only slice.
 
 ## External dependencies

@@ -18,4 +18,4 @@ Use the connected GitHub tools when available. Otherwise use `gh` from this chec
 
 ## Project review policy
 
-Follow `CONTRIBUTING.md`: PRs start as Draft. Complete Codex code and Security reviews on the current head before Ready; request CodeRabbit only after Ready. Merge and deployment require a separately agreed integration step.
+Follow `CONTRIBUTING.md`: PRs start as Draft. Complete Codex code and Security reviews on the current head before Ready. CodeRabbit is not used or requested for this project. Merge and deployment require a separately agreed integration step.
