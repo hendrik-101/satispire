@@ -56,6 +56,8 @@ Files: vanilla.ts, workspace model, Workspace, ProductionView, Graph and tests.
 ### Task 4: Integration and delivery
 
 - [x] Update production and architecture contracts to describe the final supported behavior and limits.
-- [ ] Run npm run check and npm run test:coverage plus relevant browser tests.
-- [ ] Review current changes for correctness and security; fix valid findings.
-- [ ] Commit, push and create a Draft PR with validation evidence; report any unavailable remote reviews.
+- [x] Run npm run check and npm run test:coverage plus relevant browser tests.
+- [x] Review current changes for correctness and security; fix valid findings.
+- [x] Commit, push and create a Draft PR with validation evidence; report any unavailable remote reviews.
+
+Delivery: [Draft PR #32](https://github.com/hendrik-101/satispire/pull/32). Service-side current-head reviews and CI are still required before promotion.

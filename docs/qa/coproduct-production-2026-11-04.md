@@ -17,3 +17,13 @@ Both exact balancing and activation-order allocation have cumulative work bounds
 Validation commands and final results are recorded in the pull request. The first simultaneous coverage/check/browser run exceeded existing timeouts in `sessions.test.ts` (retained retries) and `belt-scene.test.ts` (all side combinations); coverage is verified separately to avoid that resource contention.
 
 `npm audit --audit-level=high` exits successfully. Its report contains 21 moderate dependency findings with no available fix; this change does not alter the lockfile. External current-head GitHub reviews and CI remain requirements before promoting the Draft; local independent reviews do not substitute for those service-side reviews. Merge and deployment are separate steps.
+
+## Final local results
+
+- Clean lockfile install: `npm ci --cache /tmp/satispire-npm-cache` passed (the default home cache is unavailable in this executor).
+- `npm run check`: passed, including 625 tests, formatting, lint, typecheck, compiled planner/MCP smoke and web build.
+- `npm run test:coverage`: 625 passed; lines 95.78%, branches 88.95%, functions 98.78%, statements 94.55%.
+- System Chromium browser suite: 138 passed across the full run and one successful retry; 7 configured backend/site tests skipped. The retry addressed an initial application-readiness timeout before the alias test's import; readiness now allows 15 seconds.
+- Independent correctness/security review approved the source tree `351bb87160f7c9c25f659e2b4e0c91567cd914b1`, identical between local reviewed commit `49465bf` and published commit `9b86eb8`.
+
+Delivery: [Draft PR #32](https://github.com/hendrik-101/satispire/pull/32). This record does not assert successful service-side CI, external review, merge or deployment.
