@@ -141,3 +141,40 @@ test('shaft references connect incident cards without becoming counted belts', (
     );
   }
 });
+
+test('coproducts render distinct output cards and symbolic machine ports', async () => {
+  const { coproductCatalog, coproductPlan, coproductTechnology } = await import(
+    './coproduct-fixture.js'
+  );
+  const plan = {
+    ...coproductPlan,
+    nodes: coproductPlan.nodes.map((node) => ({ ...node, machineCount: 2 })),
+  };
+  const layout = generateSupplyLayout(
+    coproductCatalog,
+    plan,
+    coproductTechnology,
+    1,
+  );
+  const markup = renderToStaticMarkup(
+    createElement(SupplyDiagram, {
+      layout,
+      floor: layout.floors[0]!,
+      marker: 'coproduct',
+      catalog: coproductCatalog,
+      technology: coproductTechnology,
+    }),
+  );
+  expect(markup).toContain('data-output-item="a"');
+  expect(markup).toContain('data-output-item="b"');
+  expect(markup).toContain('120 m³/min');
+  expect(markup).toContain('Überschuss');
+  const machine = renderToStaticMarkup(
+    createElement(MachineGlyph, {
+      machineId: 'machine',
+      outputItems: ['a', 'b'],
+    }),
+  );
+  expect(machine).toContain('data-resource-id="a"');
+  expect(machine).toContain('data-resource-id="b"');
+});

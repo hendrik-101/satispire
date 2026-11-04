@@ -520,3 +520,229 @@ it('supports transport-limited extra machines and rejects incompatible legacy co
     /capacity/i,
   );
 });
+
+it('conserves every output of the same machines through target, transfer and surplus ports', async () => {
+  const { coproductCatalog, coproductPlan, coproductTechnology } = await import(
+    './coproduct-fixture.js'
+  );
+  const graphs = generateBeltRouting(
+    coproductCatalog,
+    coproductPlan,
+    coproductTechnology,
+    deriveBuildVariants(coproductPlan).transfers,
+  );
+  for (const graph of graphs) {
+    const stage = coproductPlan.nodes.find(
+      (node) => node.itemId === graph.itemId,
+    )!;
+    for (const output of stage.outputs ?? [
+      { itemId: stage.itemId, rate: stage.rate },
+    ]) {
+      const machinePorts = graph.nodes.filter(
+        (node) =>
+          node.kind === 'machine-output' && node.itemId === output.itemId,
+      );
+      expect(machinePorts).toHaveLength(stage.machineCount);
+      expect(
+        sum(
+          graph.edges
+            .filter((edge) =>
+              machinePorts.some((node) => node.id === edge.from),
+            )
+            .map((edge) => edge.rate),
+        ).toString(),
+      ).toBe(output.rate);
+      expect(
+        sum(
+          graph.outputs
+            .filter((flow) => flow.itemId === output.itemId)
+            .map((flow) => flow.rate),
+        ).toString(),
+      ).toBe(output.rate);
+    }
+    for (const node of graph.nodes.filter((node) => node.placement === 'rail'))
+      expect(
+        sum(
+          graph.edges
+            .filter((edge) => edge.to === node.id)
+            .map((edge) => edge.rate),
+        ).toString(),
+      ).toBe(
+        sum(
+          graph.edges
+            .filter((edge) => edge.from === node.id)
+            .map((edge) => edge.rate),
+        ).toString(),
+      );
+    for (const edge of graph.edges) {
+      expect(
+        Rational.parseCanonical(edge.rate).compare(
+          Rational.parseCanonical(edge.capacity),
+        ),
+      ).toBeLessThanOrEqual(0);
+      expect(graph.nodes.find((node) => node.id === edge.from)!.itemId).toBe(
+        edge.itemId,
+      );
+      expect(graph.nodes.find((node) => node.id === edge.to)!.itemId).toBe(
+        edge.itemId,
+      );
+    }
+  }
+  expect(
+    graphs[0]!.outputs.find((flow) => flow.terminalId === 'surplus:b'),
+  ).toMatchObject({ itemId: 'b', rate: '10' });
+});
+
+it('matches every proportional receiving lane when two stages supply one material', async () => {
+  const { coproductCatalog, coproductPlan, coproductTechnology } = await import(
+    './coproduct-fixture.js'
+  );
+  const catalog = {
+    ...coproductCatalog,
+    items: [
+      ...coproductCatalog.items,
+      { id: 'd', name: 'Second product', raw: false },
+    ],
+  };
+  const first = coproductPlan.nodes[0]!;
+  const plan: ProductionPlan = {
+    ...coproductPlan,
+    imports: [{ itemId: 'raw', rate: '40' }],
+    targets: [
+      { itemId: 'a', rate: '80' },
+      { itemId: 'b', rate: '10' },
+      { itemId: 'c', rate: '28' },
+      { itemId: 'd', rate: '40' },
+    ],
+    nodes: [
+      first,
+      {
+        ...coproductPlan.nodes[1]!,
+        rate: '28',
+        machineCount: 28,
+        inputs: [{ itemId: 'b', rate: '140' }],
+      },
+      {
+        ...first,
+        itemId: 'd',
+        rate: '40',
+        outputs: [
+          { itemId: 'b', rate: '40' },
+          { itemId: 'd', rate: '40' },
+        ],
+      },
+    ],
+    surplus: [{ itemId: 'b', rate: '10' }],
+  };
+  const build = deriveBuildVariants(plan);
+  const graphs = generateBeltRouting(
+    catalog,
+    plan,
+    coproductTechnology,
+    build.transfers,
+  );
+  const consumer = graphs.find((graph) => graph.itemId === 'c')!;
+  expect(consumer.inputs[0]!.terminalIds).toHaveLength(2);
+  for (const transfer of build.transfers) {
+    const source = graphs.find(
+      (graph) => graph.itemId === transfer.fromItemId,
+    )!;
+    const rates = (graph: TransportGraph, side: 'from' | 'to') =>
+      graph.nodes
+        .filter((node) => node.terminalId === transfer.id)
+        .map((node) =>
+          sum(
+            graph.edges
+              .filter((edge) => edge[side] === node.id)
+              .map((edge) => edge.rate),
+          ).toString(),
+        );
+    expect(rates(source, 'to')).toEqual(rates(consumer, 'from'));
+    expect(sum(rates(source, 'to')).toString()).toBe(transfer.rate);
+  }
+  for (const node of consumer.nodes.filter((node) => node.placement === 'rail'))
+    expect(
+      sum(
+        consumer.edges
+          .filter((edge) => edge.to === node.id)
+          .map((edge) => edge.rate),
+      ).toString(),
+    ).toBe(
+      sum(
+        consumer.edges
+          .filter((edge) => edge.from === node.id)
+          .map((edge) => edge.rate),
+      ).toString(),
+    );
+});
+
+it('enforces per-machine transport limits for a secondary output', async () => {
+  const { coproductCatalog, coproductPlan, coproductTechnology } = await import(
+    './coproduct-fixture.js'
+  );
+  const catalog = {
+    ...coproductCatalog,
+    items: coproductCatalog.items.map((item) =>
+      item.id === 'b' ? { ...item, transport: 'belt' as const } : item,
+    ),
+  };
+  const plan = {
+    ...coproductPlan,
+    nodes: coproductPlan.nodes.map((node) =>
+      node.itemId === 'a'
+        ? {
+            ...node,
+            rate: '4',
+            machineCount: 1,
+            outputs: [
+              { itemId: 'a', rate: '4' },
+              { itemId: 'b', rate: '120' },
+            ],
+          }
+        : node,
+    ),
+    targets: coproductPlan.targets.map((target) =>
+      target.itemId === 'a' ? { ...target, rate: '4' } : target,
+    ),
+  };
+  expect(() =>
+    generateBeltRouting(
+      catalog,
+      plan,
+      coproductTechnology,
+      deriveBuildVariants(plan).transfers,
+    ),
+  ).toThrow(/per-machine transport capacity/i);
+});
+
+it('bounds output mixing work across all materials of one shared stage', async () => {
+  const { coproductCatalog, coproductPlan, coproductTechnology } = await import(
+    './coproduct-fixture.js'
+  );
+  const catalog = {
+    ...coproductCatalog,
+    items: coproductCatalog.items.map((item) => ({
+      ...item,
+      transport: 'belt' as const,
+    })),
+  };
+  const outputs = ['a', 'b', 'c'].map((itemId) => ({ itemId, rate: '1920' }));
+  const plan = {
+    ...coproductPlan,
+    targets: outputs,
+    imports: [{ itemId: 'raw', rate: '32' }],
+    surplus: [],
+    nodes: [
+      {
+        ...coproductPlan.nodes[0]!,
+        rate: '1920',
+        machineCount: 32,
+        outputs,
+        inputs: [{ itemId: 'raw', rate: '32' }],
+      },
+    ],
+  };
+  expect(() =>
+    generateBeltRouting(catalog, plan, coproductTechnology, []),
+  ).toThrow(/mixing capacity/i);
+});

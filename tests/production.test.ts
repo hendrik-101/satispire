@@ -135,12 +135,17 @@ describe('selected recipe production DAG', () => {
     c.recipes[0]!.inputs = [{ itemId: 'example:plate', quantity: '1' }];
     expect(() => solveProduction(c, input())).toThrow(/cycle.*example:/i);
   });
-  it('diagnoses selected coproduct recipes', () => {
+  it('retains every output of a selected coproduct recipe', () => {
     const c = fixture();
     c.recipes[0]!.outputs.push({ itemId: 'example:rod', quantity: '1' });
-    expect(() => solveProduction(c, input())).toThrow(
-      /coproduct|single.output/i,
-    );
+    expect(
+      solveProduction(c, input()).nodes.find(
+        (node) => node.recipeId === c.recipes[0]!.id,
+      )?.outputs,
+    ).toEqual([
+      { itemId: 'example:ingot', rate: '45' },
+      { itemId: 'example:rod', rate: '45' },
+    ]);
   });
   it.each([
     [

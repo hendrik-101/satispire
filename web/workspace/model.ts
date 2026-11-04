@@ -6,6 +6,7 @@ import {
   solveProduction,
 } from '../../src/domain/production.js';
 import { Rational } from '../../src/domain/rational.js';
+import { allocateProductionFlows } from '../../src/domain/production-flows.js';
 import type { DiscoveryRecipeDetails } from '../../src/discovery.js';
 
 /** Normalizes UI rates and sizes the selected chain without changing the last valid input. */
@@ -70,9 +71,8 @@ export function defaultChoices(
     string
   >;
   for (const item of catalog.items.filter((item) => !item.raw)) {
-    const choices = catalog.recipes.filter(
-      (recipe) =>
-        recipe.outputs.length === 1 && recipe.outputs[0]?.itemId === item.id,
+    const choices = catalog.recipes.filter((recipe) =>
+      recipe.outputs.some((output) => output.itemId === item.id),
     );
     const preferred =
       choices.find(
@@ -116,7 +116,25 @@ export function displayName(id: string): string {
 
 export function graphConnections(
   plan: import('../../src/domain/production.js').ProductionPlan,
-) {
+  rawItemIds?: readonly string[],
+): { from: string; to: string; rate: string; itemId?: string }[] {
+  if (plan.nodes.some((node) => node.outputs)) {
+    const flows = allocateProductionFlows(plan, rawItemIds);
+    return [
+      ...flows.transfers.map((flow) => ({
+        from: flow.fromItemId,
+        to: flow.toItemId,
+        itemId: flow.itemId,
+        rate: flow.rate,
+      })),
+      ...flows.imports.map((flow) => ({
+        from: flow.itemId,
+        to: flow.toItemId,
+        itemId: flow.itemId,
+        rate: flow.rate,
+      })),
+    ];
+  }
   return plan.nodes.flatMap((node) =>
     node.inputs.map((input) => ({
       from: input.itemId,
@@ -124,4 +142,27 @@ export function graphConnections(
       rate: input.rate,
     })),
   );
+}
+
+/** Preserve validated recipe aliases when a coproduct owns the canonical stage. */
+export function activeRecipeChoices(
+  catalog: Catalog,
+  input: ProductionInput,
+  plan: import('../../src/domain/production.js').ProductionPlan,
+): Record<string, string> {
+  const executed = new Set(plan.nodes.map((node) => node.recipeId));
+  return {
+    ...Object.fromEntries(
+      plan.nodes.map((node) => [node.itemId, node.recipeId]),
+    ),
+    ...Object.fromEntries(
+      Object.entries(input.recipes).filter(
+        ([itemId, recipeId]) =>
+          executed.has(recipeId) &&
+          catalog.recipes
+            .find((recipe) => recipe.id === recipeId)
+            ?.outputs.some((output) => output.itemId === itemId),
+      ),
+    ),
+  };
 }

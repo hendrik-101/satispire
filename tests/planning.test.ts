@@ -232,3 +232,90 @@ test('invalid documents or infeasible rooms fail instead of returning a partial 
     ),
   ).toThrow();
 });
+
+test('binds a coproduct dependency to its producing machine group in a plan document', async () => {
+  const { coproductCatalog } = await import('./coproduct-fixture.js');
+  const result = buildPlanDocument(
+    {
+      schemaVersion: 1,
+      production: {
+        targets: [
+          { itemId: 'a', rate: '4' },
+          { itemId: 'c', rate: '1' },
+        ],
+        recipes: { a: 'make-a', b: 'make-a', c: 'make-c' },
+        imports: ['raw'],
+      },
+      layout: { footprint: { width: 32, depth: 32 }, floorHeight: 8, rows: 1 },
+    },
+    coproductCatalog,
+  );
+  expect(result.production.nodes).toHaveLength(2);
+  expect(result.layoutBindings.connections).toEqual([
+    { connectionId: 'a->c->b', fromItemId: 'a', toItemId: 'c' },
+  ]);
+  expect(result.layout.liftCorridors).toHaveLength(1);
+});
+
+test('keeps same-stage raw recycling inside its machine group without a self lift', async () => {
+  const { coproductCatalog } = await import('./coproduct-fixture.js');
+  const data = structuredClone(coproductCatalog);
+  data.recipes[0]!.inputs[0]!.quantity = '2';
+  data.recipes[0]!.outputs.push({ itemId: 'raw', quantity: '1' });
+  const result = buildPlanDocument(
+    {
+      schemaVersion: 1,
+      production: {
+        targets: [{ itemId: 'a', rate: '4' }],
+        recipes: { a: 'make-a' },
+        imports: ['raw'],
+      },
+      layout: { footprint: { width: 32, depth: 32 }, floorHeight: 8, rows: 1 },
+    },
+    data,
+  );
+  expect(result.production.imports).toEqual([{ itemId: 'raw', rate: '1' }]);
+  expect(result.layoutBindings.connections).toEqual([]);
+  expect(result.layout.liftCorridors).toEqual([]);
+});
+
+test('keeps transfer identities distinct when a catalog ID contains the material suffix delimiter', async () => {
+  const { coproductCatalog } = await import('./coproduct-fixture.js');
+  const data = structuredClone(coproductCatalog);
+  data.items.push({ id: 'c:b', name: 'Colon part', raw: false });
+  data.recipes.push({
+    id: 'make-d',
+    name: 'Colon part',
+    machineId: 'machine',
+    durationSeconds: '60',
+    inputs: [{ itemId: 'a', quantity: '1' }],
+    outputs: [{ itemId: 'c:b', quantity: '1' }],
+  });
+  const result = buildPlanDocument(
+    {
+      schemaVersion: 1,
+      production: {
+        targets: [
+          { itemId: 'c', rate: '1' },
+          { itemId: 'c:b', rate: '1' },
+        ],
+        recipes: { a: 'make-a', b: 'make-a', c: 'make-c', 'c:b': 'make-d' },
+        imports: ['raw'],
+      },
+      layout: { footprint: { width: 32, depth: 32 }, floorHeight: 8, rows: 1 },
+    },
+    data,
+  );
+  expect(
+    result.layoutBindings.connections.map((link) => link.connectionId),
+  ).toEqual(['a->c->b', 'a->c:b']);
+});
+
+test('preserves legacy connection ordering when activation order differs from stage identity', () => {
+  const { input, catalog } = chainFixture('b', 'z', ['a']);
+  catalog.recipes[2]!.inputs[0]!.itemId = 'z';
+  const result = buildPlanDocument(input, catalog);
+  expect(
+    result.layoutBindings.connections.map((link) => link.connectionId),
+  ).toEqual(['z->a', 'b->z']);
+});

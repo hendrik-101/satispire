@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { productionOutputs } from '../../src/domain/production-flows.js';
 import { MachineGlyph } from './MachineGlyph';
 import type { Catalog } from '../../src/domain/catalog.js';
 import type { ProductionPlan } from '../../src/domain/production.js';
@@ -33,7 +34,10 @@ export function Graph({
       catalog.machines.find((machine) => machine.id === id)?.name ??
         displayName(id),
     );
-  const edges = graphConnections(plan);
+  const edges = graphConnections(
+    plan,
+    catalog.items.filter((item) => item.raw).map((item) => item.id),
+  );
   const ids = [
     ...new Set([
       ...plan.imports.map((item) => item.itemId),
@@ -54,7 +58,7 @@ export function Graph({
   }
   const { depths, positions, width, contentHeight } = graphLayout(ids, edges);
   const bypassEdges = edges.filter(
-    (edge) => depths.get(edge.to)! - depths.get(edge.from)! > 1,
+    (edge) => depths.get(edge.to)! - depths.get(edge.from)! !== 1,
   );
   const height =
     contentHeight + (bypassEdges.length ? 16 + bypassEdges.length * 8 : 0);
@@ -107,7 +111,7 @@ export function Graph({
             const from = positions.get(edge.from)!;
             const to = positions.get(edge.to)!;
             const active = activeEdges.has(edge);
-            const color = resourceColor(edge.from);
+            const color = resourceColor(edge.itemId ?? edge.from);
             const outputs = edges
               .filter((candidate) => candidate.from === edge.from)
               .sort((a, b) => positions.get(a.to)!.y - positions.get(b.to)!.y);
@@ -125,14 +129,18 @@ export function Graph({
             const bypassIndex = bypassEdges.indexOf(edge);
             const bypassY = contentHeight + 8 + bypassIndex * 8;
             // Distinct stems stay inside the 64px inter-column gap.
-            const exitX =
+            const exitX = Math.min(
+              width - 4,
               startX +
-              32 -
-              (20 * (outputs.indexOf(edge) + 1)) / (outputs.length + 1);
-            const entryX =
+                32 -
+                (20 * (outputs.indexOf(edge) + 1)) / (outputs.length + 1),
+            );
+            const entryX = Math.max(
+              4,
               to.x -
-              32 +
-              (20 * (inputs.indexOf(edge) + 1)) / (inputs.length + 1);
+                32 +
+                (20 * (inputs.indexOf(edge) + 1)) / (inputs.length + 1),
+            );
             const path =
               bypassIndex < 0
                 ? `M ${startX} ${startY} C ${startX + 32} ${startY}, ${to.x - 32} ${endY}, ${to.x - 5} ${endY}`
@@ -165,6 +173,7 @@ export function Graph({
                   cy={endY}
                   r={3}
                 />
+                <title>{`${label(edge.itemId ?? edge.from)} · ${formatRate(edge.rate)} / min`}</title>
                 <text
                   x={startX + 6}
                   y={startY - 7}
@@ -195,6 +204,12 @@ export function Graph({
                     className={
                       'graph-node ' + (selected === id ? 'selected' : '')
                     }
+                    title={productionOutputs(node)
+                      .map(
+                        (output) =>
+                          `${label(output.itemId)} · ${formatRate(output.rate)} / min`,
+                      )
+                      .join('; ')}
                     onClick={() => select(id)}
                   >
                     <span className="graph-node-glyph" aria-hidden="true">
@@ -203,6 +218,9 @@ export function Graph({
                         feeds={node.inputs.length}
                         inputItems={node.inputs.map((input) => input.itemId)}
                         outputItem={node.itemId}
+                        outputItems={productionOutputs(node).map(
+                          (output) => output.itemId,
+                        )}
                         selected={selected === id}
                       />
                     </span>

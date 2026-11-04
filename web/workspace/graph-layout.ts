@@ -5,17 +5,59 @@ interface GraphEdge {
 
 /** Bounded layer ordering; retain the original order on ties or regressions. */
 export function graphLayout(ids: string[], edges: GraphEdge[]) {
-  const depths = new Map<string, number>();
-  function depth(id: string): number {
-    const cached = depths.get(id);
+  // Condense recycled-material cycles into one rank before layering the DAG.
+  const indices = new Map<string, number>();
+  const lows = new Map<string, number>();
+  const stack: string[] = [];
+  const stacked = new Set<string>();
+  const components = new Map<string, number>();
+  let index = 0;
+  let component = 0;
+  function visit(id: string) {
+    indices.set(id, index);
+    lows.set(id, index++);
+    stack.push(id);
+    stacked.add(id);
+    for (const edge of edges.filter((edge) => edge.from === id)) {
+      if (!indices.has(edge.to)) {
+        visit(edge.to);
+        lows.set(id, Math.min(lows.get(id)!, lows.get(edge.to)!));
+      } else if (stacked.has(edge.to)) {
+        lows.set(id, Math.min(lows.get(id)!, indices.get(edge.to)!));
+      }
+    }
+    if (lows.get(id) === indices.get(id)) {
+      let member: string;
+      do {
+        member = stack.pop()!;
+        stacked.delete(member);
+        components.set(member, component);
+      } while (member !== id);
+      component++;
+    }
+  }
+  for (const id of ids) if (!indices.has(id)) visit(id);
+  const componentDepths = new Map<number, number>();
+  function componentDepth(id: number): number {
+    const cached = componentDepths.get(id);
     if (cached !== undefined) return cached;
-    const incoming = edges.filter((edge) => edge.to === id);
+    const incoming = edges.filter(
+      (edge) =>
+        components.get(edge.to) === id && components.get(edge.from) !== id,
+    );
     const result = incoming.length
-      ? 1 + Math.max(...incoming.map((edge) => depth(edge.from)))
+      ? 1 +
+        Math.max(
+          ...incoming.map((edge) => componentDepth(components.get(edge.from)!)),
+        )
       : 0;
-    depths.set(id, result);
+    componentDepths.set(id, result);
     return result;
   }
+  const depths = new Map(
+    ids.map((id) => [id, componentDepth(components.get(id)!)]),
+  );
+  const depth = (id: string) => depths.get(id)!;
   let rows = new Map<number, string[]>();
   for (const id of ids) {
     const level = depth(id);

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { type Catalog, validateCatalog } from './domain/catalog.js';
 import { solveProduction } from './domain/production.js';
+import { allocateProductionFlows } from './domain/production-flows.js';
 import { generateFloors } from './domain/geometry.js';
 import { productionSchema } from './inputs.js';
 
@@ -67,16 +68,24 @@ export function buildPlanDocument(raw: unknown, catalogInput: Catalog) {
     count: node.machineCount,
     rows: Math.min(input.layout.rows, node.machineCount),
   }));
-  const nodeIds = new Set(production.nodes.map((node) => node.itemId));
-  const links = production.nodes.flatMap((node) =>
-    node.inputs
-      .filter((part) => nodeIds.has(part.itemId))
-      .map((part) => ({
-        sourceId: `${part.itemId}->${node.itemId}`,
-        fromItemId: part.itemId,
-        toItemId: node.itemId,
-      })),
-  );
+  // Local recycling stays inside the block; only inter-stage flows need lifts.
+  const links = allocateProductionFlows(
+    production,
+    catalog.items.filter((item) => item.raw).map((item) => item.id),
+  )
+    .transfers.filter((flow) => flow.fromItemId !== flow.toItemId)
+    .sort((left, right) => {
+      for (const key of ['toItemId', 'itemId', 'fromItemId'] as const) {
+        if (left[key] < right[key]) return -1;
+        if (left[key] > right[key]) return 1;
+      }
+      return 0;
+    })
+    .map((flow) => ({
+      sourceId: `${flow.fromItemId}->${flow.toItemId}${flow.itemId === flow.fromItemId ? '' : `->${flow.itemId}`}`,
+      fromItemId: flow.fromItemId,
+      toItemId: flow.toItemId,
+    }));
   const connectionIds = geometryIds(
     links.map((link) => link.sourceId),
     'generated:connection',

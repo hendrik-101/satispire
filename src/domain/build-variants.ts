@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { CATALOG_ID_LIMIT, CATALOG_ID_PATTERN } from './catalog.js';
 import type { ProductionPlan } from './production.js';
+import { allocateProductionFlows } from './production-flows.js';
 
 export const sideSchema = z.enum(['west', 'east', 'north', 'south']);
 export type BuildSide = z.infer<typeof sideSchema>;
@@ -60,6 +61,7 @@ const distance = (a: BuildSide, b: BuildSide) => {
 export function deriveBuildVariants(
   plan: ProductionPlan,
   raw: unknown = defaultBuildVariant,
+  rawItemIds?: readonly string[],
 ) {
   const variant = variantSchema.parse(raw);
   if (!plan.nodes.length || plan.nodes.length > 64)
@@ -68,6 +70,20 @@ export function deriveBuildVariants(
   if (nodes.size !== plan.nodes.length)
     throw new Error('Duplicate production stage');
   const imports = new Set(plan.imports.map((i) => i.itemId));
+  const multiOutput = plan.nodes.some((node) => node.outputs !== undefined);
+  const flows = multiOutput
+    ? allocateProductionFlows(plan, rawItemIds).transfers
+    : plan.nodes.flatMap((node) =>
+        node.inputs
+          .filter((input) => nodes.has(input.itemId))
+          .map((input) => ({
+            fromItemId: input.itemId,
+            toItemId: node.itemId,
+            ...input,
+          })),
+      );
+  const parentsOf = (itemId: string) =>
+    flows.filter((flow) => flow.toItemId === itemId);
   const overrides = new Map(variant.overrides.map((o) => [o.itemId, o]));
   if (overrides.size !== variant.overrides.length)
     throw new Error('Duplicate floor override');
@@ -75,7 +91,10 @@ export function deriveBuildVariants(
     if (!nodes.has(id)) throw new Error('Unknown floor override');
   for (const node of nodes.values())
     for (const input of node.inputs) {
-      if (!nodes.has(input.itemId) && !imports.has(input.itemId))
+      if (
+        !parentsOf(node.itemId).some((flow) => flow.itemId === input.itemId) &&
+        !imports.has(input.itemId)
+      )
         throw new Error('Unknown material input');
     }
   const ordered: string[] = [];
@@ -84,26 +103,29 @@ export function deriveBuildVariants(
     const next = [...nodes.keys()]
       .filter((id) => !placed.has(id))
       .sort(compare)
-      .find((id) =>
-        nodes
-          .get(id)!
-          .inputs.every((i) => !nodes.has(i.itemId) || placed.has(i.itemId)),
-      );
-    if (!next) throw new Error('Cyclic floor dependencies');
-    ordered.push(next);
-    placed.add(next);
+      .find((id) => parentsOf(id).every((flow) => placed.has(flow.fromItemId)));
+    const selected =
+      next ??
+      (multiOutput
+        ? [...nodes.keys()].filter((id) => !placed.has(id)).sort(compare)[0]
+        : undefined);
+    if (!selected) throw new Error('Cyclic floor dependencies');
+    ordered.push(selected);
+    placed.add(selected);
   }
   const indices = new Map(ordered.map((id, index) => [id, index]));
   const resolvedOutputs = new Map<string, BuildSide>();
   const floors = ordered.map((itemId, index) => {
     const override = overrides.get(itemId);
-    const parents = nodes
-      .get(itemId)!
-      .inputs.filter((input) => nodes.has(input.itemId));
+    const parents = parentsOf(itemId);
     const cost = (side: BuildSide) =>
       parents.reduce(
         (sum, input) =>
-          sum + distance(resolvedOutputs.get(input.itemId)!, side),
+          sum +
+          distance(
+            resolvedOutputs.get(input.fromItemId) ?? variant.outputSide,
+            side,
+          ),
         0,
       );
     // Prefer the configured pair on ties; unrelated stage insertion cannot flip a branch.
@@ -127,16 +149,23 @@ export function deriveBuildVariants(
         .map((input) => ({
           ...input,
           side: inputSide,
-          sourceFloor: indices.get(input.itemId) ?? null,
+          sourceFloor:
+            indices.get(
+              parents.find((flow) => flow.itemId === input.itemId)
+                ?.fromItemId ?? '',
+            ) ?? null,
         })),
     };
   });
   const transfers = floors
     .flatMap((to) =>
-      to.inputs
-        .filter((i) => i.sourceFloor !== null)
-        .map((input) => {
-          const from = floors[input.sourceFloor!]!;
+      [...parentsOf(to.itemId)]
+        .sort(
+          (a, b) =>
+            compare(a.itemId, b.itemId) || compare(a.fromItemId, b.fromItemId),
+        )
+        .map((flow) => {
+          const from = floors[indices.get(flow.fromItemId)!]!;
           const candidates = [
             ...new Set([from.outputSide, to.inputSide, ...sides]),
           ];
@@ -146,19 +175,25 @@ export function deriveBuildVariants(
               ? side
               : best,
           );
+          const siblings = flows.filter(
+            (other) =>
+              other.fromItemId === flow.fromItemId &&
+              other.toItemId === flow.toItemId,
+          );
           return {
-            id: `transfer:${from.index}:${to.index}`,
+            id: `transfer:${from.index}:${to.index}${siblings.length > 1 ? `:${flow.itemId}` : ''}`,
             fromItemId: from.itemId,
             toItemId: to.itemId,
-            rate: input.rate,
+            ...(multiOutput ? { itemId: flow.itemId } : {}),
+            rate: flow.rate,
             fromFloor: from.index,
             toFloor: to.index,
             side,
             sideChanges:
               distance(from.outputSide, side) + distance(to.inputSide, side),
             span: Array.from(
-              { length: to.index - from.index + 1 },
-              (_, i) => from.index + i,
+              { length: Math.abs(to.index - from.index) + 1 },
+              (_, i) => Math.min(from.index, to.index) + i,
             ),
           };
         }),

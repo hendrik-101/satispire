@@ -22,6 +22,7 @@ type Context = {
   output: BeltPoint;
   labels: Box[];
   outputLabel: Box;
+  outputLabels?: readonly (Box & { itemId: string })[];
   corridors?: readonly CorridorAssignment[];
 };
 const directions = [
@@ -324,8 +325,42 @@ export function placeBeltNetwork(floor: Floor, context: Context) {
   const corridorById = new Map(
     context.corridors?.map((bundle) => [bundle.id, bundle]),
   );
+  const collectionOffsets = new Map(
+    (floor.outputs ?? [floor.output]).map((output) => [
+      output.itemId,
+      Math.min(
+        ...graph.nodes
+          .filter(
+            (node) =>
+              node.flow === 'output' &&
+              node.stage === 'collection' &&
+              node.itemId === output.itemId,
+          )
+          .map((node) => node.lane),
+      ),
+    ]),
+  );
   const assignedSpine = (node: TransportNode) =>
-    corridorById.get(`${node.flow}:${node.itemId}`)?.tracks[node.lane];
+    corridorById.get(`${node.flow}:${node.itemId}`)?.tracks[
+      node.lane -
+        (node.flow === 'output' ? collectionOffsets.get(node.itemId)! : 0)
+    ];
+  const outputPosition = (node: TransportNode) => {
+    const label = context.outputLabels?.find(
+      (label) => label.itemId === node.itemId,
+    );
+    const flows = floor.outputs ?? [floor.output];
+    const index = flows.findIndex((flow) => flow.itemId === node.itemId);
+    const offset = flows
+      .slice(0, index)
+      .reduce((sum, flow) => sum + flow.lines, 0);
+    const lines = flows[index]!.lines;
+    return {
+      y:
+        (label ? label.y + label.height / 2 : output.y) +
+        (node.lane - offset - (lines - 1) / 2) * deliveryPitch,
+    };
+  };
   let corridorViolations = 0;
   const machines = new Map(
     floor.machines.map((machine) => [machine.id, machine]),
@@ -346,8 +381,22 @@ export function placeBeltNetwork(floor: Floor, context: Context) {
     const machine = machines.get(node.machineId!)!;
     return machine.y + shift + machine.depth + 4 + node.lane * 3.2;
   };
+  const inputMergers = new Set(
+    graph.nodes
+      .filter(
+        (node) =>
+          node.flow === 'input' &&
+          node.placement === 'rail' &&
+          graph.edges.filter((edge) => edge.to === node.id).length > 1,
+      )
+      .map((node) => node.id),
+  );
   const distributionY = (node: TransportNode) =>
-    machines.get(node.machineId!)!.y + shift - 4 - inputLane(node) * 3.2;
+    machines.get(node.machineId!)!.y +
+    shift -
+    4 -
+    inputLane(node) * 3.2 -
+    (inputMergers.has(node.id) ? (node.order + 1) * deliveryPitch : 0);
   const position = (node: TransportNode): BeltPoint => {
     if (node.kind === 'inlet') {
       const index = floor.inputs.findIndex(
@@ -363,7 +412,7 @@ export function placeBeltNetwork(floor: Floor, context: Context) {
     if (node.kind === 'outlet')
       return {
         x: output.x,
-        y: output.y + (node.lane - (graph.outputLines - 1) / 2) * deliveryPitch,
+        y: outputPosition(node).y,
       };
     if (node.stage === 'delivery')
       return {
@@ -371,7 +420,7 @@ export function placeBeltNetwork(floor: Floor, context: Context) {
           outputRail +
           sign *
             (graph.collectors * 2 + deliveryPitch + node.order * deliveryPitch),
-        y: output.y + (node.lane - (graph.outputLines - 1) / 2) * deliveryPitch,
+        y: outputPosition(node).y,
       };
     const machine = machines.get(node.machineId!)!;
     const feed = floor.inputs.findIndex(
@@ -383,7 +432,14 @@ export function placeBeltNetwork(floor: Floor, context: Context) {
       machine.width *
         (node.flow === 'input'
           ? symbolInputFraction(feed, floor.inputs.length)
-          : symbolOutputFraction);
+          : (floor.outputs?.length ?? 1) > 1
+            ? symbolInputFraction(
+                floor.outputs!.findIndex(
+                  (output) => output.itemId === node.itemId,
+                ),
+                floor.outputs!.length,
+              )
+            : symbolOutputFraction);
     return {
       x,
       y:

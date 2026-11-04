@@ -48,8 +48,10 @@ export function technologyAtTier(
 export function availableRecipes(profile: TechnologyProfile) {
   return vanillaCatalog.recipes.filter(
     (r) =>
-      r.outputs.length === 1 &&
-      !vanillaCatalog.items.find((i) => i.id === r.outputs[0]!.itemId)!.raw &&
+      r.outputs.some(
+        (output) =>
+          !vanillaCatalog.items.find((i) => i.id === output.itemId)!.raw,
+      ) &&
       profile.availableMachines.includes(r.machineId) &&
       profile.unlockedRecipes.includes(r.id),
   );
@@ -78,8 +80,8 @@ export function availableChoices(
     if (ancestors.has(itemId)) return false;
     if (result[itemId]) return true;
     const path = new Set([...ancestors, itemId]);
-    for (const recipe of recipes.filter(
-      (r) => r.outputs[0]!.itemId === itemId,
+    for (const recipe of recipes.filter((r) =>
+      r.outputs.some((output) => output.itemId === itemId),
     )) {
       if (recipe.inputs.every((input) => resolve(input.itemId, path))) {
         result[itemId] = recipe.id;
@@ -88,7 +90,8 @@ export function availableChoices(
     }
     return false;
   }
-  for (const recipe of recipes) resolve(recipe.outputs[0]!.itemId, new Set());
+  for (const recipe of recipes)
+    for (const output of recipe.outputs) resolve(output.itemId, new Set());
   return result;
 }
 export function itemName(id: string): string {

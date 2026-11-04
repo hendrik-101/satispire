@@ -1,3 +1,5 @@
+import { coproductCatalog, coproductPlan } from './coproduct-fixture.js';
+import { graphLayout } from '../web/workspace/graph-layout.js';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
@@ -92,4 +94,54 @@ test('bypass branches leave a shared source without crossing its other stems', (
     .sort((a, b) => a.y - b.y);
   expect(stems).toHaveLength(2);
   expect(stems[0]!.x).toBeGreaterThan(stems[1]!.x);
+});
+
+test('layers recycled material cycles and self-supply without recursive depth failure', () => {
+  const edges = [
+    { from: 'raw', to: 'a' },
+    { from: 'a', to: 'b' },
+    { from: 'b', to: 'a' },
+    { from: 'b', to: 'b' },
+    { from: 'b', to: 'target' },
+  ];
+  const layout = graphLayout(['raw', 'a', 'b', 'target'], edges);
+  expect([...layout.depths]).toEqual([
+    ['raw', 0],
+    ['a', 1],
+    ['b', 1],
+    ['target', 2],
+  ]);
+  expect(
+    [...layout.positions.values()].every(
+      (position) => Number.isFinite(position.x) && Number.isFinite(position.y),
+    ),
+  ).toBe(true);
+  expect(graphLayout(['raw', 'a', 'b', 'target'], edges)).toEqual(layout);
+});
+
+test('renders actual coproduct material and recycled raw self-supply in the graph', () => {
+  const producer = coproductPlan.nodes[0]!;
+  const recycled = {
+    ...coproductPlan,
+    imports: [{ itemId: 'raw', rate: '10' }],
+    nodes: [
+      {
+        ...producer,
+        outputs: [...producer.outputs!, { itemId: 'raw', rate: '10' }],
+      },
+      coproductPlan.nodes[1]!,
+    ],
+  };
+  const markup = renderToStaticMarkup(
+    createElement(Graph, {
+      plan: recycled,
+      catalog: coproductCatalog,
+      selected: 'a',
+      select: () => {},
+      motion: false,
+    }),
+  );
+  expect(markup).toContain('<title>Coproduct · 100 / min</title>');
+  expect(markup.match(/class="graph-edge/g)).toHaveLength(3);
+  expect(markup).not.toContain('NaN');
 });

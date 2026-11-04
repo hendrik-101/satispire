@@ -10,6 +10,8 @@ import {
   type CatalogRecipe,
 } from './catalog.js';
 import { Rational } from './rational.js';
+import { balanceSelectedRecipes } from './recipe-balance.js';
+import { allocateProductionFlows } from './production-flows.js';
 
 export interface ItemRate {
   itemId: string;
@@ -28,6 +30,8 @@ export interface ProductionNode extends ItemRate {
   machineCount: number;
   utilization: string;
   inputs: ItemRate[];
+  /** Complete actual outputs, present for coproduct recipes. */
+  outputs?: ItemRate[];
 }
 export interface ProductionPlan {
   schemaVersion: 1;
@@ -35,6 +39,8 @@ export interface ProductionPlan {
   targets: ItemRate[];
   nodes: ProductionNode[];
   imports: ItemRate[];
+  /** Positive aggregate excess after internal consumption and target delivery. */
+  surplus?: ItemRate[];
 }
 
 const ZERO = Rational.parse('0');
@@ -70,17 +76,24 @@ export function scaleProduction(
   const plan = solveProduction(catalog, input);
   const selection = object(anchor, 'scale anchor');
   supportedKeys(selection, ['itemId', 'rate'], 'scale anchor');
-  const existing = [...plan.nodes, ...plan.imports].find(
+  const produced = plan.nodes.flatMap((node) => node.outputs ?? [node]);
+  const raw = catalog.items.some(
+    (item) => item.id === selection.itemId && item.raw,
+  );
+  const entries = (raw ? plan.imports : produced).filter(
     (entry) => entry.itemId === selection.itemId,
   );
-  if (!existing)
+  if (entries.length === 0)
     throw new Error(
       `Scale anchor ${String(selection.itemId)} is not in the production plan`,
     );
   const desired = Rational.parse(selection.rate as string);
   if (desired.compare(ZERO) <= 0)
     throw new Error('Scale anchor rate must be positive');
-  const current = Rational.parseCanonical(existing.rate);
+  const current = entries.reduce(
+    (sum, entry) => sum.add(Rational.parseCanonical(entry.rate)),
+    ZERO,
+  );
   if (current.compare(ZERO) <= 0)
     throw new Error('Scale anchor existing rate must be positive');
   return applyFactor(catalog, input, desired.divide(current));
@@ -193,7 +206,7 @@ function sortedRates(rates: Map<string, Rational>): ItemRate[] {
   }));
 }
 
-/** Solves a selected single-output DAG in exact items/minute. */
+/** Solves selected acyclic recipes in exact items/minute, crediting all outputs. */
 export function solveProduction(
   catalog: Catalog,
   input: ProductionInput,
@@ -289,6 +302,8 @@ function solveExactProduction(
   const states = new Map<string, 'visiting' | 'visited'>();
   const order: string[] = [];
   const path: string[] = [];
+  const missing = new Set<string>();
+  const reachable = new Map<string, CatalogRecipe>();
   function visit(itemId: string): void {
     if (states.get(itemId) === 'visited') return;
     if (states.get(itemId) === 'visiting') {
@@ -304,23 +319,38 @@ function solveExactProduction(
         throw new Error(`Raw item ${itemId} requires an explicit import`);
     } else {
       const recipe = selected.get(itemId);
-      if (!recipe)
-        throw new Error(`Choose an explicit selected recipe for ${itemId}`);
-      if (technology) requireTechnology(recipe, technology);
-      if (recipe.outputs.length !== 1)
-        throw new Error(
-          `Coproduct recipe ${recipe.id} is unsupported; select a single-output recipe`,
-        );
-      for (const dependency of sortedIds(
-        recipe.inputs.map((entry) => entry.itemId),
-      ))
-        visit(dependency);
+      if (!recipe) missing.add(itemId);
+      else {
+        reachable.set(recipe.id, recipe);
+        if (technology) requireTechnology(recipe, technology);
+        for (const dependency of sortedIds(
+          recipe.inputs.map((entry) => entry.itemId),
+        ))
+          visit(dependency);
+      }
     }
     path.pop();
     states.set(itemId, 'visited');
     order.push(itemId);
   }
   for (const itemId of sortedIds(targets.keys())) visit(itemId);
+  const supplied = new Set(
+    [...reachable.values()].flatMap((recipe) =>
+      recipe.outputs.map((part) => part.itemId),
+    ),
+  );
+  for (const itemId of sortedIds(missing)) {
+    if (!supplied.has(itemId))
+      throw new Error(`Choose an explicit selected recipe for ${itemId}`);
+  }
+  if ([...reachable.values()].some((recipe) => recipe.outputs.length > 1))
+    return solveCoproductProduction(
+      data,
+      selected,
+      reachable,
+      targets,
+      technology,
+    );
 
   const demands = new Map(targets);
   const importedRates = new Map<string, Rational>();
@@ -386,4 +416,129 @@ function solveExactProduction(
     nodes,
     imports: sortedRates(importedRates),
   };
+}
+
+/** Balance all reachable recipe executions together, then round machines once. */
+function solveCoproductProduction(
+  data: Catalog,
+  selected: ReadonlyMap<string, CatalogRecipe>,
+  reachable: ReadonlyMap<string, CatalogRecipe>,
+  targets: Map<string, Rational>,
+  technology: TechnologyProfile | undefined,
+): ProductionPlan {
+  // Include implicit dependencies supplied by coproducts in cycle validation.
+  const raw = new Set(
+    data.items.filter((item) => item.raw).map((item) => item.id),
+  );
+  const craftsByRecipe = balanceSelectedRecipes(
+    [...reachable.values()],
+    targets,
+    raw,
+  );
+  const net = new Map<string, Rational>();
+  for (const [itemId, rate] of targets) net.set(itemId, ZERO.subtract(rate));
+  const nodes: ProductionNode[] = [];
+  for (const recipeId of sortedIds(reachable.keys())) {
+    const recipe = reachable.get(recipeId)!;
+    const crafts = craftsByRecipe.get(recipeId)!;
+    if (crafts.compare(ZERO) === 0) continue;
+    const chosen = sortedIds(
+      [...selected]
+        .filter(([, choice]) => choice.id === recipeId)
+        .map(([id]) => id),
+    );
+    const itemId =
+      chosen.find(
+        (id) => data.items.find((item) => item.id === id)!.name === recipe.name,
+      ) ?? chosen[0]!;
+    const machineDemand = crafts
+      .multiply(Rational.parseCanonical(recipe.durationSeconds))
+      .divide(SIXTY);
+    let count = machineDemand.ceil();
+    const inputRates = new Map<string, Rational>();
+    const outputRates = new Map<string, Rational>();
+    for (const [parts, rates, sign] of [
+      [recipe.inputs, inputRates, Rational.parse('-1')],
+      [recipe.outputs, outputRates, Rational.parse('1')],
+    ] as const) {
+      for (const part of parts) {
+        const rate = crafts.multiply(Rational.parseCanonical(part.quantity));
+        rates.set(part.itemId, rate);
+        net.set(
+          part.itemId,
+          (net.get(part.itemId) ?? ZERO).add(rate.multiply(sign)),
+        );
+        if (technology) {
+          const supplied = rate
+            .divide(transportCapacity(data, part.itemId, technology))
+            .ceil();
+          if (supplied > count) count = supplied;
+        }
+      }
+    }
+    if (count > BigInt(MACHINE_COUNT_LIMIT))
+      throw new Error(
+        `Machine count for ${itemId} exceeds the ${MACHINE_COUNT_LIMIT} limit`,
+      );
+    nodes.push({
+      itemId,
+      recipeId,
+      machineId: recipe.machineId,
+      rate: outputRates.get(itemId)!.toString(),
+      craftsPerMinute: crafts.toString(),
+      machineCount: Number(count),
+      utilization: machineDemand.divide(Rational.fromBigInts(count)).toString(),
+      inputs: sortedRates(inputRates),
+      ...(recipe.outputs.length > 1
+        ? { outputs: sortedRates(outputRates) }
+        : {}),
+    });
+  }
+  nodes.sort((a, b) =>
+    a.itemId < b.itemId ? -1 : a.itemId > b.itemId ? 1 : 0,
+  );
+  const imports = new Map<string, Rational>();
+  const surplus = new Map<string, Rational>();
+  for (const [itemId, rate] of net) {
+    if (rate.compare(ZERO) > 0) surplus.set(itemId, rate);
+    else if (rate.compare(ZERO) < 0) {
+      if (!raw.has(itemId))
+        throw new Error(`Infeasible selected production balance for ${itemId}`);
+      imports.set(itemId, ZERO.subtract(rate));
+    }
+  }
+  const plan: ProductionPlan = {
+    schemaVersion: 1,
+    catalogVersion: data.catalogVersion,
+    targets: sortedRates(targets),
+    nodes,
+    imports: sortedRates(imports),
+    ...(surplus.size > 0 ? { surplus: sortedRates(surplus) } : {}),
+  };
+
+  // A selected fallback can execute zero times after coproduct credit. Validate
+  // the actual allocated graph as well as the original selected item paths.
+  const edges = new Map<string, Set<string>>();
+  for (const transfer of allocateProductionFlows(plan, [...raw]).transfers) {
+    if (raw.has(transfer.itemId)) continue;
+    const consumers = edges.get(transfer.fromItemId) ?? new Set<string>();
+    consumers.add(transfer.toItemId);
+    edges.set(transfer.fromItemId, consumers);
+  }
+  const states = new Map<string, 'visiting' | 'visited'>();
+  const path: string[] = [];
+  function visit(itemId: string): void {
+    if (states.get(itemId) === 'visited') return;
+    if (states.get(itemId) === 'visiting')
+      throw new Error(
+        `Selected recipe flow cycle: ${[...path, itemId].join(' -> ')}`,
+      );
+    states.set(itemId, 'visiting');
+    path.push(itemId);
+    for (const consumer of sortedIds(edges.get(itemId) ?? [])) visit(consumer);
+    path.pop();
+    states.set(itemId, 'visited');
+  }
+  for (const node of nodes) visit(node.itemId);
+  return plan;
 }

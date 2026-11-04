@@ -382,3 +382,97 @@ it('keeps an already separated steel-beam scene and improves the measured encase
     ).toBe(true);
   }
 });
+
+it('places coproduct ports and cards separately with their own material, rate and destinations', async () => {
+  const { coproductCatalog, coproductPlan, coproductTechnology } = await import(
+    './coproduct-fixture.js'
+  );
+  const plan = {
+    ...coproductPlan,
+    nodes: coproductPlan.nodes.map((node) => ({ ...node, machineCount: 2 })),
+  };
+  const layout = generateSupplyLayout(
+    coproductCatalog,
+    plan,
+    coproductTechnology,
+    1,
+  );
+  const floor = layout.floors[0]!;
+  const scene = supplySceneMetrics(
+    layout,
+    floor,
+    coproductCatalog,
+    coproductTechnology,
+  );
+  expect(scene.outputLabels.map((label) => label.itemId)).toEqual(['a', 'b']);
+  expect(scene.outputLabels[0]).toMatchObject({
+    name: 'Main',
+    rate: '80 Stk./min',
+  });
+  expect(scene.outputLabels[1]).toMatchObject({
+    name: 'Coproduct',
+    rate: '120 m³/min',
+  });
+  expect(
+    scene.outputLabels[1]!.destinations.map(
+      (destination) => destination.text,
+    ).join(' '),
+  ).toMatch(/Überschuss/);
+  for (const machine of floor.machines) {
+    const ports = scene.nodes.filter(
+      (node) => node.machineId === machine.id && node.kind === 'machine-output',
+    );
+    expect(ports).toHaveLength(2);
+    expect(new Set(ports.map((port) => port.x)).size).toBe(2);
+  }
+  verifyScene(scene, floor, 'coproduct');
+  expect(
+    scene.belts.every((belt) =>
+      belt.points.every(
+        (point) => Number.isFinite(point.x) && Number.isFinite(point.y),
+      ),
+    ),
+  ).toBe(true);
+});
+
+it('places mixed recycled and imported material through separate intake junctions', async () => {
+  const { coproductCatalog, coproductPlan, coproductTechnology } = await import(
+    './coproduct-fixture.js'
+  );
+  const plan = {
+    ...coproductPlan,
+    imports: [{ itemId: 'raw', rate: '10' }],
+    nodes: coproductPlan.nodes.map((node) => ({
+      ...node,
+      machineCount: 2,
+      ...(node.itemId === 'c'
+        ? {
+            outputs: [
+              { itemId: 'c', rate: '20' },
+              { itemId: 'raw', rate: '10' },
+            ],
+          }
+        : {}),
+    })),
+  };
+  const layout = generateSupplyLayout(
+    coproductCatalog,
+    plan,
+    coproductTechnology,
+    1,
+  );
+  const floor = layout.floors[0]!;
+  const scene = supplySceneMetrics(
+    layout,
+    floor,
+    coproductCatalog,
+    coproductTechnology,
+  );
+  const hubs = scene.nodes.filter(
+    (node) => node.flow === 'input' && junction(node.kind),
+  );
+  expect(new Set(hubs.map((node) => `${node.x},${node.y}`)).size).toBe(
+    hubs.length,
+  );
+  verifyScene(scene, floor, 'mixed intake');
+});

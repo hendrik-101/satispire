@@ -3,6 +3,7 @@ import {
   vanillaCatalog,
   technologyAtTier,
   availableChoices,
+  availableRecipes,
   recipeUnlocks,
 } from '../src/domain/vanilla.js';
 import { solveProduction } from '../src/domain/production.js';
@@ -60,41 +61,54 @@ it('gates alternates and machines by explicit technology', () => {
   expect(advanced.unlockedRecipes).toContain('Recipe_Alternate_Screw_C');
   expect(advanced.availableMachines).toContain('Desc_FoundryMk1_C');
 });
-it('uses a solvable unlocked alternate when the standard chain needs unsupported coproducts', () => {
+it('prefers the standard circuit board chain now its plastic coproduct recipe is supported', () => {
   const profile = technologyAtTier(5, [
     'Recipe_Alternate_CircuitBoard_1_C',
     'Recipe_Silica_C',
   ]);
   const recipes = availableChoices(profile);
-  expect(recipes.Desc_CircuitBoard_C).toBe('Recipe_Alternate_CircuitBoard_1_C');
+  expect(recipes.Desc_CircuitBoard_C).toBe('Recipe_CircuitBoard_C');
   const plan = solveProduction(vanillaCatalog, {
     targets: [{ itemId: 'Desc_CircuitBoard_C', rate: '7.5' }],
     recipes,
     imports: vanillaCatalog.items.filter((i) => i.raw).map((i) => i.id),
     technology: profile,
   });
-  expect(plan.nodes.map((n) => n.itemId)).not.toContain('Desc_Plastic_C');
+  expect(plan.nodes.map((n) => n.itemId)).toContain('Desc_Plastic_C');
   expect(plan.nodes.find((n) => n.itemId === 'Desc_CircuitBoard_C')?.rate).toBe(
     '15/2',
   );
 });
-it('keeps default chains acyclic and solvable even with every alternate unlocked', () => {
+it('solves default chains or explicitly diagnoses manufactured recycling with every unlock', () => {
   const profile = technologyAtTier(
     9,
     vanillaCatalog.recipes.map((r) => r.id),
   );
   const recipes = availableChoices(profile);
+  // These newly reachable coproduct chains require manufactured feedback;
+  // unlike raw-water recycling, that remains outside the planner contract.
+  const feedbackTargets = new Set([
+    'Desc_CrystalShard_C',
+    'Desc_QuantumOscillator_C',
+    'Desc_AlienPowerFuel_C',
+    'Desc_IonizedFuel_C',
+    'Desc_UraniumCell_C',
+    'Desc_NobeliskNuke_C',
+    'Desc_NuclearFuelRod_C',
+    'Desc_PackagedIonizedFuel_C',
+    'Desc_SpaceElevatorPart_11_C',
+    'Desc_SpaceElevatorPart_12_C',
+  ]);
   for (const itemId of Object.keys(recipes)) {
-    expect(
-      () =>
-        solveProduction(vanillaCatalog, {
-          targets: [{ itemId, rate: '1' }],
-          recipes,
-          imports: vanillaCatalog.items.filter((i) => i.raw).map((i) => i.id),
-          technology: profile,
-        }),
-      itemId,
-    ).not.toThrow();
+    const solve = () =>
+      solveProduction(vanillaCatalog, {
+        targets: [{ itemId, rate: '1' }],
+        recipes,
+        imports: vanillaCatalog.items.filter((i) => i.raw).map((i) => i.id),
+        technology: profile,
+      });
+    if (feedbackTargets.has(itemId)) expect(solve, itemId).toThrow(/cycle/i);
+    else expect(solve, itemId).not.toThrow();
   }
 });
 it('selects alternatives using the explicit resource import policy', () => {
@@ -119,4 +133,23 @@ it('rejects manufactured and unknown imports consistently with the solver', () =
   expect(() => availableChoices(profile, ['unknown:item'])).toThrow(
     /raw catalog items/,
   );
+});
+
+it('offers all oil outputs at tier five and keeps the recipes locked below it', () => {
+  const basic = availableRecipes(technologyAtTier(4));
+  const oil = availableRecipes(technologyAtTier(5));
+  for (const id of [
+    'Recipe_Rubber_C',
+    'Recipe_Plastic_C',
+    'Recipe_LiquidFuel_C',
+  ]) {
+    expect(basic.some((recipe) => recipe.id === id)).toBe(false);
+    expect(oil.some((recipe) => recipe.id === id)).toBe(true);
+  }
+  const choices = availableChoices(technologyAtTier(5));
+  expect(choices.Desc_Rubber_C).toBe('Recipe_Rubber_C');
+  expect(choices.Desc_Plastic_C).toBe('Recipe_Plastic_C');
+  expect(choices.Desc_LiquidFuel_C).toBe('Recipe_LiquidFuel_C');
+  expect(choices.Desc_HeavyOilResidue_C).toBeDefined();
+  expect(choices.Desc_PolymerResin_C).toBeDefined();
 });
