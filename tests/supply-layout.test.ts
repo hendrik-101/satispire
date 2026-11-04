@@ -212,3 +212,87 @@ it('limits automatic rows by exact fractional output demand and the selected pip
     high.floors.find((f) => f.itemId === 'Desc_IronPlate_C')!.rowCounts,
   ).toEqual([8, 8]);
 });
+
+it('lays out one shared machine stage with independent coproduct targets and surplus outlets', async () => {
+  const { coproductCatalog, coproductPlan, coproductTechnology } = await import(
+    './coproduct-fixture.js'
+  );
+  const layout = generateSupplyLayout(
+    coproductCatalog,
+    coproductPlan,
+    coproductTechnology,
+    0,
+  );
+  expect(layout.floors.map((floor) => floor.machineCount)).toEqual([20, 20]);
+  const floor = layout.floors[0]!;
+  expect(floor.outputs).toEqual([
+    { itemId: 'a', rate: '80', lines: 2 },
+    { itemId: 'b', rate: '120', lines: 3 },
+  ]);
+  expect(floor.transport.outputs).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        terminalId: 'target:a',
+        itemId: 'a',
+        rate: '80',
+      }),
+      expect.objectContaining({
+        terminalId: 'target:b',
+        itemId: 'b',
+        rate: '10',
+      }),
+      expect.objectContaining({
+        terminalId: 'surplus:b',
+        itemId: 'b',
+        rate: '10',
+      }),
+      expect.objectContaining({
+        terminalId: layout.transfers[0]!.id,
+        itemId: 'b',
+        rate: '100',
+      }),
+    ]),
+  );
+});
+
+it('routes raw recycling backwards with exact mixed import and coproduct intake', async () => {
+  const { coproductCatalog, coproductPlan, coproductTechnology } = await import(
+    './coproduct-fixture.js'
+  );
+  const plan = {
+    ...coproductPlan,
+    imports: [{ itemId: 'raw', rate: '10' }],
+    nodes: coproductPlan.nodes.map((node) =>
+      node.itemId === 'c'
+        ? {
+            ...node,
+            outputs: [
+              { itemId: 'c', rate: '20' },
+              { itemId: 'raw', rate: '10' },
+            ],
+          }
+        : node,
+    ),
+  };
+  const layout = generateSupplyLayout(
+    coproductCatalog,
+    plan,
+    coproductTechnology,
+    0,
+  );
+  expect(layout.floors.map((floor) => floor.itemId)).toEqual(['a', 'c']);
+  const recycled = layout.transfers.find(
+    (transfer) => transfer.itemId === 'raw',
+  )!;
+  expect(recycled).toMatchObject({
+    fromFloor: 1,
+    toFloor: 0,
+    span: [0, 1],
+    rate: '10',
+  });
+  const intake = layout.floors[0]!.transport;
+  expect(intake.inputs[0]).toMatchObject({
+    terminalIds: [recycled.id, 'import:raw'],
+    lines: 2,
+  });
+});

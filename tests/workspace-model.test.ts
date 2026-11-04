@@ -1,8 +1,11 @@
+import { coproductCatalog, coproductPlan } from './coproduct-fixture.js';
 import { expect, test } from 'vitest';
 import { syntheticCatalog } from '../src/domain/catalog.js';
 import { solveProduction } from '../src/domain/production.js';
 import {
+  activeRecipeChoices,
   calculateProduction,
+  defaultChoices,
   graphConnections,
   initialProduction,
 } from '../web/workspace/model.js';
@@ -217,4 +220,32 @@ test('calculates the steel outputs together with decimal rates and shared demand
   );
   expect(scaled.input.targets.map((t) => t.rate)).toEqual(['40', '33', '24']);
   expect(input.targets).toEqual(modularFrames.targets);
+});
+
+test('offers every output of a joint recipe as a production choice', () => {
+  expect(defaultChoices(coproductCatalog, {})).toEqual({
+    a: 'make-a',
+    b: 'make-a',
+    c: 'make-c',
+  });
+});
+
+test('connects coproduct demand to its executing producer stage with material identity', () => {
+  expect(graphConnections(coproductPlan)).toEqual([
+    { from: 'a', to: 'c', itemId: 'b', rate: '100' },
+    { from: 'raw', to: 'a', itemId: 'raw', rate: '20' },
+  ]);
+});
+
+test('keeps selected output aliases when another coproduct is the canonical stage', () => {
+  const input = {
+    targets: [{ itemId: 'b', rate: '120' }],
+    imports: ['raw'],
+    recipes: { b: 'make-a', c: 'make-c', invalid: 'make-a' },
+  };
+  const plan = { ...coproductPlan, nodes: [coproductPlan.nodes[0]!] };
+  expect(activeRecipeChoices(coproductCatalog, input, plan)).toEqual({
+    a: 'make-a',
+    b: 'make-a',
+  });
 });

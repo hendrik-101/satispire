@@ -10,6 +10,7 @@ export function MachineGlyph({
   feeds = 1,
   inputItems = [],
   outputItem,
+  outputItems,
 }: {
   machineId: string;
   selected?: boolean;
@@ -17,6 +18,7 @@ export function MachineGlyph({
   feeds?: number;
   inputItems?: readonly string[];
   outputItem?: string;
+  outputItems?: readonly string[];
 }) {
   const surface = useId().replace(/:/g, '');
   const family = machineId.toLowerCase();
@@ -272,18 +274,29 @@ export function MachineGlyph({
           />
         );
       })}
-      <rect
-        className="machine-port"
-        x={80 * symbolOutputFraction - 6}
-        y="90"
-        width="12"
-        height="10"
-        rx="1"
-        data-resource-id={outputItem}
-        fill={outputItem ? resourceColor(outputItem) : '#b4bec7'}
-        stroke="#26353e"
-        strokeWidth="2"
-      />
+      {(outputItems ?? [outputItem]).map((itemId, index, items) => {
+        const width = items.length === 1 ? 12 : 8;
+        const center =
+          80 *
+          (items.length === 1
+            ? symbolOutputFraction
+            : symbolInputFraction(index, items.length));
+        return (
+          <rect
+            key={index}
+            className="machine-port"
+            x={center - width / 2}
+            y="90"
+            width={width}
+            height="10"
+            rx="1"
+            data-resource-id={itemId}
+            fill={itemId ? resourceColor(itemId) : '#b4bec7'}
+            stroke="#26353e"
+            strokeWidth="2"
+          />
+        );
+      })}
       <g transform="scale(0.8 1.25)">
         {[
           [17, 16],

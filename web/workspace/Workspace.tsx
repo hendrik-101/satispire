@@ -57,7 +57,8 @@ import { Icon } from './Icon';
 import { ProductionView } from './ProductionView';
 import { MachineGlyph } from './MachineGlyph';
 import { SourceCredits } from './SourceCredits';
-import { calculateProduction } from './model';
+import { activeRecipeChoices, calculateProduction } from './model';
+import { productionOutputs } from '../../src/domain/production-flows.js';
 import {
   sizeProductionByInput,
   productionSizingInputs,
@@ -79,7 +80,11 @@ const firstInput: ProductionInput = {
   technology: firstTechnology,
 };
 function firstStage(plan: ReturnType<typeof solveProduction>) {
-  return deriveBuildVariants(plan).floors[0]!.itemId;
+  return deriveBuildVariants(
+    plan,
+    undefined,
+    catalog.items.filter((item) => item.raw).map((item) => item.id),
+  ).floors[0]!.itemId;
 }
 function primaryStage(
   input: ProductionInput,
@@ -93,17 +98,19 @@ function primaryStage(
 function feasibleRecipes(technology: TechnologyProfile, imports: string[]) {
   const defaults = availableChoices(technology, imports);
   return availableRecipes(technology).filter((recipe) => {
-    try {
-      solveProduction(catalog, {
-        targets: [{ itemId: recipe.outputs[0]!.itemId, rate: '1' }],
-        recipes: { ...defaults, [recipe.outputs[0]!.itemId]: recipe.id },
-        imports: imports,
-        technology: technology,
-      });
-      return true;
-    } catch {
-      return false;
-    }
+    return recipe.outputs.some((output) => {
+      try {
+        solveProduction(catalog, {
+          targets: [{ itemId: output.itemId, rate: '1' }],
+          recipes: { ...defaults, [output.itemId]: recipe.id },
+          imports,
+          technology,
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    });
   });
 }
 const initialView = {
@@ -860,9 +867,7 @@ export function Workspace({
       setChoices({
         ...availableChoices(technology, input.imports),
         // Only reachable overrides were validated by the solver during import.
-        ...Object.fromEntries(
-          next.plan.nodes.map((node) => [node.itemId, node.recipeId]),
-        ),
+        ...activeRecipeChoices(catalog, input, next.plan),
       });
       selectStage(primaryStage(input, next.plan));
       setError('');
@@ -950,7 +955,6 @@ export function Workspace({
       const allowed = new Set(
         feasibleRecipes(profileDraft, factory.input.imports).map((r) => r.id),
       );
-      const active = new Set(factory.plan.nodes.map((node) => node.itemId));
       const previousDefaults = availableChoices(
         factory.technology,
         factory.input.imports,
@@ -958,9 +962,9 @@ export function Workspace({
       const recipes = {
         ...availableChoices(profileDraft, factory.input.imports),
         ...Object.fromEntries(
-          Object.entries(factory.input.recipes).filter(
-            ([itemId, id]) => active.has(itemId) && allowed.has(id),
-          ),
+          Object.entries(
+            activeRecipeChoices(catalog, factory.input, factory.plan),
+          ).filter(([, id]) => allowed.has(id)),
         ),
       };
       const profile = validateUnlockProfile({
@@ -1625,6 +1629,9 @@ export function Workspace({
                     feeds={stage.inputs.length}
                     inputItems={stage.inputs.map((input) => input.itemId)}
                     outputItem={stage.itemId}
+                    outputItems={productionOutputs(stage).map(
+                      (output) => output.itemId,
+                    )}
                     selected
                   />
                 </svg>
@@ -1655,7 +1662,10 @@ export function Workspace({
                     ...input,
                     direction: 'EIN',
                   })),
-                  { itemId: stage.itemId, rate: stage.rate, direction: 'AUS' },
+                  ...productionOutputs(stage).map((output) => ({
+                    ...output,
+                    direction: 'AUS',
+                  })),
                 ].map((flow) => (
                   <li key={`${flow.direction}:${flow.itemId}`}>
                     <span>
@@ -1705,7 +1715,11 @@ export function Workspace({
                   }}
                 >
                   {candidates
-                    .filter((r) => r.outputs[0]!.itemId === stage.itemId)
+                    .filter((r) =>
+                      r.outputs.some(
+                        (output) => output.itemId === stage.itemId,
+                      ),
+                    )
                     .map((r) => (
                       <option key={r.id} value={r.id}>
                         {itemName(r.id, r.name)}
@@ -1713,26 +1727,72 @@ export function Workspace({
                     ))}
                 </select>
               </label>
+              <h3>Ausgänge der Stufe</h3>
+              <ul className="imports" aria-label="Ausgänge der Stufe">
+                {productionOutputs(stage).map((output) => (
+                  <li key={output.itemId}>
+                    <span>AUS · {itemName(output.itemId)}</span>
+                    <strong>
+                      {formatRate(output.rate)}{' '}
+                      {catalog.items.find((item) => item.id === output.itemId)
+                        ?.transport === 'pipe'
+                        ? 'm³/min'
+                        : 'Stk./min'}
+                    </strong>
+                  </li>
+                ))}
+              </ul>
+              {(factory.plan.surplus ?? []).length > 0 && (
+                <section aria-label="Überschuss der Fabrik">
+                  <h3>Überschuss der Fabrik</h3>
+                  <ul className="imports">
+                    {factory.plan.surplus!.map((output) => (
+                      <li key={output.itemId}>
+                        <span>{itemName(output.itemId)}</span>
+                        <strong>
+                          {formatRate(output.rate)}{' '}
+                          {catalog.items.find(
+                            (item) => item.id === output.itemId,
+                          )?.transport === 'pipe'
+                            ? 'm³/min'
+                            : 'Stk./min'}
+                        </strong>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
               <h3>Versorgung der Stufe</h3>
               <ul className="imports">
                 {[
-                  ...stage.inputs,
-                  { itemId: stage.itemId, rate: stage.rate },
+                  ...stage.inputs.map((input) => ({
+                    ...input,
+                    lines: stageFloor.inputs.find(
+                      (entry) => entry.itemId === input.itemId,
+                    )!.lines,
+                    direction: 'EIN',
+                  })),
+                  ...(
+                    stageFloor.outputs ?? [
+                      {
+                        itemId: stage.itemId,
+                        rate: stage.rate,
+                        lines: stageFloor.transport.outputLines,
+                      },
+                    ]
+                  ).map((output) => ({ ...output, direction: 'AUS' })),
                 ].map((i) => (
-                  <li key={i.itemId}>
-                    <span>{itemName(i.itemId)}</span>
+                  <li key={`${i.direction}:${i.itemId}`}>
+                    <span>
+                      {i.direction} · {itemName(i.itemId)}
+                    </span>
                     <strong>
                       {formatRate(i.rate)}{' '}
                       {catalog.items.find((item) => item.id === i.itemId)!
                         .transport === 'pipe'
                         ? 'm³/min'
                         : 'Stk./min'}{' '}
-                      ·{' '}
-                      {i.itemId === stage.itemId
-                        ? stageFloor.transport.outputLines
-                        : stageFloor.inputs.find(
-                            (input) => input.itemId === i.itemId,
-                          )!.lines}{' '}
+                      · {i.lines}{' '}
                       {catalog.items.find((it) => it.id === i.itemId)!
                         .transport === 'pipe'
                         ? `Rohre Mk.${factory.technology.pipeTier}`

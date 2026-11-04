@@ -126,28 +126,61 @@ function prepareSupplyScene(
       ),
     };
   };
-  const outputLabel = makeLabel(floor.output, [
-    ...outgoing.map((t) => ({
-      text: `→ Etage ${t.toFloor + 1} · ${formatRate(t.rate)} ${catalog.items.find((i) => i.id === t.fromItemId)?.transport === 'pipe' ? 'm³/min' : 'Stk./min'}`,
-      transfer: t,
-    })),
-    ...(floor.targetOutput
-      ? [
-          {
-            text: `→ Ziel · ${flowDescription(catalog, technology, floor.targetOutput).rate}`,
-          },
-        ]
-      : []),
-  ]);
+  const outputLabels = (floor.outputs ?? [floor.output]).map((flow) => ({
+    ...makeLabel(flow, [
+      ...outgoing
+        .filter(
+          (transfer) =>
+            (transfer.itemId ?? transfer.fromItemId) === flow.itemId,
+        )
+        .map((transfer) => ({
+          text: `→ Etage ${transfer.toFloor + 1} · ${formatRate(transfer.rate)} ${catalog.items.find((item) => item.id === flow.itemId)?.transport === 'pipe' ? 'm³/min' : 'Stk./min'}`,
+          transfer,
+        })),
+      ...floor.transport.outputs
+        .filter(
+          (output) =>
+            output.itemId === flow.itemId &&
+            output.terminalId.startsWith('target:'),
+        )
+        .map((output) => ({
+          text: `→ Ziel · ${flowDescription(catalog, technology, output).rate}`,
+        })),
+      ...floor.transport.outputs
+        .filter(
+          (output) =>
+            output.itemId === flow.itemId &&
+            output.terminalId.startsWith('surplus:'),
+        )
+        .map((output) => ({
+          text: `→ Überschuss · ${flowDescription(catalog, technology, output).rate}`,
+        })),
+    ]),
+    itemId: flow.itemId,
+  }));
+  const outputLabel =
+    outputLabels.length === 1
+      ? outputLabels[0]!
+      : {
+          ...outputLabels[0]!,
+          width: Math.max(...outputLabels.map((label) => label.width)),
+          height:
+            outputLabels.reduce((sum, label) => sum + label.height, 0) +
+            (outputLabels.length - 1) * 3,
+        };
   const labels = floor.inputs.map((feed) => {
-    const transfer = incoming.find((t) => t.fromItemId === feed.itemId);
+    const sources = incoming.filter(
+      (transfer) => (transfer.itemId ?? transfer.fromItemId) === feed.itemId,
+    );
+    const imported = floor.transport.inputs
+      .find((input) => input.itemId === feed.itemId)!
+      .terminalIds.includes(`import:${feed.itemId}`);
     return makeLabel(feed, [
-      {
-        text: transfer
-          ? `von Etage ${transfer.fromFloor + 1}`
-          : 'Externe Zufuhr',
+      ...sources.map((transfer) => ({
+        text: `von Etage ${transfer.fromFloor + 1}`,
         transfer,
-      },
+      })),
+      ...(imported ? [{ text: 'Externe Zufuhr' }] : []),
     ]);
   });
   const inputAnchors = labels.map((label, i) => {
@@ -279,7 +312,16 @@ function prepareSupplyScene(
       outputLabel.y = inputBottom + 3;
     }
   }
-  const allLabels = [...labels, outputLabel];
+  if (outputLabels.length > 1) {
+    let offset = 0;
+    for (const label of outputLabels) {
+      label.x = outputLabel.x;
+      label.y = outputLabel.y + offset;
+      label.width = outputLabel.width;
+      offset += label.height + 3;
+    }
+  }
+  const allLabels = [...labels, ...outputLabels];
   return {
     shift,
     feeds,
@@ -295,6 +337,7 @@ function prepareSupplyScene(
     inputAnchors,
     output,
     outputLabel,
+    outputLabels,
     allLabels,
   };
 }
@@ -377,7 +420,10 @@ export function supplySceneBounds(
       ...allLabels.map((label) => label.x + label.width),
       ...layout.transfers.map(
         (transfer) =>
-          transfer.x + shift + 6 + itemName(transfer.fromItemId).length * 1.1,
+          transfer.x +
+          shift +
+          6 +
+          itemName(transfer.itemId ?? transfer.fromItemId).length * 1.1,
       ),
     ) + margin;
   const bottom =
@@ -422,6 +468,7 @@ export function supplySceneMetrics(
     inputAnchors,
     output,
     outputLabel,
+    outputLabels,
     allLabels,
   } = prepareSupplyScene(layout, floor, catalog, technology, compact);
   const routeContext = {
@@ -432,6 +479,7 @@ export function supplySceneMetrics(
     output,
     labels,
     outputLabel,
+    outputLabels,
   };
   const machineBoxes = floor.machines.map((machine) => ({
     x: machine.x + shift,
@@ -472,17 +520,29 @@ export function supplySceneMetrics(
           node.placement === 'rail',
       ),
     })),
-    {
-      id: `output:${floor.itemId}`,
-      lanes: floor.transport.collectors,
+    ...(floor.outputs ?? [floor.output]).map((output) => ({
+      id: `output:${output.itemId}`,
+      lanes: new Set(
+        baseline.nodes
+          .filter(
+            (node) =>
+              node.flow === 'output' &&
+              node.stage === 'collection' &&
+              node.itemId === output.itemId,
+          )
+          .map((node) => node.lane),
+      ).size,
       preferredSide:
         floor.outputSide === 'west' || floor.outputSide === 'north'
-          ? 'west'
-          : 'east',
+          ? ('west' as const)
+          : ('east' as const),
       terminals: baseline.nodes.filter(
-        (node) => node.flow === 'output' && node.stage === 'collection',
+        (node) =>
+          node.flow === 'output' &&
+          node.stage === 'collection' &&
+          node.itemId === output.itemId,
       ),
-    },
+    })),
   ];
   const optimized = optimizeCorridors({
     machines: machineBoxes,
@@ -543,7 +603,10 @@ export function supplySceneMetrics(
     shift + layout.footprint.width + 3,
     ...layout.transfers.map(
       (transfer) =>
-        transfer.x + shift + 6 + itemName(transfer.fromItemId).length * 1.1,
+        transfer.x +
+        shift +
+        6 +
+        itemName(transfer.itemId ?? transfer.fromItemId).length * 1.1,
     ),
     ...loadLabels.map((label) => label.x + label.width + 1),
     ...points.map((point) => point.x + 2),
@@ -575,6 +638,7 @@ export function supplySceneMetrics(
     inputAnchors,
     output,
     outputLabel,
+    outputLabels,
     sceneLeft,
     sceneTop,
     sceneWidth: sceneRight - sceneLeft,

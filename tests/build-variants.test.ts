@@ -241,3 +241,23 @@ it('aligns sibling branches with their producer and resolves conflicting parents
     }),
   ).toEqual(result);
 });
+
+it('orders a coproduct consumer after its actual producer and names the transferred material', async () => {
+  const { coproductPlan } = await import('./coproduct-fixture.js');
+  const result = deriveBuildVariants(coproductPlan);
+  expect(result.floors.map((floor) => floor.itemId)).toEqual(['a', 'c']);
+  expect(result.transfers).toEqual([
+    expect.objectContaining({
+      fromItemId: 'a',
+      toItemId: 'c',
+      itemId: 'b',
+      rate: '100',
+      fromFloor: 0,
+      toFloor: 1,
+    }),
+  ]);
+  expect(result.floors[1]!.inputs[0]).toMatchObject({
+    itemId: 'b',
+    sourceFloor: 0,
+  });
+});

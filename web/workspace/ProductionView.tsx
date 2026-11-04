@@ -5,6 +5,7 @@ import type {
 import { RemoteCursors } from './RemoteCursors.js';
 import type { ProductionPlan } from '../../src/domain/production.js';
 import { localizedName as itemName } from './labels.js';
+import { productionOutputs } from '../../src/domain/production-flows.js';
 import { formatRate } from './format-rate.js';
 
 export function ProductionView({
@@ -49,7 +50,7 @@ export function ProductionView({
         <thead>
           <tr>
             <th scope="col">Stufe</th>
-            <th scope="col">/ min</th>
+            <th scope="col">Ausgänge / min</th>
             <th scope="col">Maschinen</th>
           </tr>
         </thead>
@@ -61,8 +62,15 @@ export function ProductionView({
                   {itemName(node.itemId)}
                 </button>
               </th>
-              <td title={`Exakt: ${node.rate} / min`}>
-                {formatRate(node.rate)}
+              <td>
+                {productionOutputs(node).map((output) => (
+                  <div
+                    key={output.itemId}
+                    title={`Exakt: ${output.rate} / min`}
+                  >
+                    {itemName(output.itemId)} · {formatRate(output.rate)} / min
+                  </div>
+                ))}
               </td>
               <td>
                 {node.machineCount} × {itemName(node.machineId)}
@@ -71,6 +79,19 @@ export function ProductionView({
           ))}
         </tbody>
       </table>
+      {(plan.surplus ?? []).length > 0 && (
+        <section aria-label="Überschuss der Fabrik">
+          <h3>Überschuss der Fabrik</h3>
+          <dl>
+            {plan.surplus!.map((output) => (
+              <div key={output.itemId}>
+                <dt>{itemName(output.itemId)}</dt>
+                <dd>{formatRate(output.rate)} / min</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
       {stage && onSizeInput && stage.inputs.length > 0 && (
         <div className="production-input-sizing">
           <h3>Gewählte Stufe: {itemName(stage.itemId)}</h3>

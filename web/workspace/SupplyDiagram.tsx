@@ -58,7 +58,7 @@ export function SupplyDiagram({
   const [hoveredBelt, setHoveredBelt] = useState<string | null>(null);
   const [focusedBelt, setFocusedBelt] = useState<string | null>(null);
   const [selectedBelt, setSelectedBelt] = useState<string | null>(null);
-  const { shift, labels, outputLabel, nodes, belts, portSides, loadLabels } =
+  const { shift, labels, outputLabels, nodes, belts, portSides, loadLabels } =
     scene ?? supplySceneMetrics(layout, floor, catalog, technology, compact);
   const drawBelt = (belt: (typeof belts)[number]) => {
     const d = beltPath(belt.points);
@@ -157,10 +157,14 @@ export function SupplyDiagram({
         .map((transfer) => {
           const label =
             transfer.fromFloor === floor.index
-              ? outputLabel
+              ? outputLabels.find(
+                  (label) =>
+                    label.itemId === (transfer.itemId ?? transfer.fromItemId),
+                )!
               : labels[
                   floor.inputs.findIndex(
-                    (input) => input.itemId === transfer.fromItemId,
+                    (input) =>
+                      input.itemId === (transfer.itemId ?? transfer.fromItemId),
                   )
                 ]!;
           return (
@@ -171,7 +175,7 @@ export function SupplyDiagram({
               y1={label.y + label.height / 2}
               x2={transfer.x + shift}
               y2={transfer.y + shift}
-              stroke={resourceColor(transfer.fromItemId)}
+              stroke={resourceColor(transfer.itemId ?? transfer.fromItemId)}
               strokeOpacity={0.45}
               strokeWidth={0.2}
               strokeDasharray="1 1"
@@ -185,11 +189,12 @@ export function SupplyDiagram({
         .filter((transfer) => transfer.span.includes(floor.index))
         .map((transfer) => {
           const unit =
-            catalog.items.find((item) => item.id === transfer.fromItemId)
-              ?.transport === 'pipe'
+            catalog.items.find(
+              (item) => item.id === (transfer.itemId ?? transfer.fromItemId),
+            )?.transport === 'pipe'
               ? 'm³/min'
               : 'Stk./min';
-          const description = `${itemName(transfer.fromItemId)} · ${formatRate(transfer.rate)} ${unit} · Etage ${transfer.fromFloor + 1} → Etage ${transfer.toFloor + 1}`;
+          const description = `${itemName(transfer.itemId ?? transfer.fromItemId)} · ${formatRate(transfer.rate)} ${unit} · Etage ${transfer.fromFloor + 1} → Etage ${transfer.toFloor + 1}`;
           return (
             <g
               key={transfer.id}
@@ -207,22 +212,22 @@ export function SupplyDiagram({
                 height={3.6}
                 rx={0.3}
                 fill="#21272c"
-                stroke={resourceColor(transfer.fromItemId)}
+                stroke={resourceColor(transfer.itemId ?? transfer.fromItemId)}
                 strokeWidth={0.3}
               />
               <path
                 d="M -0.8 0.8 L 0 -0.8 L 0.8 0.8 M 0 -0.8 V 1.2"
                 fill="none"
-                stroke={resourceColor(transfer.fromItemId)}
+                stroke={resourceColor(transfer.itemId ?? transfer.fromItemId)}
                 strokeWidth={0.3}
               />
               <text
                 x={3}
                 y={0.5}
                 fontSize={1.4}
-                fill={resourceColor(transfer.fromItemId)}
+                fill={resourceColor(transfer.itemId ?? transfer.fromItemId)}
               >
-                {itemName(transfer.fromItemId)}
+                {itemName(transfer.itemId ?? transfer.fromItemId)}
               </text>
             </g>
           );
@@ -356,7 +361,11 @@ export function SupplyDiagram({
           </g>
         ))}
         <g data-aggregate="output" data-side={floor.outputSide}>
-          <FlowCard label={outputLabel} itemId={floor.itemId} direction="AUS" />
+          {outputLabels.map((label) => (
+            <g key={label.itemId} data-output-item={label.itemId}>
+              <FlowCard label={label} itemId={label.itemId} direction="AUS" />
+            </g>
+          ))}
         </g>
       </g>
     </>

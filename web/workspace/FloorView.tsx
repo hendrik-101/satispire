@@ -335,6 +335,11 @@ export function FloorView({
                   feeds={Math.min(4, feeds)}
                   inputItems={floor.inputs.map((input) => input.itemId)}
                   outputItem={floor.itemId}
+                  outputItems={
+                    floor.outputs?.map((output) => output.itemId) ?? [
+                      floor.itemId,
+                    ]
+                  }
                   selected={machine === m.id}
                   number={m.id}
                 />

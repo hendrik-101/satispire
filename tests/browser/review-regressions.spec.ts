@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 import {
   availableChoices,
   technologyAtTier,
@@ -21,6 +22,7 @@ async function importProduction(
   await expect(page.locator('main.workspace')).toHaveAttribute(
     'data-ready',
     'true',
+    { timeout: 15_000 },
   );
   await page.getByLabel('Plan-Datei').setInputFiles({
     name: 'review-regression.json',
@@ -47,13 +49,13 @@ for (const scenario of [
     recipe: 'Recipe_Alternate_SteelRod_C',
   },
   {
-    name: 'coproduct recipe',
+    name: 'supported coproduct recipe',
     technology: technologyAtTier(9, allRecipes),
     item: 'Desc_Silica_C',
     recipe: 'Recipe_AluminaSolution_C',
   },
   {
-    name: 'unsupported dependency chain',
+    name: 'supported dependency chain',
     technology: technologyAtTier(9, allRecipes),
     item: 'Desc_CircuitBoard_C',
     recipe: 'Recipe_CircuitBoard_C',
@@ -82,9 +84,11 @@ for (const scenario of [
       await expect(page.getByRole('alert')).toHaveCount(0);
     }
     await page.getByRole('button', { name: 'Details', exact: true }).click();
-    await page
-      .getByLabel('Stufe auswählen', { exact: true })
-      .selectOption(scenario.item);
+    // A coproduct target need not own a separate stage.
+    if (scenario.name !== 'supported coproduct recipe')
+      await page
+        .getByLabel('Stufe auswählen', { exact: true })
+        .selectOption(scenario.item);
     await expect(
       page.getByLabel('Rezept für diese Stufe', { exact: true }),
     ).toHaveValue(expected);
@@ -218,4 +222,164 @@ test('advanced graph assigns distinct in-bounds lanes beyond eight bypass edges'
     path: test.info().outputPath('advanced-bypass-lanes.png'),
     fullPage: true,
   });
+});
+
+for (const itemId of ['Desc_Rubber_C', 'Desc_Plastic_C', 'Desc_LiquidFuel_C']) {
+  test(`tier 5 supports ${itemId} with actual coproduct outputs and export`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1600, height: 1100 });
+    const technology = technologyAtTier(5);
+    await importProduction(page, {
+      targets: [{ itemId, rate: '20' }],
+      recipes: availableChoices(technology),
+      imports: allImports,
+      technology,
+    });
+    for (const product of [
+      'Desc_Rubber_C',
+      'Desc_Plastic_C',
+      'Desc_LiquidFuel_C',
+    ]) {
+      await expect(
+        page
+          .getByLabel('Produktionsziel')
+          .locator(`option[value="${product}"]`),
+      ).toHaveCount(1);
+    }
+    await page
+      .getByRole('button', { name: 'Plan berechnen', exact: true })
+      .click();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Details', exact: true }).click();
+    const inspector = page.getByLabel('Stufeninspector');
+    await expect(inspector.getByLabel('Mengen je Maschine')).toContainText(
+      'AUS',
+    );
+    await expect(
+      inspector.getByLabel('Ausgänge der Stufe').locator('li'),
+    ).toHaveCount(2);
+    await expect(inspector.getByLabel('Überschuss der Fabrik')).toBeVisible();
+    await page.getByRole('button', { name: 'Graph', exact: true }).click();
+    await expect(page.locator('.process-graph')).toBeVisible();
+    if (itemId === 'Desc_Rubber_C')
+      await page.screenshot({
+        path: test.info().outputPath('tier5-rubber-floor-inspector.png'),
+        fullPage: true,
+      });
+    const download = page.waitForEvent('download');
+    await page
+      .getByRole('button', { name: 'Plan exportieren', exact: true })
+      .click();
+    const document = JSON.parse(
+      await readFile((await (await download).path())!, 'utf8'),
+    );
+    expect(document.production.targets).toEqual([{ itemId, rate: '20' }]);
+    await page.getByLabel('Plan-Datei').setInputFiles({
+      name: 'coproduct-roundtrip.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(document)),
+    });
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(page.getByLabel('Produktionsziel')).toHaveValue(itemId);
+    await expect(
+      inspector.getByLabel('Ausgänge der Stufe').locator('li'),
+    ).toHaveCount(2);
+    await page.locator('.view-options > summary').click();
+    await page
+      .getByRole('combobox', { name: 'Ansicht', exact: true })
+      .selectOption('production');
+    const overview = page.getByLabel('Produktionsübersicht');
+    await expect(
+      overview
+        .locator('tbody tr[aria-selected="true"] td')
+        .first()
+        .locator('div'),
+    ).toHaveCount(2);
+    await expect(overview.getByLabel('Überschuss der Fabrik')).toBeVisible();
+    if (itemId === 'Desc_Rubber_C')
+      await page.screenshot({
+        path: test.info().outputPath('tier5-rubber-coproducts.png'),
+        fullPage: true,
+      });
+  });
+}
+
+test('tier 5 oil coproduct plan survives a saved session reload', async ({
+  page,
+}) => {
+  const sessionUrl = url.replace(/\/local$/, '/session');
+  await page.goto(sessionUrl);
+  await expect(page.locator('main.workspace')).toHaveAttribute(
+    'data-ready',
+    'true',
+  );
+  const technology = technologyAtTier(5);
+  await page.getByLabel('Plan-Datei').setInputFiles({
+    name: 'oil-session.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(
+      JSON.stringify({
+        schemaVersion: 1,
+        catalogVersion: vanillaCatalog.catalogVersion,
+        production: {
+          targets: [{ itemId: 'Desc_Rubber_C', rate: '20' }],
+          recipes: availableChoices(technology),
+          imports: allImports,
+          technology,
+        },
+      }),
+    ),
+  });
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(page.getByLabel('Sitzungsstatus')).toContainText('Gespeichert');
+  const savedUrl = page.url();
+  await page.reload();
+  await expect(page.locator('main.workspace')).toHaveAttribute(
+    'data-ready',
+    'true',
+  );
+  expect(page.url()).toBe(savedUrl);
+  await expect(page.getByLabel('Produktionsziel')).toHaveValue('Desc_Rubber_C');
+  await page.getByRole('button', { name: 'Details', exact: true }).click();
+  await expect(page.getByLabel('Ausgänge der Stufe').locator('li')).toHaveCount(
+    2,
+  );
+  await expect(page.getByLabel('Überschuss der Fabrik')).toBeVisible();
+});
+
+test('preserves a selected recipe alias through import, calculation, profile apply and export', async ({
+  page,
+}) => {
+  const technology = technologyAtTier(9, allRecipes);
+  const selectedRecipe = 'Recipe_Alternate_Quartz_Purified_C';
+  await importProduction(page, {
+    targets: [{ itemId: 'Desc_QuartzCrystal_C', rate: '60' }],
+    recipes: {
+      ...availableChoices(technology),
+      Desc_QuartzCrystal_C: selectedRecipe,
+    },
+    imports: allImports,
+    technology,
+  });
+  await page
+    .getByRole('button', { name: 'Plan berechnen', exact: true })
+    .click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Technologie', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Profil anwenden', exact: true })
+    .click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  const download = page.waitForEvent('download');
+  await page
+    .getByRole('button', { name: 'Plan exportieren', exact: true })
+    .click();
+  const document = JSON.parse(
+    await readFile((await (await download).path())!, 'utf8'),
+  );
+  expect(document.production.recipes.Desc_QuartzCrystal_C).toBe(selectedRecipe);
+  expect(document.production.targets).toEqual([
+    { itemId: 'Desc_QuartzCrystal_C', rate: '60' },
+  ]);
 });

@@ -4,6 +4,7 @@ import type { Catalog } from './catalog.js';
 import type { ProductionPlan } from './production.js';
 import { getMachineGeometry } from './machine-geometry.js';
 import { generateBeltRouting } from './belt-routing.js';
+import { productionOutputs } from './production-flows.js';
 import {
   transportCapacity,
   validateTechnology,
@@ -28,29 +29,31 @@ export function generateSupplyLayout(
     throw new Error('Katalogversion passt nicht');
   if (plan.nodes.length > 64 || plan.nodes.some((n) => n.machineCount > 512))
     throw new Error('Layout-Kapazität überschritten');
-  const build = deriveBuildVariants(plan, variant);
+  const build = deriveBuildVariants(
+    plan,
+    variant,
+    catalog.items.filter((item) => item.raw).map((item) => item.id),
+  );
   const arrangements = build.floors.map((orientation) => {
     const node = plan.nodes.find((n) => n.itemId === orientation.itemId)!;
     const capacityPerRow = Math.min(
       node.machineCount,
-      ...[...node.inputs, { itemId: node.itemId, rate: node.rate }].map(
-        (flow) => {
-          const perMachine = Rational.parseCanonical(flow.rate).divide(
-            Rational.fromBigInts(BigInt(node.machineCount)),
-          );
-          const ratio = transportCapacity(
-            catalog,
-            flow.itemId,
-            technology,
-          ).divide(perMachine);
-          const rounded = ratio.ceil();
-          const fit =
-            ratio.compare(Rational.fromBigInts(rounded)) === 0
-              ? rounded
-              : rounded - 1n;
-          return Math.max(1, Number(fit));
-        },
-      ),
+      ...[...node.inputs, ...productionOutputs(node)].map((flow) => {
+        const perMachine = Rational.parseCanonical(flow.rate).divide(
+          Rational.fromBigInts(BigInt(node.machineCount)),
+        );
+        const ratio = transportCapacity(
+          catalog,
+          flow.itemId,
+          technology,
+        ).divide(perMachine);
+        const rounded = ratio.ceil();
+        const fit =
+          ratio.compare(Rational.fromBigInts(rounded)) === 0
+            ? rounded
+            : rounded - 1n;
+        return Math.max(1, Number(fit));
+      }),
     );
     const rowCount = Math.min(
       node.machineCount,
@@ -100,12 +103,24 @@ export function generateSupplyLayout(
       ...orientation.inputs.find((input) => input.itemId === i.itemId)!,
       lines: transport.inputs.find((input) => input.itemId === i.itemId)!.lines,
     }));
+    const outputs = productionOutputs(node).map((flow) => ({
+      ...flow,
+      lines: transport.outputs
+        .filter((output) => output.itemId === flow.itemId)
+        .reduce((sum, output) => sum + output.lines, 0),
+    }));
+    const targetOutputs = transport.outputs
+      .filter((output) => output.terminalId.startsWith('target:'))
+      .map(({ itemId, rate, lines }) => ({ itemId, rate, lines }));
+    const surplusOutputs = transport.outputs
+      .filter((output) => output.terminalId.startsWith('surplus:'))
+      .map(({ itemId, rate, lines }) => ({ itemId, rate, lines }));
     const output = {
       itemId: node.itemId,
       rate: node.rate,
       lines: transport.outputLines,
     };
-    const target = plan.targets.find((t) => t.itemId === node.itemId);
+    const target = targetOutputs.find((t) => t.itemId === node.itemId);
     const targetOutput = target
       ? {
           ...target,
@@ -143,6 +158,9 @@ export function generateSupplyLayout(
       inputs,
       output,
       targetOutput,
+      ...(plan.nodes.some((stage) => stage.outputs !== undefined)
+        ? { outputs, targetOutputs, surplusOutputs }
+        : {}),
       transport,
       machineGeometry: getMachineGeometry(
         catalog.catalogVersion,
